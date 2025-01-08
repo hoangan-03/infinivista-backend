@@ -1,0 +1,40 @@
+// filepath: /c:/Users/John/Documents/samplenest/src/app.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AppController } from '@/app.controller';
+import { AppService } from '@/app.service';
+import { UsersModule } from '@/modules/users/users.module';
+
+import { APP_FILTER } from '@nestjs/core';
+import { GlobalExceptionFilter } from '@/exception-filters/global-exception.filter';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('POSTGRES_HOST'),
+        port: configService.get<number>('POSTGRES_PORT'),
+        username: configService.get<string>('POSTGRES_USER'),
+        password: configService.get<string>('POSTGRES_PASSWORD'),
+        database: configService.get<string>('POSTGRES_DB'),
+        autoLoadEntities: true,
+        synchronize: true, // Set to false in production
+      }),
+      inject: [ConfigService],
+    }),
+    UsersModule,
+  ],
+  controllers: [AppController],
+  providers: [
+    AppService,
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
+  ],
+})
+export class AppModule {}
