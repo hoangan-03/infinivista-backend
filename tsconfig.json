@@ -4,12 +4,13 @@
     "paths": {
       "@/*": ["src/*"]
     },
+    "outDir": "./dist", // Output directory for compiled JavaScript files
+    "rootDir": "./src", // Root directory of your TypeScript source files
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "strictPropertyInitialization": false,
-        "outDir": "./dist"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]

@@ -1,13 +1,11 @@
-// filepath: /C:/Users/John/Documents/samplenest/src/modules/users/users.module.ts
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { UsersRepository } from './users.repository';
-import { User, UserSchema } from './schemas/user.schema';
-
+import { User } from './user.entity';
+import { TypeOrmModule } from '@nestjs/typeorm';
 @Module({
-  imports: [MongooseModule.forFeature([{ name: User.name, schema: UserSchema }])],
+  imports: [TypeOrmModule.forFeature([User])],
   providers: [UsersService, UsersRepository],
   controllers: [UsersController],
   exports: [UsersService, UsersRepository],

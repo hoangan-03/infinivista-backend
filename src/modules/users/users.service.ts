@@ -1,28 +1,42 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ERRORS_DICTIONARY } from '@/constraints/error-dictionary.constraint';
-import { UsersRepository } from '@/modules/users/users.repository';
-import { User } from '@/modules/users/schemas/user.schema';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '@/modules/users/user.entity';
+import { CreateUserDto } from '@/modules/users/dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
 
   async getAuthenticatedUser(email: string, password: string): Promise<User> {
-    const user = await this.usersRepository.findOneByEmail(email);
+    const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       throw new BadRequestException({
         message: ERRORS_DICTIONARY.WRONG_CREDENTIALS,
-        details: 'Not exist user !!',
+        details: 'User does not exist!',
       });
     }
-    if (password !== user.password) {
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       throw new BadRequestException({
         message: ERRORS_DICTIONARY.WRONG_CREDENTIALS,
-        details: 'Wrong password!!',
+        details: 'Wrong password!',
       });
     }
 
     return user;
   }
+
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    const user = this.userRepository.create({ ...createUserDto, password: hashedPassword });
+    return this.userRepository.save(user);
+  }
+
 }

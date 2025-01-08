@@ -1,4 +1,3 @@
-// filepath: /c:/Users/John/Documents/samplenest/src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -22,7 +21,7 @@ import { GlobalExceptionFilter } from '@/exception-filters/global-exception.filt
         password: configService.get<string>('POSTGRES_PASSWORD'),
         database: configService.get<string>('POSTGRES_DB'),
         autoLoadEntities: true,
-        synchronize: true, // Set to false in production
+        synchronize: true, // false in production
       }),
       inject: [ConfigService],
     }),
