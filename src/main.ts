@@ -5,9 +5,14 @@ import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as cookieParser from "cookie-parser";
 import * as session from "express-session";
+import {useContainer} from "class-validator";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  useContainer(app.select(AppModule), { fallbackOnErrors: true });
   const configService = app.get(ConfigService);
+  const port = configService.get("PORT") || 3000;
+
   app.use(
     session({
       secret: configService.get("SESSION_SECRET") || "my-secret",
@@ -19,10 +24,8 @@ async function bootstrap() {
       },
     })
   );
-  app.use(cookieParser("your-secret-key"));
+  app.use(cookieParser("secret-key"));
   app.enableCors();
-
-  const port = configService.get("PORT") || 3000;
   app.setGlobalPrefix("api/v1", { exclude: [""] });
   app.useGlobalPipes(
     new ValidationPipe({
@@ -36,9 +39,11 @@ async function bootstrap() {
     .setDescription("API for user registration and login")
     .setVersion("1.0")
     .addTag("users")
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api/v1/swaggerdocs", app, document);
+
 
   await app.listen(port);
 }

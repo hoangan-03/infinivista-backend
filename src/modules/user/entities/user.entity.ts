@@ -1,52 +1,132 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import * as bcrypt from 'bcryptjs';
-import { Exclude } from 'class-transformer';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  BeforeInsert,
+  BeforeUpdate,
+} from "typeorm";
+import { v4 as uuidv4 } from "uuid";
+import * as bcrypt from "bcryptjs";
+import { Exclude } from "class-transformer";
+import { ApiProperty } from "@nestjs/swagger";
+import { Gender } from "@/modules/user/enums/gender.enum";
+import { IsEnum, IsOptional } from "class-validator";
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @ApiProperty({
+    example: "123e4567-e89b-12d3-a456-426614174000",
+    description: "User unique identifier",
+  })
+  @PrimaryGeneratedColumn("uuid")
   id: string = uuidv4();
 
-  @Column({ type: 'varchar', length: 255 })
+  @ApiProperty({
+    example: "user@example.com",
+    description: "User email address",
+  })
+  @Column({ type: "varchar", length: 255 })
   email: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @ApiProperty({
+    example: "johndoe",
+    description: "User username",
+  })
+  @Column({ type: "varchar", length: 255 })
   username: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Exclude()
+  @Column({ type: "varchar", length: 255 })
   password?: string;
 
-  @Column({ type: 'varchar', length: 15, nullable: true })
+  @ApiProperty({
+    example: "+1234567890",
+    description: "User phone number",
+    required: false,
+  })
+  @Column({ type: "varchar", length: 15, nullable: true })
   phoneNumber: string;
 
-  @Column({ type: 'date', nullable: true })
+  @ApiProperty({
+    example: "1990-01-01",
+    description: "User date of birth",
+    required: false,
+  })
+  @Column({ type: "date", nullable: true })
   dob: Date;
 
-  @Column({ type: 'boolean', nullable: true })
-  gender: boolean;
+  @ApiProperty({
+    enum: Gender,
+    enumName: "Gender",
+    example: Gender.MALE,
+    description: "User gender",
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
 
-  @Column({ type: 'varchar', length: 255, nullable: true  })
+  @ApiProperty({
+    example: "John",
+    description: "User first name",
+    required: false,
+  })
+  @Column({ type: "varchar", length: 255, nullable: true })
   firstName: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true  })
+  @ApiProperty({
+    example: "Doe",
+    description: "User last name",
+    required: false,
+  })
+  @Column({ type: "varchar", length: 255, nullable: true })
   lastName: string;
 
-  @Column({ type: 'text', nullable: true })
+  @ApiProperty({
+    example: "https://example.com/profile.jpg",
+    description: "User profile image URL",
+    required: false,
+  })
+  @Column({ type: "text", nullable: true })
   profileImageUrl: string;
 
-  @Column({ type: 'text', nullable: true })
+  @ApiProperty({
+    example: "https://example.com/cover.jpg",
+    description: "User cover image URL",
+    required: false,
+  })
+  @Column({ type: "text", nullable: true })
   coverImageUrl: string;
 
-  @Column({ type: 'boolean', default: false , nullable: true })
+  @ApiProperty({
+    example: false,
+    description: "User online status",
+    default: false,
+  })
+  @Column({ type: "boolean", default: false, nullable: true })
   isOnline: boolean;
 
-  @Column({ type: 'boolean', default: false, nullable: true  })
+  @ApiProperty({
+    example: false,
+    description: "User suspension status",
+    default: false,
+  })
+  @Column({ type: "boolean", default: false, nullable: true })
   isSuspended: boolean;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @ApiProperty({
+    example: "2024-01-22T12:00:00Z",
+    description: "User creation timestamp",
+  })
+  @CreateDateColumn({ type: "timestamp" })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @ApiProperty({
+    example: "2024-01-22T12:00:00Z",
+    description: "User last update timestamp",
+  })
+  @UpdateDateColumn({ type: "timestamp" })
   updatedAt: Date;
 
   constructor(data: Partial<User> = {}) {
@@ -65,6 +145,8 @@ export class User {
   }
 
   async checkPassword(plainPassword: string): Promise<boolean> {
-    return this.password ? await bcrypt.compare(plainPassword, this.password) : false;
+    return this.password
+      ? await bcrypt.compare(plainPassword, this.password)
+      : false;
   }
 }

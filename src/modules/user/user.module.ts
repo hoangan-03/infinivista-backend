@@ -11,7 +11,7 @@ import { IsUserAlreadyExist } from "./validators/is-user-already-exist.validator
 @Module({
   imports: [TypeOrmModule.forFeature([User, UsersRepository])],
   controllers: [UsersController],
-  providers: [UserService, IsUserAlreadyExist],
-  exports: [UserService],
+  providers: [UserService, IsUserAlreadyExist,UsersRepository],
+  exports: [UserService,  UsersRepository,],
 })
 export class UserModule {}
