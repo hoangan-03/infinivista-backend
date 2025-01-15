@@ -1,10 +1,13 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, FindOneOptions } from "typeorm";
-
 import { User } from "@/modules/user/entities/user.entity";
 import { UpdateUserDto } from "@/modules/user/dto/update-user.dto";
-
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { validate as uuidValidate } from "uuid";
 @Injectable()
 export class UserService {
   constructor(
@@ -20,13 +23,25 @@ export class UserService {
   async findAll(): Promise<User[]> {
     return this.userRepository.find();
   }
+
   async findOne(where: FindOneOptions<User>): Promise<User> {
+    if (where.where && "id" in where.where) {
+      const id = where.where.id as string;
+      if (!uuidValidate(id)) {
+        throw new BadRequestException("Invalid UUID format");
+      }
+    }
+
     const user = await this.userRepository.findOne(where);
 
     if (!user) {
-      throw new NotFoundException(
-        `There isn't any user with identifier: ${where}`
-      );
+      const identifier = where.where
+        ? Object.entries(where.where)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(", ")
+        : "unknown";
+
+      throw new NotFoundException(`User not found with ${identifier}`);
     }
 
     return user;

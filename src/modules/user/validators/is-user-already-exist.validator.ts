@@ -34,3 +34,31 @@ export class IsUserAlreadyExist implements ValidatorConstraintInterface {
     return "The email $value is already registered.";
   }
 }
+@ValidatorConstraint({ name: "isUserNameAlreadyExist", async: true })
+@Injectable()
+export class IsUserNameAlreadyExist implements ValidatorConstraintInterface {
+  private readonly logger = new Logger(IsUserNameAlreadyExist.name);
+
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>
+  ) {}
+
+  async validate(username: string): Promise<boolean> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { username },
+      });
+      return user === null || user === undefined;
+    } catch (error) {
+      this.logger.error(
+        `Error validating username: ${(error as any).message}`,
+        (error as any).stack
+      );
+      return false;
+    }
+  }
+  defaultMessage(): string {
+    return "The username $value is already registered.";
+  }
+}

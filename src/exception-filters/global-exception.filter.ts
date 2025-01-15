@@ -22,8 +22,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 				? exception.message
 				: 'Internal server error';
 		response.status(status).json({
-			statusCode: status,
-			message,
+			// statusCode: status,
+			// message,
 			error:
 				this.config_service.get('NODE_ENV') !== 'production'
 					? {

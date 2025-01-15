@@ -26,6 +26,10 @@ export class UsersController {
   @ApiOperation({ summary: "Get user by ID" })
   @ApiResponse({ status: 200, description: "Return user by ID", type: User })
   @ApiResponse({
+    status: 400,
+    description: "Bad Request - Invalid input data",
+  })
+  @ApiResponse({
     status: 401,
     description: "Unauthorized - Invalid or missing token",
   })
@@ -41,6 +45,10 @@ export class UsersController {
   @ApiOperation({ summary: "Update user by ID" })
   @ApiBody({ type: UpdateUserDto })
   @ApiResponse({ status: 200, description: "Return updated user", type: User })
+  @ApiResponse({
+    status: 400,
+    description: "Bad Request - Invalid input data",
+  })
   @ApiResponse({
     status: 401,
     description: "Unauthorized - Invalid or missing token",

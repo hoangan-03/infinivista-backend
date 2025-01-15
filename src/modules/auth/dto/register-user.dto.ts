@@ -6,7 +6,7 @@ import {
   Validate,
   Matches,
 } from "class-validator";
-import { IsUserAlreadyExist } from "@/modules/user/validators/is-user-already-exist.validator";
+import { IsUserAlreadyExist, IsUserNameAlreadyExist } from "@/modules/user/validators/is-user-already-exist.validator";
 import { ApiProperty } from "@nestjs/swagger";
 export class RegisterUserDto {
   @ApiProperty({
@@ -15,6 +15,7 @@ export class RegisterUserDto {
   })
   @IsDefined()
   @IsNotEmpty()
+  @Validate(IsUserNameAlreadyExist)
   readonly username: string;
 
   @ApiProperty({

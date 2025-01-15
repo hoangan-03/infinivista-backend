@@ -35,8 +35,8 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle("User API")
-    .setDescription("API for user registration and login")
+    .setTitle("INFINIVISTA - User API")
+    .setDescription("API for user and auth modules")
     .setVersion("1.0")
     .addTag("users")
     .addBearerAuth()

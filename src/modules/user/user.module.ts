@@ -1,4 +1,3 @@
-import { UsersRepository } from '@/modules/user/user.repository';
 import { Module } from "@nestjs/common";
 import { UserService } from "@/modules/user/services/user.service";
 import { JwtModule } from "@nestjs/jwt";
@@ -9,9 +8,9 @@ import { User } from "@/modules/user/entities/user.entity";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { IsUserAlreadyExist } from "./validators/is-user-already-exist.validator";
 @Module({
-  imports: [TypeOrmModule.forFeature([User, UsersRepository])],
+  imports: [TypeOrmModule.forFeature([User])],
   controllers: [UsersController],
-  providers: [UserService, IsUserAlreadyExist,UsersRepository],
-  exports: [UserService,  UsersRepository,],
+  providers: [UserService, IsUserAlreadyExist],
+  exports: [UserService],
 })
 export class UserModule {}
