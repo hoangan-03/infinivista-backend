@@ -1,5 +1,9 @@
 import { DataSource } from 'typeorm';
-import { User } from '@/modules/user/entities/user.entity';
+import { User } from '@/entities/user.entity';
+import { PaymentMethods } from '@/entities/payment-methods.entity';
+import { Setting } from '@/entities/setting.entity';
+import { SecurityAnswer } from '@/entities/security-answer.entity';
+import { SecurityQuestion } from '@/entities/security-question.entity';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -10,7 +14,7 @@ export const AppDataSource = new DataSource({
   username: 'postgres',
   password: 'postgres',
   database: 'infinivista',
-  entities: [User],
+  entities: [User, SecurityQuestion, SecurityAnswer, Setting, PaymentMethods],
   migrations: ['migrations/*.ts'],
-  synchronize: false,
+  synchronize: true, // set to false in production
 });

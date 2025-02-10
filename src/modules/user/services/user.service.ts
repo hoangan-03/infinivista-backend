@@ -1,6 +1,6 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, FindOneOptions } from "typeorm";
-import { User } from "@/modules/user/entities/user.entity";
+import { User } from "@/entities/user.entity";
 import { UpdateUserDto } from "@/modules/user/dto/update-user.dto";
 import {
   Injectable,

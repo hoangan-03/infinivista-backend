@@ -4,7 +4,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { UsersController } from "@/modules/user/user.controller";
 
-import { User } from "@/modules/user/entities/user.entity";
+import { User } from "@/entities/user.entity";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { IsUserAlreadyExist } from "./validators/is-user-already-exist.validator";
 @Module({

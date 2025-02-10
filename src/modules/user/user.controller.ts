@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBody } from "@nestjs/swagger";
 // import { UserService } from './services/user.service';
 
 import { LoginUserDTO } from "../auth/dto/login-user.dto";
-import { User } from "@/modules/user/entities/user.entity";
+import { User } from "@/entities/user.entity";
 import { UserService } from "./services/user.service";
 import { UpdateUserDto } from "./dto/update-user.dto";
 

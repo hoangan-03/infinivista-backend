@@ -3,7 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt, JwtFromRequestFunction } from 'passport-jwt';
 
 import { AuthService } from '@/modules/auth/auth.service';
-import { User } from '@/modules/user/entities/user.entity';
+import { User } from '@/entities/user.entity';
 import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
 
 const extractJwtFromCookie: JwtFromRequestFunction = request => {

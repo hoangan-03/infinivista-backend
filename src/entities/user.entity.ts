@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   BeforeInsert,
   BeforeUpdate,
+  OneToOne,
+  OneToMany,
 } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import * as bcrypt from "bcryptjs";
@@ -13,8 +15,12 @@ import { Exclude } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 import { Gender } from "@/modules/user/enums/gender.enum";
 import { IsEnum, IsOptional } from "class-validator";
+import { BaseEntity } from "@/entities/base-class";
+import { Setting } from "./setting.entity";
+import { SecurityAnswer } from "./security-answer.entity";
+
 @Entity()
-export class User {
+export class User extends BaseEntity {
   @ApiProperty({
     example: "123e4567-e89b-12d3-a456-426614174000",
     description: "User unique identifier",
@@ -116,20 +122,17 @@ export class User {
   isSuspended: boolean;
 
   @ApiProperty({
-    example: "2024-01-22T12:00:00Z",
-    description: "User creation timestamp",
+    type: () => Setting,
+    description: "User settings",
   })
-  @CreateDateColumn({ type: "timestamp" })
-  createdAt: Date;
-
-  @ApiProperty({
-    example: "2024-01-22T12:00:00Z",
-    description: "User last update timestamp",
-  })
-  @UpdateDateColumn({ type: "timestamp" })
-  updatedAt: Date;
+  @OneToOne(() => Setting, (setting) => setting.user)
+  setting: Setting;
+  
+  @OneToMany(() => SecurityAnswer, (securityAnswer) => securityAnswer.user)
+  securityAnswers: SecurityAnswer[];
 
   constructor(data: Partial<User> = {}) {
+    super();
     Object.assign(this, data);
   }
 
@@ -138,15 +141,11 @@ export class User {
   async hashPassword(): Promise<void> {
     const salt = await bcrypt.genSalt();
     if (this.password && !/^\$2[abxy]?\$\d+\$/.test(this.password)) {
-      if (this.password) {
-        this.password = await bcrypt.hash(this.password, salt);
-      }
+      this.password = await bcrypt.hash(this.password, salt);
     }
   }
 
   async checkPassword(plainPassword: string): Promise<boolean> {
-    return this.password
-      ? await bcrypt.compare(plainPassword, this.password)
-      : false;
+    return this.password ? await bcrypt.compare(plainPassword, this.password) : false;
   }
 }

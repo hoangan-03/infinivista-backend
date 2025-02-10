@@ -24,6 +24,7 @@ export class RegisterUserDto {
   })
   @IsDefined()
   @IsEmail()
+  @IsNotEmpty()
   @Validate(IsUserAlreadyExist)
   readonly email: string;
 

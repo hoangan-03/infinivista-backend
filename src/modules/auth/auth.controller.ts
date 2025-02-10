@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthUser } from '@/modules/user/decorators/user.decorator';
-import { User } from '@/modules/user/entities/user.entity';
+import { User } from '@/entities/user.entity';
 import { AuthService } from '@/modules/auth/auth.service';
 import { RegisterUserDto } from '@/modules/auth/dto/register-user.dto';
 import { JWTAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';

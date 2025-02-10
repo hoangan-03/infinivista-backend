@@ -14,6 +14,7 @@ import {
     })
     @IsDefined()
     @IsNotEmpty()
+    @MinLength(8)
     readonly username: string;
   
     @ApiProperty({ 
