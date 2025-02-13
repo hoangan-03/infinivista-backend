@@ -18,8 +18,9 @@ import { IsEnum, IsOptional } from "class-validator";
 import { BaseEntity } from "@/entities/base-class";
 import { Setting } from "./setting.entity";
 import { SecurityAnswer } from "./security-answer.entity";
+import { Address } from "./address.entity";
 
-@Entity()
+@Entity({ name: "users" })
 export class User extends BaseEntity {
   @ApiProperty({
     example: "123e4567-e89b-12d3-a456-426614174000",
@@ -43,7 +44,7 @@ export class User extends BaseEntity {
   username: string;
 
   @Exclude()
-  @Column({ type: "varchar", length: 255 })
+  @Column({ type: "varchar", length: 255})
   password?: string;
 
   @ApiProperty({
@@ -121,13 +122,25 @@ export class User extends BaseEntity {
   @Column({ type: "boolean", default: false, nullable: true })
   isSuspended: boolean;
 
+
   @ApiProperty({
-    type: () => Setting,
-    description: "User settings",
+    type: () => [Setting],
+    description: "User settings"
   })
-  @OneToOne(() => Setting, (setting) => setting.user)
-  setting: Setting;
-  
+  @OneToMany(() => Setting, (setting) => setting.user, {
+    cascade: true
+  })
+  settings: Setting[];
+
+  @ApiProperty({
+    type: () => Address,
+    description: "User's address",
+  })
+  @OneToOne(() => Address, (address) => address.user, {
+    cascade: true,
+  })
+  address: Address;
+
   @OneToMany(() => SecurityAnswer, (securityAnswer) => securityAnswer.user)
   securityAnswers: SecurityAnswer[];
 
@@ -146,6 +159,8 @@ export class User extends BaseEntity {
   }
 
   async checkPassword(plainPassword: string): Promise<boolean> {
-    return this.password ? await bcrypt.compare(plainPassword, this.password) : false;
+    return this.password
+      ? await bcrypt.compare(plainPassword, this.password)
+      : false;
   }
 }

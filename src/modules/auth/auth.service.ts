@@ -4,8 +4,8 @@ import { User } from "@/entities/user.entity";
 import { RegisterUserDto } from "@/modules/auth/dto/register-user.dto";
 import { JwtPayload } from "@/modules/auth/interfaces/jwt-payload.interface";
 import { UserService } from "@/modules/user/services/user.service";
-import { AuthTokenResponseDto } from "./dto/auth-token-response.dto";
-import { RegisterUserResponseDto as RegisterUserResponseDto } from "./dto/register-user-response.dto";
+import { AuthTokenResponseDto } from "@/modules/auth/dto/auth-token-response.dto";
+import { RegisterUserResponseDto as RegisterUserResponseDto } from "@/modules/auth/dto/register-user-response.dto";
 
 @Injectable()
 export class AuthService {
@@ -29,12 +29,13 @@ export class AuthService {
   async login(email: string, password: string): Promise<AuthTokenResponseDto> {
     let user: User;
     try {
-      user = await this.userService.findOne({ where: { email } });
+      user = await this.userService.getOne({ where: { email } });
     } catch (err) {
       throw new UnauthorizedException(
         `There isn't any user with email: ${email}`
       );
     }
+    // same error logging
 
     if (!(await user.checkPassword(password))) {
       throw new UnauthorizedException(
@@ -69,7 +70,7 @@ export class AuthService {
     let user: User;
 
     try {
-      user = await this.userService.findOne({ where: { email: payload.sub } });
+      user = await this.userService.getOne({ where: { email: payload.sub } });
     } catch (error) {
       throw new UnauthorizedException(
         `There isn't any user with email: ${payload.sub}`

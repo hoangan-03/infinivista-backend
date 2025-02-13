@@ -1,12 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsEnum, IsDateString } from 'class-validator';
 import { Gender } from '../enums/gender.enum';
 
 export class UpdateUserDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '+1234567890',
     description: 'User phone number',
-    required: false
+    required: false,
   })
   @IsOptional()
   @IsString()

@@ -6,8 +6,9 @@ import {
   Validate,
   Matches,
 } from "class-validator";
-import { IsUserAlreadyExist, IsUserNameAlreadyExist } from "@/modules/user/validators/is-user-already-exist.validator";
+import { IsUserAlreadyExist } from "@/modules/user/validators/is-user-already-exist.validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { IsUserNameAlreadyExist } from "@/modules/user/validators/is-username-already-exist.validator";
 export class RegisterUserDto {
   @ApiProperty({
     example: "testuser",
@@ -29,7 +30,7 @@ export class RegisterUserDto {
   readonly email: string;
 
   @ApiProperty({
-    example: "password123",
+    example: "Password123@",
     description: "Password min 8 characters",
   })
   @IsDefined()

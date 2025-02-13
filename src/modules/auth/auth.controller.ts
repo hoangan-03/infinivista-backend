@@ -18,9 +18,9 @@ import { JWTAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { LocalAuthGuard } from '@/modules/auth/guards/local-auth.guard';
 import { SessionAuthGuard } from '@/modules/auth/guards/session-auth.guard';
 import { TokenInterceptor } from '@/modules/auth/interceptors/token.interceptor';
-import { LoginUserDTO } from './dto/login-user.dto';
-import { AuthTokenResponseDto } from './dto/auth-token-response.dto';
-import { RegisterUserResponseDto } from './dto/register-user-response.dto';
+import { LoginUserDTO } from '@/modules/auth/dto/login-user.dto';
+import { AuthTokenResponseDto } from '@/modules/auth/dto/auth-token-response.dto';
+import { RegisterUserResponseDto } from '@/modules/auth/dto/register-user-response.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -50,7 +50,7 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(TokenInterceptor)
-  @ApiOperation({ summary: 'Login with credentials' })
+  @ApiOperation({ summary: 'Login with email/username and password' })
   @ApiBody({ type: LoginUserDTO })
   @ApiResponse({ 
     status: 200, 

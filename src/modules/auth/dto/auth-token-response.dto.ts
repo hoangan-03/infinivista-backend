@@ -13,6 +13,7 @@ export class TokenDataDto {
     type: Number,
   })
   expires_in: number;
+// no need
 
   @ApiProperty({
     example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",

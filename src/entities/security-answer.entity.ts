@@ -33,7 +33,10 @@ export class SecurityAnswer extends BaseEntity {
     type: () => SecurityQuestion,
     description: "The related security question",
   })
-  @ManyToOne(() => SecurityQuestion, (question) => question.answers)
+  @ManyToOne(() => SecurityQuestion, (question) => question.answers, {
+    eager: true,
+    cascade: true
+  })
   @JoinColumn({ name: "question_id" })
   question: SecurityQuestion;
 
@@ -44,10 +47,12 @@ export class SecurityAnswer extends BaseEntity {
     type: () => User,
     description: "The user who answered the question",
   })
-  @ManyToOne(() => User, (user) => user.securityAnswers)
+  @ManyToOne(() => User, (user) => user.securityAnswers, {
+    onDelete: 'CASCADE'
+  })
   @JoinColumn({ name: "user_id" })
   user: User;
-
+    
   @Column({ type: "uuid" })
   user_id: string;
 }

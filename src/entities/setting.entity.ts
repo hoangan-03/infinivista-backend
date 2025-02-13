@@ -5,6 +5,7 @@ import {
   Unique,
   OneToOne,
   JoinColumn,
+  ManyToOne,
 } from "typeorm";
 import { ApiProperty } from "@nestjs/swagger";
 import { User } from "@/entities/user.entity";
@@ -22,7 +23,9 @@ export class Setting extends BaseEntity {
   id: string;
 
   @ApiProperty({ type: () => User })
-  @OneToOne(() => User, (user) => user.setting, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, (user) => user.settings, {
+    onDelete: 'CASCADE'
+  })
   @JoinColumn({ name: "user_id" })
   user: User;
 

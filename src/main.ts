@@ -42,7 +42,7 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("api/v1/swaggerdocs", app, document);
+  SwaggerModule.setup("api/v1/swagger-docs", app, document);
 
 
   await app.listen(port);
