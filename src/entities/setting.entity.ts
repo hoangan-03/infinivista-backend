@@ -3,7 +3,6 @@ import {
   PrimaryGeneratedColumn,
   Column,
   Unique,
-  OneToOne,
   JoinColumn,
   ManyToOne,
 } from "typeorm";
@@ -13,7 +12,6 @@ import { BaseEntity } from "@/entities/base-class";
 import { SettingType } from "@/enum/setting.enum";
 
 @Entity({ name: "settings" })
-@Unique(["user_id", "type"])
 export class Setting extends BaseEntity {
   @ApiProperty({
     example: "123e4567-e89b-12d3-a456-426614174000",

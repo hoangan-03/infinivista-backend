@@ -8,9 +8,11 @@ import {
   BeforeUpdate,
   OneToOne,
   OneToMany,
+  AfterInsert,
+  AfterUpdate,
+  BeforeRemove,
 } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
-import * as bcrypt from "bcryptjs";
 import { Exclude } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 import { Gender } from "@/modules/user/enums/gender.enum";
@@ -18,7 +20,9 @@ import { IsEnum, IsOptional } from "class-validator";
 import { BaseEntity } from "@/entities/base-class";
 import { Setting } from "./setting.entity";
 import { SecurityAnswer } from "./security-answer.entity";
-import { Address } from "./address.entity";
+import { UserEventsService } from "@/rabbitmq/userevent.service";
+import { Inject } from "@nestjs/common";
+import { UserStatus } from "./user-status.entity";
 
 @Entity({ name: "users" })
 export class User extends BaseEntity {
@@ -33,18 +37,18 @@ export class User extends BaseEntity {
     example: "user@example.com",
     description: "User email address",
   })
-  @Column({ type: "varchar", length: 255 })
+  @Column({ type: "varchar", length: 255, unique: true })
   email: string;
 
   @ApiProperty({
     example: "johndoe",
     description: "User username",
   })
-  @Column({ type: "varchar", length: 255 })
+  @Column({ type: "varchar", length: 255, unique: true })
   username: string;
 
   @Exclude()
-  @Column({ type: "varchar", length: 255})
+  @Column({ type: "varchar", length: 255, nullable: true })
   password?: string;
 
   @ApiProperty({
@@ -107,39 +111,30 @@ export class User extends BaseEntity {
   coverImageUrl: string;
 
   @ApiProperty({
-    example: false,
-    description: "User online status",
-    default: false,
+    type: () => [UserStatus],
+    description: "User status",
   })
-  @Column({ type: "boolean", default: false, nullable: true })
-  isOnline: boolean;
-
-  @ApiProperty({
-    example: false,
-    description: "User suspension status",
-    default: false,
+  @OneToOne(() => UserStatus, (status) => status.user, {
+    cascade: true,
   })
-  @Column({ type: "boolean", default: false, nullable: true })
-  isSuspended: boolean;
-
+  status: UserStatus;
 
   @ApiProperty({
     type: () => [Setting],
-    description: "User settings"
+    description: "User settings",
   })
   @OneToMany(() => Setting, (setting) => setting.user, {
-    cascade: true
+    cascade: true,
   })
   settings: Setting[];
 
   @ApiProperty({
-    type: () => Address,
-    description: "User's address",
+    example: "https://example.com/profile.jpg",
+    description: "User profile image URL",
+    required: false,
   })
-  @OneToOne(() => Address, (address) => address.user, {
-    cascade: true,
-  })
-  address: Address;
+  @Column({ type: "text", nullable: true })
+  address: string;
 
   @OneToMany(() => SecurityAnswer, (securityAnswer) => securityAnswer.user)
   securityAnswers: SecurityAnswer[];
@@ -149,18 +144,39 @@ export class User extends BaseEntity {
     Object.assign(this, data);
   }
 
-  @BeforeInsert()
-  @BeforeUpdate()
-  async hashPassword(): Promise<void> {
-    const salt = await bcrypt.genSalt();
-    if (this.password && !/^\$2[abxy]?\$\d+\$/.test(this.password)) {
-      this.password = await bcrypt.hash(this.password, salt);
-    }
+  @ApiProperty({
+    example: "302 Alibaba Street, Lagos, Nigeria",
+    description: "User address",
+    required: false,
+  })
+  @Column({ type: "text", nullable: true })
+
+  @Inject()
+  private readonly userEventsService: UserEventsService;
+
+  @AfterInsert()
+  async afterInsert() {
+    await this.userEventsService?.publishUserCreated({
+      id: this.id,
+      username: this.username,
+      email: this.email,
+      profileImageUrl: this.profileImageUrl,
+    });
   }
 
-  async checkPassword(plainPassword: string): Promise<boolean> {
-    return this.password
-      ? await bcrypt.compare(plainPassword, this.password)
-      : false;
+  @AfterUpdate()
+  async afterUpdate() {
+    await this.userEventsService?.publishUserUpdated({
+      id: this.id,
+      username: this.username,
+      profileImageUrl: this.profileImageUrl,
+    });
+  }
+
+  @BeforeRemove()
+  async beforeRemove() {
+    await this.userEventsService?.publishUserDeleted({
+      id: this.id,
+    });
   }
 }

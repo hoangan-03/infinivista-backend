@@ -142,13 +142,13 @@ export class UserService {
   // User Status
   async toggleOnlineStatus(id: string, isOnline: boolean): Promise<User> {
     const user = await this.getOne({ where: { id } });
-    user.isOnline = isOnline;
+    user.status.isOnline = isOnline;
     return this.userRepository.save(user);
   }
 
   async suspendUser(id: string, suspended: boolean): Promise<User> {
     const user = await this.getOne({ where: { id } });
-    user.isSuspended = suspended;
+    user.status.isSuspended = suspended;
     return this.userRepository.save(user);
   }
 

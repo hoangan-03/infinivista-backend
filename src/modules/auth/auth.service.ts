@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { User } from "@/entities/user.entity";
 import { RegisterUserDto } from "@/modules/auth/dto/register-user.dto";
@@ -6,41 +11,61 @@ import { JwtPayload } from "@/modules/auth/interfaces/jwt-payload.interface";
 import { UserService } from "@/modules/user/services/user.service";
 import { AuthTokenResponseDto } from "@/modules/auth/dto/auth-token-response.dto";
 import { RegisterUserResponseDto as RegisterUserResponseDto } from "@/modules/auth/dto/register-user-response.dto";
-
+import { AuthConstant } from "@/modules/auth/constant";
+import { BeforeInsert, BeforeUpdate } from "typeorm";
+import * as bcrypt from "bcryptjs";
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService
   ) {}
-
-  async register(signUp: RegisterUserDto): Promise<RegisterUserResponseDto> {
-    const user = await this.userService.create(signUp);
-    delete user.password;
-
-    const response = new RegisterUserResponseDto(user.email, user.username);
-
-    return response;
+  async hashPassword(password: string): Promise<string> {
+    const salt = await bcrypt.genSalt();
+    return bcrypt.hash(password, salt);
   }
 
-  private readonly ACCESS_TOKEN_EXPIRATION = 60;
-  private readonly REFRESH_TOKEN_EXPIRATION = 120;
+  async checkPassword(
+    plainPassword: string,
+    hashedPassword: string
+  ): Promise<boolean> {
+    return hashedPassword
+      ? await bcrypt.compare(plainPassword, hashedPassword)
+      : false;
+  }
+  async register(signUp: RegisterUserDto): Promise<RegisterUserResponseDto> {
+    try {
+      const hashedPassword = await this.hashPassword(signUp.password);
+      const user = await this.userService.create({
+        ...signUp,
+        password: hashedPassword,
+      });
+      delete user.password;
+      return new RegisterUserResponseDto(user.email, user.username);
+    } catch (error) {
+      if (error instanceof Error) {
+        if ("code" in error && (error as any).code === "23505") {
+          throw new BadRequestException("Email or username already exists.");
+        }
+        throw new InternalServerErrorException(
+          error.message || "Registration failed."
+        );
+      }
+      throw new InternalServerErrorException("An unexpected error occurred.");
+    }
+  }
 
   async login(email: string, password: string): Promise<AuthTokenResponseDto> {
     let user: User;
+
     try {
       user = await this.userService.getOne({ where: { email } });
     } catch (err) {
-      throw new UnauthorizedException(
-        `There isn't any user with email: ${email}`
-      );
+      throw new UnauthorizedException(`Invalid credentials`);
     }
-    // same error logging
 
-    if (!(await user.checkPassword(password))) {
-      throw new UnauthorizedException(
-        `Wrong password for user with email: ${email}`
-      );
+    if (!(await this.checkPassword(password, user.password || ""))) {
+      throw new UnauthorizedException(`Invalid credentials`);
     }
 
     return this.generateTokens(user);
@@ -50,17 +75,17 @@ export class AuthService {
     const payload = { id: user.id };
 
     const access_token = this.jwtService.sign(payload, {
-      expiresIn: this.ACCESS_TOKEN_EXPIRATION,
+      expiresIn: AuthConstant.ACCESS_TOKEN_EXPIRATION,
     });
 
     const refresh_token = this.jwtService.sign(payload, {
-      expiresIn: this.REFRESH_TOKEN_EXPIRATION,
+      expiresIn: AuthConstant.REFRESH_TOKEN_EXPIRATION,
     });
 
     return {
       data: {
         access_token,
-        expires_in: this.ACCESS_TOKEN_EXPIRATION,
+        expires_in: AuthConstant.ACCESS_TOKEN_EXPIRATION,
         refresh_token,
       },
     };

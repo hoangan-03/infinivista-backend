@@ -9,11 +9,8 @@ import { SecurityAnswer } from "@/entities/security-answer.entity";
 import { PaymentMethods } from "@/entities/payment-methods.entity";
 import { SecurityQuestion } from "@/entities/security-question.entity";
 import { IsUserNameAlreadyExist } from "@/modules/user/validators/is-username-already-exist.validator";
-import { Address } from "@/entities/address.entity";
-import { City } from "@/entities/city.entity";
-import { Country } from "@/entities/country.entity";
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Setting, SecurityAnswer, SecurityQuestion, PaymentMethods, Address, Country, City])],
+  imports: [TypeOrmModule.forFeature([User, Setting, SecurityAnswer, SecurityQuestion, PaymentMethods])],
   controllers: [UsersController],
   providers: [UserService, IsUserAlreadyExist,IsUserNameAlreadyExist],
   exports: [UserService],
