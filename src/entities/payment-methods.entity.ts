@@ -7,7 +7,7 @@ import {
   Length,
 } from "class-validator";
 import { BaseEntity } from "@/entities/base-class";
-import { PaymentMethodType } from "@/enum/payment-method.enum";
+import { PaymentMethodType } from "@/modules/user/enums/payment-method.enum";
 
 @Entity({ name: "payment_methods" })
 export class PaymentMethods extends BaseEntity {

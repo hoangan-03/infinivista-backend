@@ -6,6 +6,13 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as cookieParser from "cookie-parser";
 import * as session from "express-session";
 import {useContainer} from "class-validator";
+import * as nodeCrypto from 'crypto';
+
+// Polyfill global crypto if not defined
+if (!(global as any).crypto) {
+  (global as any).crypto = nodeCrypto;
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   

@@ -2,28 +2,25 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  Unique,
   OneToOne,
   JoinColumn,
-  ManyToOne,
 } from "typeorm";
 import { ApiProperty } from "@nestjs/swagger";
 import { User } from "@/entities/user.entity";
 import { BaseEntity } from "@/entities/base-class";
-import { SettingType } from "@/enum/setting.enum";
 
 @Entity({ name: "user_status" })
-export class UserStatus {
+export class UserStatus extends BaseEntity {
   @ApiProperty({
     example: "123e4567-e89b-12d3-a456-426614174000",
-    description: "User status unique identifier",
+    description: "User status unique identifier"
   })
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @ApiProperty({ type: () => User })
-  @ManyToOne(() => User, (user) => user.settings, {
-    onDelete: "CASCADE",
+  @OneToOne(() => User, (user) => user.status, {
+    onDelete: "CASCADE"
   })
   @JoinColumn({ name: "user_id" })
   user: User;
@@ -33,26 +30,22 @@ export class UserStatus {
 
   @ApiProperty({
     example: false,
-    description: "User online status",
-    default: false,
+    description: "User online status"
   })
-  @Column({ type: "boolean", default: false, nullable: true })
+  @Column({ type: "boolean", default: false })
   isOnline: boolean;
 
   @ApiProperty({
     example: false,
-    description: "User suspension status",
-    default: false,
+    description: "User suspension status"
   })
-  @Column({ type: "boolean", default: false, nullable: true })
+  @Column({ type: "boolean", default: false })
   isSuspended: boolean;
 
   @ApiProperty({
     example: false,
-    description: "User deletion status",
-    default: false,
+    description: "User deletion status"
   })
-  @Column({ type: "boolean", default: false, nullable: true })
+  @Column({ type: "boolean", default: false })
   isDeleted: boolean;
-  // for soft delete
 }

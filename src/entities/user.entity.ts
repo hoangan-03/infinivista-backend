@@ -111,7 +111,7 @@ export class User extends BaseEntity {
   coverImageUrl: string;
 
   @ApiProperty({
-    type: () => [UserStatus],
+    type: () => UserStatus,
     description: "User status",
   })
   @OneToOne(() => UserStatus, (status) => status.user, {

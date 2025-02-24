@@ -5,7 +5,7 @@ import { UserService } from "@/modules/user/services/user.service";
 import { UpdateUserDto } from "@/modules/user/dto/update-user.dto";
 import { SecurityAnswer } from "@/entities/security-answer.entity";
 import { Setting } from "@/entities/setting.entity";
-import { SettingType } from "@/enum/setting.enum";
+import { SettingType } from "@/modules/user/enums/setting.enum";
 
 @ApiTags("users")
 @Controller("users")

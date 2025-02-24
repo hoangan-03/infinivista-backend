@@ -11,7 +11,7 @@ import { validate as uuidValidate } from "uuid";
 import { Setting } from "@/entities/setting.entity";
 import { SecurityAnswer } from "@/entities/security-answer.entity";
 import { PaymentMethods } from "@/entities/payment-methods.entity";
-import { SettingType } from "@/enum/setting.enum";
+import { SettingType } from "@/modules/user/enums/setting.enum";
 @Injectable()
 export class UserService {
   constructor(

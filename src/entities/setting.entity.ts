@@ -9,7 +9,7 @@ import {
 import { ApiProperty } from "@nestjs/swagger";
 import { User } from "@/entities/user.entity";
 import { BaseEntity } from "@/entities/base-class";
-import { SettingType } from "@/enum/setting.enum";
+import { SettingType } from "@/modules/user/enums/setting.enum";
 
 @Entity({ name: "settings" })
 export class Setting extends BaseEntity {
