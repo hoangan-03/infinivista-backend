@@ -1,17 +1,18 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "@/app.module";
 import { ConfigService } from "@nestjs/config";
-import { ValidationPipe } from "@nestjs/common";
+import { ValidationPipe, VersioningType } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as cookieParser from "cookie-parser";
 import * as session from "express-session";
 import {useContainer} from "class-validator";
 import * as nodeCrypto from 'crypto';
+import * as compression from 'compression';
 
 // Polyfill global crypto if not defined
-if (!(global as any).crypto) {
-  (global as any).crypto = nodeCrypto;
-}
+// if (!(global as any).crypto) {
+//   (global as any).crypto = nodeCrypto;
+// }
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -31,9 +32,16 @@ async function bootstrap() {
       },
     })
   );
-  app.use(cookieParser("secret-key"));
+  app.use(cookieParser());
+
+  app.use(compression());
   app.enableCors();
-  app.setGlobalPrefix("api/v1", { exclude: [""] });
+
+  app.setGlobalPrefix("api");
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: false,

@@ -10,9 +10,10 @@ import { UserStatus} from '@/entities/user-status.entity';
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host: 'localhost',
+  port: 5435,
   // host: 'db',
   // port: 5432,
-  port: 5435,
+  // For inside Docker container
   username: 'postgres',
   password: 'postgres',
   database: 'infinivista',
