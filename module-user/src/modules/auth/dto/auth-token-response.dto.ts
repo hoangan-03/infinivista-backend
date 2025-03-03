@@ -8,7 +8,7 @@ export class TokenDataDto {
   access_token: string;
 
   @ApiProperty({
-    example: 60,
+    example: 60 * 60,
     description: "Token expiration time in seconds",
     type: Number,
   })

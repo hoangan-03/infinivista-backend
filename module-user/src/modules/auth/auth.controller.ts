@@ -42,8 +42,15 @@ export class AuthController {
     status: 400,
     description: 'Bad Request - Invalid input data' 
   })
-  register(@Body() signUp: RegisterUserDto): Promise<RegisterUserResponseDto> {
-    return this.authService.register(signUp);
+  async register(@Body() signUp: RegisterUserDto): Promise<RegisterUserResponseDto> {
+    const user = await this.authService.register(signUp);
+    
+    // Create and attach a token to the response 
+    // manually instead of using the interceptor
+    const token = this.authService.signToken(user);
+    
+    // Transform to DTO before returning
+    return new RegisterUserResponseDto(user.email, user.username);
   }
 
   @Post('login')

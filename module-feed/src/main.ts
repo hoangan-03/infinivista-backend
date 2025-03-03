@@ -5,17 +5,19 @@ import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as cookieParser from "cookie-parser";
 import * as session from "express-session";
-import {useContainer} from "class-validator";
+import { useContainer } from "class-validator";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   const configService = app.get(ConfigService);
   const port = configService.get("PORT") || 3000;
 
+  const sessionSecret = configService.get("SESSION_SECRET") || "my-secret";
+
   app.use(
     session({
-      secret: configService.get("SESSION_SECRET") || "my-secret",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -24,9 +26,10 @@ async function bootstrap() {
       },
     })
   );
-  app.use(cookieParser("secret-key"));
+
+  app.use(cookieParser(sessionSecret));
   app.enableCors();
-  app.setGlobalPrefix("api/v1", { exclude: [""] });
+  app.setGlobalPrefix("api");
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: false,
@@ -35,16 +38,15 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle("INFINIVISTA - User API")
-    .setDescription("API for user and auth modules")
+    .setTitle("INFINIVISTA - Feed API")
+    .setDescription("API for feed module")
     .setVersion("1.0")
-    .addTag("users")
-    .addBearerAuth()
+    .addBearerAuth({ type: "http", scheme: "bearer", bearerFormat: "JWT" })
+    .addCookieAuth("token")
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("api/v1/swagger-docs", app, document);
+  SwaggerModule.setup("api/swagger-docs", app, document);
 
-  
   await app.listen(port);
 }
 bootstrap();

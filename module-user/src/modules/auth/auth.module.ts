@@ -20,7 +20,7 @@ import { LocalStrategy } from '@/modules/auth/strategies/local.strategy';
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: '60s',
+          expiresIn: '24h',
           algorithm: 'HS384',
         },
         verifyOptions: {

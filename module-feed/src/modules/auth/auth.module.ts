@@ -2,17 +2,14 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UserModule } from '@/modules/user/user.module';
-import { AuthController } from '@/modules/auth/auth.controller';
-import { AuthService } from '@/modules/auth/auth.service';
-import { SessionSerializer } from '@/modules/auth/session.serializer';
-import { JwtStrategy } from '@/modules/auth/strategies/jwt.strategy';
-import { LocalStrategy } from '@/modules/auth/strategies/local.strategy';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { Reflector } from '@nestjs/core';
+import { RolesGuard } from './guards/roles.guard';
+import { AuthService } from './auth.service';
 
 @Module({
   imports: [
     ConfigModule,
-    UserModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -20,7 +17,7 @@ import { LocalStrategy } from '@/modules/auth/strategies/local.strategy';
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: '60s',
+          expiresIn: '24h',
           algorithm: 'HS384',
         },
         verifyOptions: {
@@ -29,7 +26,7 @@ import { LocalStrategy } from '@/modules/auth/strategies/local.strategy';
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, SessionSerializer],
+  providers: [AuthService, JwtStrategy, Reflector, RolesGuard],
+  exports: [PassportModule, JwtModule, RolesGuard, AuthService],
 })
 export class AuthModule {}

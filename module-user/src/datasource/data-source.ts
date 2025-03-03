@@ -16,7 +16,7 @@ export const AppDataSource = new DataSource({
   // For inside Docker container
   username: 'postgres',
   password: 'postgres',
-  database: 'infinivista',
+  database: 'infinivista-user',
   entities: [User, SecurityQuestion, SecurityAnswer, Setting, PaymentMethods, UserStatus],
   migrations: ['migrations/*.ts'],
   synchronize: true, // set to false in production

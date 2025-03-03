@@ -14,12 +14,14 @@ import { RegisterUserResponseDto as RegisterUserResponseDto } from "@/modules/au
 import { AuthConstant } from "@/modules/auth/constant";
 import { BeforeInsert, BeforeUpdate } from "typeorm";
 import * as bcrypt from "bcryptjs";
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService
   ) {}
+
   async hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt();
     return bcrypt.hash(password, salt);
@@ -33,27 +35,29 @@ export class AuthService {
       ? await bcrypt.compare(plainPassword, hashedPassword)
       : false;
   }
-  async register(signUp: RegisterUserDto): Promise<RegisterUserResponseDto> {
-    try {
-      const hashedPassword = await this.hashPassword(signUp.password);
-      const user = await this.userService.create({
-        ...signUp,
-        password: hashedPassword,
-      });
-      delete user.password;
-      return new RegisterUserResponseDto(user.email, user.username);
-    } catch (error) {
-      if (error instanceof Error) {
-        if ("code" in error && (error as any).code === "23505") {
-          throw new BadRequestException("Email or username already exists.");
-        }
-        throw new InternalServerErrorException(
-          error.message || "Registration failed."
-        );
+
+  // module-user/src/modules/auth/auth.service.ts
+async register(signUp: RegisterUserDto): Promise<User> {
+  try {
+    const hashedPassword = await this.hashPassword(signUp.password);
+    const user = await this.userService.create({
+      ...signUp,
+      password: hashedPassword,
+    });
+    delete user.password;
+    return user; // Return the full user object with ID
+  } catch (error) {
+    if (error instanceof Error) {
+      if ("code" in error && (error as any).code === "23505") {
+        throw new BadRequestException("Email or username already exists.");
       }
-      throw new InternalServerErrorException("An unexpected error occurred.");
+      throw new InternalServerErrorException(
+        error.message || "Registration failed."
+      );
     }
+    throw new InternalServerErrorException("An unexpected error occurred.");
   }
+}
 
   async login(email: string, password: string): Promise<AuthTokenResponseDto> {
     let user: User;
@@ -72,7 +76,11 @@ export class AuthService {
   }
 
   private generateTokens(user: User): AuthTokenResponseDto {
-    const payload = { id: user.id };
+    const payload: JwtPayload = {
+      sub: user.id.toString(),
+      email: user.email,
+      username: user.username,
+    };
 
     const access_token = this.jwtService.sign(payload, {
       expiresIn: AuthConstant.ACCESS_TOKEN_EXPIRATION,
@@ -95,19 +103,55 @@ export class AuthService {
     let user: User;
 
     try {
-      user = await this.userService.getOne({ where: { email: payload.sub } });
+      user = await this.userService.getOne({
+        where: { id: payload.sub },
+      });
     } catch (error) {
       throw new UnauthorizedException(
-        `There isn't any user with email: ${payload.sub}`
+        `There isn't any user with ID: ${payload.sub}`
       );
     }
 
     return user;
   }
 
-  signToken(user: User): string {
-    const payload = {
-      sub: user.email,
+  // module-user/src/modules/auth/auth.service.ts
+  async signToken(user: User | any): Promise<string> {
+    // First check if we got a complete user object with ID
+    if (!user) {
+      throw new UnauthorizedException("Invalid user data: Missing user object");
+    }
+
+    // If we have a RegisterUserResponseDto instead of a User object
+    // if (user.email && user.username && !user.id) {
+    //   // Try to fetch the complete user
+    //   const foundUser = await this.userService.getOne({
+    //     where: { email: user.email },
+    //   });
+
+    //   // Use the found user's ID
+    //   const payload: JwtPayload = {
+    //     sub: foundUser.id.toString(),
+    //     email: foundUser.email || "",
+    //     username: foundUser.username || "",
+    //     iat: Date.now(),
+    //     exp: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
+    //   };
+
+    //   return this.jwtService.sign(payload);
+    // }
+
+    // Normal case with user.id
+    if (user.id === undefined || user.id === null) {
+      throw new UnauthorizedException("Invalid user data: Missing user ID");
+    }
+
+    const payload: JwtPayload = {
+      sub: user.id.toString(),
+      email: user.email || "",
+      username: user.username || "",
+      iat: Date.now(),
+      exp: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
     };
 
     return this.jwtService.sign(payload);

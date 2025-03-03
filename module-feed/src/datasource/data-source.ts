@@ -1,22 +1,29 @@
+import { Advertisement } from '@/entities/advertisement.entity';
+import { LiveStreamHistory } from '@/entities/live-stream-history.entity';
+import { NewsFeed } from '@/entities/news-feed.entity';
+import { Post } from '@/entities/post.entity';
+import { Reaction } from '@/entities/reaction.entity';
+import { Reel } from '@/entities/reel.entity';
+import { Story } from '@/entities/story.entity';
+import { UserCommentsNewsFeed } from '@/entities/user-comments-news-feed.entity';
+import { UserHasNewsFeed } from '@/entities/user-has-news-feed.entity';
+import { UserReactsNewsFeed } from '@/entities/user-reacts-news-feed.entity';
+import { UserSharesNewsFeed } from '@/entities/user-shares-news-feed.entity';
+import { UserViewsNewsFeed } from '@/entities/user-views-news-feed.entity';
 import { DataSource } from 'typeorm';
-import { User } from '@/entities/user.entity';
-import { PaymentMethods } from '@/entities/payment-methods.entity';
-import { Setting } from '@/entities/setting.entity';
-import { SecurityAnswer } from '@/entities/security-answer.entity';
-import { SecurityQuestion } from '@/entities/security-question.entity';
-import { UserStatus} from '@/entities/user-status.entity';
 
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host: 'localhost',
+  port: 5435,
   // host: 'db',
   // port: 5432,
-  port: 5435,
+  // For inside Docker container
   username: 'postgres',
   password: 'postgres',
-  database: 'infinivista',
-  entities: [User, SecurityQuestion, SecurityAnswer, Setting, PaymentMethods, UserStatus],
+  database: 'infinivista-feed',
+  entities: [Advertisement, LiveStreamHistory, NewsFeed, Post, Reaction, Reel, Story,UserCommentsNewsFeed, UserHasNewsFeed, UserReactsNewsFeed, UserSharesNewsFeed, UserViewsNewsFeed],
   migrations: ['migrations/*.ts'],
   synchronize: true, // set to false in production
 });

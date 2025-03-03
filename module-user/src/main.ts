@@ -21,19 +21,21 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get("PORT") || 3000;
 
+  const sessionSecret = configService.get("SESSION_SECRET") || "my-secret";
+  
   app.use(
     session({
-      secret: configService.get("SESSION_SECRET") || "my-secret",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
-        maxAge: 60000 * 60 * 24, // 1 day
+        maxAge: 60000 * 60 * 24,
         secure: process.env.NODE_ENV === "production",
       },
     })
   );
-  app.use(cookieParser());
-
+  
+  app.use(cookieParser(sessionSecret));
   app.use(compression());
   app.enableCors();
 
@@ -53,11 +55,10 @@ async function bootstrap() {
     .setTitle("INFINIVISTA - User API")
     .setDescription("API for user and auth modules")
     .setVersion("1.0")
-    .addTag("users")
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("api/v1/swagger-docs", app, document);
+  SwaggerModule.setup("api/swagger-docs", app, document);
 
   
   await app.listen(port);

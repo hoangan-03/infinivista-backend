@@ -1,30 +1,41 @@
-import { Injectable } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, ExtractJwt, JwtFromRequestFunction } from 'passport-jwt';
-import { AuthService } from '@/modules/auth/auth.service';
-import { User } from '@/entities/user.entity';
-import { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, JwtFromRequestFunction, Strategy } from "passport-jwt";
+import { ConfigService } from "@nestjs/config";
+import { JwtPayload } from "../interfaces/jwt-payload.interface";
+import { AuthService } from "../auth.service";
 
-const extractJwtFromCookie: JwtFromRequestFunction = request => {
-  return request.signedCookies['token']!;
+const extractJwtFromCookie: JwtFromRequestFunction = (request) => {
+  return request.signedCookies["token"]!;
 };
-
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor(private readonly authService: AuthService, private readonly configService: ConfigService) {
+export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
+  constructor(
+    private configService: ConfigService,
+    private authService: AuthService
+  ) {
+    const jwtSecret = configService.getOrThrow<string>("JWT_SECRET");
+
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         extractJwtFromCookie,
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
-      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
       ignoreExpiration: false,
-      passReqToCallback: false
+      secretOrKey: jwtSecret,
+      algorithms: ["HS384"],
     });
   }
 
-  validate(payload: JwtPayload): Promise<User> {
-    return this.authService.verifyPayload(payload);
+  async validate(payload: JwtPayload): Promise<any> {
+    if (!payload || !payload.sub) {
+      throw new UnauthorizedException("Invalid token payload");
+    }
+
+    return {
+      id: payload.sub,
+      email: payload.email,
+      username: payload.username,
+    };
   }
 }
