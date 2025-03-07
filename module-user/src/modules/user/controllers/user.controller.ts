@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Patch, Put } from "@nestjs/common";
+import { Controller, Post, Body, Get, Param, Patch, Put, Delete, UseGuards } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from "@nestjs/swagger";
 import { User } from "@/entities/user.entity";
 import { UserService } from "@/modules/user/services/user.service";
@@ -6,6 +6,9 @@ import { UpdateUserDto } from "@/modules/user/dto/update-user.dto";
 import { SecurityAnswer } from "@/entities/security-answer.entity";
 import { Setting } from "@/entities/setting.entity";
 import { SettingType } from "@/modules/user/enums/setting.enum";
+import { JWTAuthGuard } from "@/modules/auth/guards/jwt-auth.guard";
+import { AuthUser } from "../decorators/user.decorator";
+import { ProfilePrivacy } from "../enums/profile-privacy.enum";
 
 @ApiTags("users")
 @Controller("users")
@@ -243,4 +246,36 @@ export class UsersController {
   async getFullProfile(@Param("id") id: string): Promise<User> {
     return this.userService.getUserWithFullProfile(id);
   }
+
+  @Put(':id/suspend')
+  @UseGuards(JWTAuthGuard)
+  @ApiOperation({ summary: 'Temporarily suspend account' })
+  async suspendAccount(@AuthUser() user: User): Promise<User> {
+    return this.userService.suspendAccount(user.id);
+  }
+
+  @Put(':id/unsuspend')
+  @UseGuards(JWTAuthGuard)
+  @ApiOperation({ summary: 'Reactivate suspended account' })
+  async unsuspendAccount(@AuthUser() user: User): Promise<User> {
+    return this.userService.unsuspendAccount(user.id);
+  }
+
+  @Delete(':id')
+  @UseGuards(JWTAuthGuard)
+  @ApiOperation({ summary: 'Permanently delete account' })
+  async deleteAccount(@AuthUser() user: User): Promise<void> {
+    return this.userService.deleteAccount(user.id);
+  }
+
+  @Put(':id/profile-privacy')
+  @UseGuards(JWTAuthGuard)
+  @ApiOperation({ summary: 'Update profile privacy settings' })
+  async updateProfilePrivacy(
+    @AuthUser() user: User,
+    @Body('privacy') privacy: ProfilePrivacy
+  ): Promise<User> {
+    return this.userService.updateProfilePrivacy(user.id, privacy);
+  }
+
 }

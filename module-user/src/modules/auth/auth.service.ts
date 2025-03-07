@@ -37,27 +37,27 @@ export class AuthService {
   }
 
   // module-user/src/modules/auth/auth.service.ts
-async register(signUp: RegisterUserDto): Promise<User> {
-  try {
-    const hashedPassword = await this.hashPassword(signUp.password);
-    const user = await this.userService.create({
-      ...signUp,
-      password: hashedPassword,
-    });
-    delete user.password;
-    return user; // Return the full user object with ID
-  } catch (error) {
-    if (error instanceof Error) {
-      if ("code" in error && (error as any).code === "23505") {
-        throw new BadRequestException("Email or username already exists.");
+  async register(signUp: RegisterUserDto): Promise<User> {
+    try {
+      const hashedPassword = await this.hashPassword(signUp.password);
+      const user = await this.userService.create({
+        ...signUp,
+        password: hashedPassword,
+      });
+      delete user.password;
+      return user; // Return the full user object with ID
+    } catch (error) {
+      if (error instanceof Error) {
+        if ("code" in error && (error as any).code === "23505") {
+          throw new BadRequestException("Email or username already exists.");
+        }
+        throw new InternalServerErrorException(
+          error.message || "Registration failed."
+        );
       }
-      throw new InternalServerErrorException(
-        error.message || "Registration failed."
-      );
+      throw new InternalServerErrorException("An unexpected error occurred.");
     }
-    throw new InternalServerErrorException("An unexpected error occurred.");
   }
-}
 
   async login(email: string, password: string): Promise<AuthTokenResponseDto> {
     let user: User;
@@ -156,4 +156,63 @@ async register(signUp: RegisterUserDto): Promise<User> {
 
     return this.jwtService.sign(payload);
   }
+  // async generatePasswordResetToken(
+  //   email: string,
+  //   type: "email" | "sms" | "authenticator"
+  // ): Promise<string> {
+  //   const user = await this.userService.findByEmail(email);
+  //   if (!user) {
+  //     throw new NotFoundException(`User with email ${email} not found`);
+  //   }
+
+  //   // Generate random token
+  //   const token = crypto.randomBytes(32).toString("hex");
+
+  //   // Save token to database
+  //   await this.passwordResetRepository.save({
+  //     email,
+  //     token,
+  //     type,
+  //   });
+
+  //   // If email, send reset email
+  //   if (type === "email") {
+  //     await this.mailerService.sendPasswordResetEmail(email, token);
+  //   }
+  //   // If SMS, send via SMS service
+  //   else if (type === "sms") {
+  //     await this.smsService.sendPasswordResetSMS(user.phoneNumber, token);
+  //   }
+
+  //   return token;
+  // }
+  // async resetPassword(token: string, newPassword: string): Promise<boolean> {
+  //   // Find valid token (not expired)
+  //   const resetRequest = await this.passwordResetRepository.findOne({
+  //     where: { token },
+  //     order: { created_at: "DESC" },
+  //   });
+
+  //   if (!resetRequest) {
+  //     throw new UnauthorizedException("Invalid or expired token");
+  //   }
+
+  //   // Check if token is not older than 1 hour
+  //   const now = new Date();
+  //   const tokenDate = new Date(resetRequest.created_at);
+  //   if (now.getTime() - tokenDate.getTime() > 3600000) {
+  //     throw new UnauthorizedException("Token has expired");
+  //   }
+
+  //   // Get user and update password
+  //   const user = await this.userService.findByEmail(resetRequest.email);
+  //   const hashedPassword = await this.hashPassword(newPassword);
+  //   user.password = hashedPassword;
+  //   await this.userService.save(user);
+
+  //   // Delete token
+  //   await this.passwordResetRepository.delete({ token });
+
+  //   return true;
+  // }
 }

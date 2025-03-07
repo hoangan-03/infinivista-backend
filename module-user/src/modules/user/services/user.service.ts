@@ -12,6 +12,7 @@ import { Setting } from "@/entities/setting.entity";
 import { SecurityAnswer } from "@/entities/security-answer.entity";
 import { PaymentMethods } from "@/entities/payment-methods.entity";
 import { SettingType } from "@/modules/user/enums/setting.enum";
+import { ProfilePrivacy } from "../enums/profile-privacy.enum";
 @Injectable()
 export class UserService {
   constructor(
@@ -180,4 +181,34 @@ export class UserService {
     }
     return result;
   }
+
+
+  async suspendAccount(userId: string): Promise<User> {
+    const user = await this.getOne({ where: { id: userId } });
+    user.status.isSuspended = true;
+    return this.userRepository.save(user);
+  }
+
+  async unsuspendAccount(userId: string): Promise<User> {
+    const user = await this.getOne({ where: { id: userId } });
+    user.status.isSuspended = false;
+    return this.userRepository.save(user);
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    const user = await this.getOne({ where: { id: userId } });
+    // Mark as deleted instead of actually deleting
+    user.status.isDeleted = true;
+    await this.userRepository.save(user);
+  }
+
+  async updateProfilePrivacy(
+    userId: string, 
+    privacy: ProfilePrivacy
+  ): Promise<User> {
+    const user = await this.getOne({ where: { id: userId } });
+    user.profilePrivacy = privacy;
+    return this.userRepository.save(user);
+  }
+
 }

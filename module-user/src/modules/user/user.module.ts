@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { UserService } from "@/modules/user/services/user.service";
-import { UsersController } from "@/modules/user/user.controller";
+import { UsersController } from "@/modules/user/controllers/user.controller";
 import { User } from "@/entities/user.entity";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { IsUserAlreadyExist } from "@/modules/user/validators/is-user-already-exist.validator";
@@ -10,8 +10,10 @@ import { UserStatus } from "@/entities/user-status.entity";
 import { PaymentMethods } from "@/entities/payment-methods.entity";
 import { SecurityQuestion } from "@/entities/security-question.entity";
 import { IsUserNameAlreadyExist } from "@/modules/user/validators/is-username-already-exist.validator";
+import { FriendRequest } from "@/entities/friend-request.entity";
+import { Friend } from "@/entities/friend.entity";
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Setting, UserStatus, SecurityAnswer, SecurityQuestion, PaymentMethods])],
+  imports: [TypeOrmModule.forFeature([User, Setting, UserStatus, SecurityAnswer, SecurityQuestion, PaymentMethods, FriendRequest, Friend])],
   controllers: [UsersController],
   providers: [UserService, IsUserAlreadyExist,IsUserNameAlreadyExist],
   exports: [UserService],

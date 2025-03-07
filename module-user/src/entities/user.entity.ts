@@ -23,6 +23,9 @@ import { SecurityAnswer } from "./security-answer.entity";
 import { UserEventsService } from "@/rabbitmq/userevent.service";
 import { Inject } from "@nestjs/common";
 import { UserStatus } from "./user-status.entity";
+import { FriendRequest } from "./friend-request.entity";
+import { Friend } from "./friend.entity";
+import { ProfilePrivacy } from "@/modules/user/enums/profile-privacy.enum";
 
 @Entity({ name: "users" })
 export class User extends BaseEntity {
@@ -138,6 +141,27 @@ export class User extends BaseEntity {
 
   @OneToMany(() => SecurityAnswer, (securityAnswer) => securityAnswer.user)
   securityAnswers: SecurityAnswer[];
+
+  @ApiProperty({
+    example: "public",
+    description: "Profile privacy level"
+  })
+  @Column({ 
+    type: "enum", 
+    enum: ["public", "friends", "private"],
+    default: "public"
+  })
+  profilePrivacy: ProfilePrivacy;
+
+  // Existing relationships
+  @OneToMany(() => Friend, friend => friend.user)
+  friends: Friend[];
+
+  @OneToMany(() => FriendRequest, request => request.sender)
+  sentFriendRequests: FriendRequest[];
+
+  @OneToMany(() => FriendRequest, request => request.recipient)
+  receivedFriendRequests: FriendRequest[];
 
   constructor(data: Partial<User> = {}) {
     super();
