@@ -1,4 +1,3 @@
-// module-feed/src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -7,7 +6,8 @@ import { AppService } from '@/app.service';
 import { APP_FILTER } from '@nestjs/core';
 import { GlobalExceptionFilter } from '@/exception-filters/global-exception.filter';
 import { AuthModule } from './modules/auth/auth.module';
-import { AppGateway } from './app/app.gateway';
+import { MessagingGateway } from '@/modules/messaging/messaging.gateway';
+import { MessagingModule } from './modules/messaging/messaging.module';
 
 @Module({
   imports: [
@@ -26,7 +26,7 @@ import { AppGateway } from './app/app.gateway';
       }),
       inject: [ConfigService],
     }),
-    AuthModule
+    AuthModule, MessagingModule
   ],
   controllers: [AppController],
   providers: [
@@ -35,7 +35,7 @@ import { AppGateway } from './app/app.gateway';
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
     },
-    AppGateway,
+    MessagingGateway,
   ],
 })
 export class AppModule {}

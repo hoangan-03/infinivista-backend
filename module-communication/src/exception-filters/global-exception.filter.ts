@@ -1,4 +1,3 @@
-// module-feed/src/exception-filters/global-exception.filter.ts
 import {
   ArgumentsHost,
   Catch,

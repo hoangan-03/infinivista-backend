@@ -9,6 +9,6 @@ export class MessageText {
   @Column({ type: 'text' })
   text: string;
 
-  @ManyToOne(() => Message, (message) => message.textMessages, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Message, (message) => message.textMessage, { onDelete: 'CASCADE' })
   message: Message;
 }

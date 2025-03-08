@@ -36,7 +36,6 @@ export class AuthService {
       : false;
   }
 
-  // module-user/src/modules/auth/auth.service.ts
   async register(signUp: RegisterUserDto): Promise<User> {
     try {
       const hashedPassword = await this.hashPassword(signUp.password);
@@ -115,33 +114,12 @@ export class AuthService {
     return user;
   }
 
-  // module-user/src/modules/auth/auth.service.ts
   async signToken(user: User | any): Promise<string> {
     // First check if we got a complete user object with ID
     if (!user) {
       throw new UnauthorizedException("Invalid user data: Missing user object");
     }
 
-    // If we have a RegisterUserResponseDto instead of a User object
-    // if (user.email && user.username && !user.id) {
-    //   // Try to fetch the complete user
-    //   const foundUser = await this.userService.getOne({
-    //     where: { email: user.email },
-    //   });
-
-    //   // Use the found user's ID
-    //   const payload: JwtPayload = {
-    //     sub: foundUser.id.toString(),
-    //     email: foundUser.email || "",
-    //     username: foundUser.username || "",
-    //     iat: Date.now(),
-    //     exp: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
-    //   };
-
-    //   return this.jwtService.sign(payload);
-    // }
-
-    // Normal case with user.id
     if (user.id === undefined || user.id === null) {
       throw new UnauthorizedException("Invalid user data: Missing user ID");
     }
@@ -156,6 +134,8 @@ export class AuthService {
 
     return this.jwtService.sign(payload);
   }
+
+  
   // async generatePasswordResetToken(
   //   email: string,
   //   type: "email" | "sms" | "authenticator"

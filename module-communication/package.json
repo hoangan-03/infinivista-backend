@@ -1,7 +1,7 @@
 {
-  "name": "@infinivista/module-chat",
+  "name": "@infinivista/module-communication",
   "version": "1.0.0",
-  "description": "module chat for infinivista",
+  "description": "module communication for infinivista",
   "main": "dist/main.js",
   "scripts": {
     "start": "nest start",

@@ -7,28 +7,29 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
-import { AppService } from '../app.service';
 import { Message } from '@/entities/message.entity';
+import { MessagingService } from '@/modules/messaging/messaging.service';
 
 @WebSocketGateway({
   cors: {
     origin: '*',
   },
 })
-export class AppGateway
+export class MessagingGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor(private appService: AppService) {}
+  constructor(private messaingService: MessagingService) {}
 
   @WebSocketServer() server: Server;
 
   @SubscribeMessage('sendMessage')
   async handleSendMessage(client: Socket, payload: Message): Promise<void> {
-    await this.appService.createMessage(payload);
+    await this.messaingService.createMessage(payload);
     this.server.emit('recMessage', payload);
   }
 
   afterInit(server: Server) {
+    console.log('Init');
     console.log(server);
     //Do stuffs
   }

@@ -1,48 +1,53 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
-import { EmoteIcon } from "@/modules/messaging/enums/emote-icon.enum"; 
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn } from "typeorm";
+import { EmoteIcon } from "@/modules/messaging/enums/emote-icon.enum";
 import { MessageText } from "./message-text.entity";
 import { MessageAttachment } from "./message-attachment.entity";
 import { UserMessagesUser } from "./user-messages-user.entity";
 import { UserMessagesGroupChat } from "./user-messages-group-chat.entity";
+import { MessageStatus } from "@/modules/messaging/enums/message-status.enum";
+import { MessageType } from "@/modules/messaging/enums/message-type.enum";
+
+
 
 @Entity()
 export class Message {
   @PrimaryGeneratedColumn()
-  message_id: number;
+  id: number;
 
   @Column({ type: "timestamp", nullable: true })
-  sent_at: Date;
+  sent_at?: Date;
 
   @Column({ type: "timestamp", nullable: true })
-  seen_at: Date;
+  seen_at?: Date;
 
-  @Column({ type: "boolean", default: false })
-  is_seen: boolean;
+  @Column({ type: "timestamp", nullable: true })
+  delete_at?: Date;
 
-  @Column({ type: "boolean", default: false })
-  is_deleted: boolean;
+  @Column({ type: "timestamp", nullable: true })
+  last_modified_at?: Date;
 
-  @Column({ type: "boolean", default: false })
-  is_hidden: boolean;
+  @Column({ type: "enum", enum: MessageStatus, nullable: false })
+  status: MessageStatus;
 
-  @Column({ type: "enum", enum: ["text", "attachment"] })
-  emotion: EmoteIcon;
+  @Column({ type: "enum", enum: EmoteIcon, nullable: true })
+  emotion?: EmoteIcon;
 
-  @OneToMany(() => MessageText, (messageText) => messageText.message)
-  textMessages: MessageText[];
+  @Column({ type: "enum", enum: MessageType, nullable: false })
+  type: MessageType;
 
-  @OneToMany(
-    () => MessageAttachment,
-    (messageAttachment) => messageAttachment.message
-  )
-  attachments: MessageAttachment[];
+  @OneToOne(() => MessageText, (messageText) => messageText.message, { nullable: true })
+  @JoinColumn()
+  textMessage?: MessageText;
 
-  @OneToMany(() => UserMessagesUser, (userMessage) => userMessage.message)
-  userMessages: UserMessagesUser[];
+  @OneToOne(() => MessageAttachment, (messageAttachment) => messageAttachment.message, { nullable: true })
+  @JoinColumn()
+  attachment?: MessageAttachment;
 
-  @OneToMany(
-    () => UserMessagesGroupChat,
-    (groupMessage) => groupMessage.message
-  )
-  groupMessages: UserMessagesGroupChat[];
+  @OneToOne(() => UserMessagesUser, (userMessage) => userMessage.message, { nullable: true })
+  @JoinColumn()
+  userMessages?: UserMessagesUser;
+
+  @OneToOne(() => UserMessagesGroupChat, (groupMessage) => groupMessage.message, { nullable: true })
+  @JoinColumn()
+  groupMessages?: UserMessagesGroupChat;
 }
