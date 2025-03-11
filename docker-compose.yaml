@@ -16,10 +16,51 @@ services:
         image: rabbitmq:3.9.13-management
         container_name: infinivista_rabbitmq
         ports:
-            - '5672:5672'
-            - '15672:15672'
+            - "5672:5672"
+            - "15672:15672"
         volumes:
             - rabbitmq_data:/var/lib/rabbitmq
+        networks:
+            - infinivista_backend
+    gateway:
+        build:
+            context: ./api-gateway
+            dockerfile: Dockerfile
+        container_name: infinivista_gateway
+        restart: always
+        ports:
+            - "3000:3000"
+        env_file:
+            - ./api-gateway/.env
+        environment:
+            - RABBITMQ_URL=${RABBITMQ_URL}
+            - USER_QUEUE_NAME=${USER_QUEUE_NAME}
+            - COMMUNICATION_QUEUE_NAME=${COMMUNICATION_QUEUE_NAME}
+            - FEED_QUEUE_NAME=${FEED_QUEUE_NAME}
+        depends_on:
+            - rabbitmq
+        networks:
+            - infinivista_backend
+    user:
+        build:
+            context: ./module-user
+            dockerfile: Dockerfile
+        container_name: infinivista_user_module
+        restart: always
+        env_file:
+            - ./module-user/.env
+        environment:
+            - NODE_ENV=${NODE_ENV}
+            - POSTGRES_HOST=${POSTGRES_HOST}
+            - POSTGRES_PORT=${POSTGRES_PORT}
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            - POSTGRES_DB=${POSTGRES_DB}
+            - RABBITMQ_URL=${RABBITMQ_URL}
+            - JWT_SECRET=${JWT_SECRET}
+        depends_on:
+            - db
+            - rabbitmq
         networks:
             - infinivista_backend
 networks:
