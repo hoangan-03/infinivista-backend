@@ -1,30 +1,32 @@
-import { Entity, BaseEntity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Column } from "typeorm";
-import { User } from "./user.entity";
-import { FriendStatus } from "@/modules/user/enums/friend-status.enum";
+import {BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
-@Entity({ name: "friend_requests" })
+import {FriendStatus} from '@/modules/user/enums/friend-status.enum';
+
+import {User} from './user.entity';
+
+@Entity({name: 'friend_requests'})
 export class FriendRequest extends BaseEntity {
-  @PrimaryGeneratedColumn("uuid")
-  id: string;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
-  @ManyToOne(() => User, user => user.sentFriendRequests)
-  @JoinColumn({ name: "sender_id" })
-  sender: User;
+    @ManyToOne(() => User, (user) => user.sentFriendRequests)
+    @JoinColumn({name: 'sender_id'})
+    sender: User;
 
-  @Column({ type: "uuid" })
-  sender_id: string;
+    @Column({type: 'uuid'})
+    sender_id: string;
 
-  @ManyToOne(() => User, user => user.receivedFriendRequests)
-  @JoinColumn({ name: "recipient_id" })
-  recipient: User;
+    @ManyToOne(() => User, (user) => user.receivedFriendRequests)
+    @JoinColumn({name: 'recipient_id'})
+    recipient: User;
 
-  @Column({ type: "uuid" })
-  recipient_id: string;
+    @Column({type: 'uuid'})
+    recipient_id: string;
 
-  @Column({ 
-    type: "enum", 
-    enum: ["pending", "accepted", "declined"],
-    default: "pending"
-  })
-  status: FriendStatus;
+    @Column({
+        type: 'enum',
+        enum: ['pending', 'accepted', 'declined'],
+        default: 'pending',
+    })
+    status: FriendStatus;
 }

@@ -4,7 +4,7 @@ import {ClientsModule, Transport} from '@nestjs/microservices';
 
 import {AppController} from './app.controller';
 import {AppService} from './app.service';
-import {UserController} from './user/user.controller';
+import {UserModule} from './user/user.module';
 
 @Module({
     imports: [
@@ -15,10 +15,13 @@ import {UserController} from './user/user.controller';
                 useFactory: async (configService: ConfigService) => ({
                     transport: Transport.RMQ,
                     options: {
-                        urls: [configService.get<string>('RABBITMQ_URL') as string],
+                        urls: [
+                            `amqp://${configService.get<string>('RABBITMQ_HOST_NAME')}:${configService.get<string>('RABBITMQ_PORT')}`,
+                        ],
                         queue: configService.get<string>('USER_QUEUE_NAME'),
                     },
                 }),
+                inject: [ConfigService],
             },
             {
                 imports: [ConfigModule],
@@ -26,10 +29,13 @@ import {UserController} from './user/user.controller';
                 useFactory: async (configService: ConfigService) => ({
                     transport: Transport.RMQ,
                     options: {
-                        urls: [configService.get<string>('RABBITMQ_URL') as string],
+                        urls: [
+                            `amqp://${configService.get<string>('RABBITMQ_HOST_NAME')}:${configService.get<string>('RABBITMQ_PORT')}`,
+                        ],
                         queue: configService.get<string>('COMMUNICATION_QUEUE_NAME'),
                     },
                 }),
+                inject: [ConfigService],
             },
             {
                 imports: [ConfigModule],
@@ -37,14 +43,18 @@ import {UserController} from './user/user.controller';
                 useFactory: async (configService: ConfigService) => ({
                     transport: Transport.RMQ,
                     options: {
-                        urls: [configService.get<string>('RABBITMQ_URL') as string],
+                        urls: [
+                            `amqp://${configService.get<string>('RABBITMQ_HOST_NAME')}:${configService.get<string>('RABBITMQ_PORT')}`,
+                        ],
                         queue: configService.get<string>('FEED_QUEUE_NAME'),
                     },
                 }),
+                inject: [ConfigService],
             },
         ]),
+        UserModule,
     ],
-    controllers: [AppController, UserController],
+    controllers: [AppController],
     providers: [AppService],
 })
 export class AppModule {}

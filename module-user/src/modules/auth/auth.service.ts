@@ -1,198 +1,182 @@
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-  UnauthorizedException,
-} from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { User } from "@/entities/user.entity";
-import { RegisterUserDto } from "@/modules/auth/dto/register-user.dto";
-import { JwtPayload } from "@/modules/auth/interfaces/jwt-payload.interface";
-import { UserService } from "@/modules/user/services/user.service";
-import { AuthTokenResponseDto } from "@/modules/auth/dto/auth-token-response.dto";
-import { RegisterUserResponseDto as RegisterUserResponseDto } from "@/modules/auth/dto/register-user-response.dto";
-import { AuthConstant } from "@/modules/auth/constant";
-import { BeforeInsert, BeforeUpdate } from "typeorm";
-import * as bcrypt from "bcryptjs";
+import {BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException} from '@nestjs/common';
+import {JwtService} from '@nestjs/jwt';
+import * as bcrypt from 'bcryptjs';
+
+import {User} from '@/entities/user.entity';
+import {AuthConstant} from '@/modules/auth/constant';
+import {AuthTokenResponseDto} from '@/modules/auth/dto/auth-token-response.dto';
+import {RegisterUserDto} from '@/modules/auth/dto/register-user.dto';
+import {JwtPayload} from '@/modules/auth/interfaces/jwt-payload.interface';
+import {UserService} from '@/modules/user/services/user.service';
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly userService: UserService,
-    private readonly jwtService: JwtService
-  ) {}
+    constructor(
+        private readonly userService: UserService,
+        private readonly jwtService: JwtService
+    ) {}
 
-  async hashPassword(password: string): Promise<string> {
-    const salt = await bcrypt.genSalt();
-    return bcrypt.hash(password, salt);
-  }
+    async hashPassword(password: string): Promise<string> {
+        const salt = await bcrypt.genSalt();
+        return bcrypt.hash(password, salt);
+    }
 
-  async checkPassword(
-    plainPassword: string,
-    hashedPassword: string
-  ): Promise<boolean> {
-    return hashedPassword
-      ? await bcrypt.compare(plainPassword, hashedPassword)
-      : false;
-  }
+    async checkPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
+        return hashedPassword ? await bcrypt.compare(plainPassword, hashedPassword) : false;
+    }
 
-  async register(signUp: RegisterUserDto): Promise<User> {
-    try {
-      const hashedPassword = await this.hashPassword(signUp.password);
-      const user = await this.userService.create({
-        ...signUp,
-        password: hashedPassword,
-      });
-      delete user.password;
-      return user; // Return the full user object with ID
-    } catch (error) {
-      if (error instanceof Error) {
-        if ("code" in error && (error as any).code === "23505") {
-          throw new BadRequestException("Email or username already exists.");
+    async register(signUp: RegisterUserDto): Promise<User> {
+        try {
+            const hashedPassword = await this.hashPassword(signUp.password);
+            const user = await this.userService.create({
+                ...signUp,
+                password: hashedPassword,
+            });
+            delete user.password;
+            return user; // Return the full user object with ID
+        } catch (error) {
+            if (error instanceof Error) {
+                if ('code' in error && (error as any).code === '23505') {
+                    throw new BadRequestException('Email or username already exists.');
+                }
+                throw new InternalServerErrorException(error.message || 'Registration failed.');
+            }
+            throw new InternalServerErrorException('An unexpected error occurred.');
         }
-        throw new InternalServerErrorException(
-          error.message || "Registration failed."
-        );
-      }
-      throw new InternalServerErrorException("An unexpected error occurred.");
-    }
-  }
-
-  async login(email: string, password: string): Promise<AuthTokenResponseDto> {
-    let user: User;
-
-    try {
-      user = await this.userService.getOne({ where: { email } });
-    } catch (err) {
-      throw new UnauthorizedException(`Invalid credentials`);
     }
 
-    if (!(await this.checkPassword(password, user.password || ""))) {
-      throw new UnauthorizedException(`Invalid credentials`);
+    async login(email: string, password: string): Promise<AuthTokenResponseDto> {
+        let user: User;
+
+        try {
+            user = await this.userService.getOne({where: {email}});
+        } catch (error) {
+            throw new UnauthorizedException(`Invalid credentials`);
+        }
+
+        if (!(await this.checkPassword(password, user.password || ''))) {
+            throw new UnauthorizedException(`Invalid credentials`);
+        }
+
+        return this.generateTokens(user);
     }
 
-    return this.generateTokens(user);
-  }
+    private generateTokens(user: User): AuthTokenResponseDto {
+        const payload: JwtPayload = {
+            sub: user.id.toString(),
+            email: user.email,
+            username: user.username,
+        };
 
-  private generateTokens(user: User): AuthTokenResponseDto {
-    const payload: JwtPayload = {
-      sub: user.id.toString(),
-      email: user.email,
-      username: user.username,
-    };
+        const access_token = this.jwtService.sign(payload, {
+            expiresIn: AuthConstant.ACCESS_TOKEN_EXPIRATION,
+        });
 
-    const access_token = this.jwtService.sign(payload, {
-      expiresIn: AuthConstant.ACCESS_TOKEN_EXPIRATION,
-    });
+        const refresh_token = this.jwtService.sign(payload, {
+            expiresIn: AuthConstant.REFRESH_TOKEN_EXPIRATION,
+        });
 
-    const refresh_token = this.jwtService.sign(payload, {
-      expiresIn: AuthConstant.REFRESH_TOKEN_EXPIRATION,
-    });
-
-    return {
-      data: {
-        access_token,
-        expires_in: AuthConstant.ACCESS_TOKEN_EXPIRATION,
-        refresh_token,
-      },
-    };
-  }
-
-  async verifyPayload(payload: JwtPayload): Promise<User> {
-    let user: User;
-
-    try {
-      user = await this.userService.getOne({
-        where: { id: payload.sub },
-      });
-    } catch (error) {
-      throw new UnauthorizedException(
-        `There isn't any user with ID: ${payload.sub}`
-      );
+        return {
+            data: {
+                access_token,
+                expires_in: AuthConstant.ACCESS_TOKEN_EXPIRATION,
+                refresh_token,
+            },
+        };
     }
 
-    return user;
-  }
+    async verifyPayload(payload: JwtPayload): Promise<User> {
+        let user: User;
 
-  async signToken(user: User | any): Promise<string> {
-    // First check if we got a complete user object with ID
-    if (!user) {
-      throw new UnauthorizedException("Invalid user data: Missing user object");
+        try {
+            user = await this.userService.getOne({
+                where: {id: payload.sub},
+            });
+        } catch (error) {
+            throw new UnauthorizedException(`There isn't any user with ID: ${payload.sub}`);
+        }
+
+        return user;
     }
 
-    if (user.id === undefined || user.id === null) {
-      throw new UnauthorizedException("Invalid user data: Missing user ID");
+    async signToken(user: User | any): Promise<string> {
+        // First check if we got a complete user object with ID
+        if (!user) {
+            throw new UnauthorizedException('Invalid user data: Missing user object');
+        }
+
+        if (user.id === undefined || user.id === null) {
+            throw new UnauthorizedException('Invalid user data: Missing user ID');
+        }
+
+        const payload: JwtPayload = {
+            sub: user.id.toString(),
+            email: user.email || '',
+            username: user.username || '',
+            iat: Date.now(),
+            exp: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
+        };
+
+        return this.jwtService.sign(payload);
     }
 
-    const payload: JwtPayload = {
-      sub: user.id.toString(),
-      email: user.email || "",
-      username: user.username || "",
-      iat: Date.now(),
-      exp: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
-    };
+    // async generatePasswordResetToken(
+    //   email: string,
+    //   type: "email" | "sms" | "authenticator"
+    // ): Promise<string> {
+    //   const user = await this.userService.findByEmail(email);
+    //   if (!user) {
+    //     throw new NotFoundException(`User with email ${email} not found`);
+    //   }
 
-    return this.jwtService.sign(payload);
-  }
+    //   // Generate random token
+    //   const token = crypto.randomBytes(32).toString("hex");
 
-  
-  // async generatePasswordResetToken(
-  //   email: string,
-  //   type: "email" | "sms" | "authenticator"
-  // ): Promise<string> {
-  //   const user = await this.userService.findByEmail(email);
-  //   if (!user) {
-  //     throw new NotFoundException(`User with email ${email} not found`);
-  //   }
+    //   // Save token to database
+    //   await this.passwordResetRepository.save({
+    //     email,
+    //     token,
+    //     type,
+    //   });
 
-  //   // Generate random token
-  //   const token = crypto.randomBytes(32).toString("hex");
+    //   // If email, send reset email
+    //   if (type === "email") {
+    //     await this.mailerService.sendPasswordResetEmail(email, token);
+    //   }
+    //   // If SMS, send via SMS service
+    //   else if (type === "sms") {
+    //     await this.smsService.sendPasswordResetSMS(user.phoneNumber, token);
+    //   }
 
-  //   // Save token to database
-  //   await this.passwordResetRepository.save({
-  //     email,
-  //     token,
-  //     type,
-  //   });
+    //   return token;
+    // }
+    // async resetPassword(token: string, newPassword: string): Promise<boolean> {
+    //   // Find valid token (not expired)
+    //   const resetRequest = await this.passwordResetRepository.findOne({
+    //     where: { token },
+    //     order: { created_at: "DESC" },
+    //   });
 
-  //   // If email, send reset email
-  //   if (type === "email") {
-  //     await this.mailerService.sendPasswordResetEmail(email, token);
-  //   }
-  //   // If SMS, send via SMS service
-  //   else if (type === "sms") {
-  //     await this.smsService.sendPasswordResetSMS(user.phoneNumber, token);
-  //   }
+    //   if (!resetRequest) {
+    //     throw new UnauthorizedException("Invalid or expired token");
+    //   }
 
-  //   return token;
-  // }
-  // async resetPassword(token: string, newPassword: string): Promise<boolean> {
-  //   // Find valid token (not expired)
-  //   const resetRequest = await this.passwordResetRepository.findOne({
-  //     where: { token },
-  //     order: { created_at: "DESC" },
-  //   });
+    //   // Check if token is not older than 1 hour
+    //   const now = new Date();
+    //   const tokenDate = new Date(resetRequest.created_at);
+    //   if (now.getTime() - tokenDate.getTime() > 3600000) {
+    //     throw new UnauthorizedException("Token has expired");
+    //   }
 
-  //   if (!resetRequest) {
-  //     throw new UnauthorizedException("Invalid or expired token");
-  //   }
+    //   // Get user and update password
+    //   const user = await this.userService.findByEmail(resetRequest.email);
+    //   const hashedPassword = await this.hashPassword(newPassword);
+    //   user.password = hashedPassword;
+    //   await this.userService.save(user);
 
-  //   // Check if token is not older than 1 hour
-  //   const now = new Date();
-  //   const tokenDate = new Date(resetRequest.created_at);
-  //   if (now.getTime() - tokenDate.getTime() > 3600000) {
-  //     throw new UnauthorizedException("Token has expired");
-  //   }
+    //   // Delete token
+    //   await this.passwordResetRepository.delete({ token });
 
-  //   // Get user and update password
-  //   const user = await this.userService.findByEmail(resetRequest.email);
-  //   const hashedPassword = await this.hashPassword(newPassword);
-  //   user.password = hashedPassword;
-  //   await this.userService.save(user);
-
-  //   // Delete token
-  //   await this.passwordResetRepository.delete({ token });
-
-  //   return true;
-  // }
+    //   return true;
+    // }
 }
