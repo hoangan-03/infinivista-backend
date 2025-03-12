@@ -1,6 +1,7 @@
 import {Body, Controller, Get, Inject, Param, Patch, Put, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import {ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {User} from 'src/entities/user-module/user.entity';
 
 @ApiTags('users')
 @Controller('users')
