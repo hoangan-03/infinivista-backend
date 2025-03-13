@@ -12,31 +12,26 @@ import {SecurityAnswer} from './security-answer.entity';
 import {Setting} from './setting.entity';
 import {UserStatus} from './user-status.entity';
 
-// @Entity({name: 'users'})
 export class User extends BaseEntity {
     @ApiProperty({
         example: '123e4567-e89b-12d3-a456-426614174000',
         description: 'User unique identifier',
     })
-    // @PrimaryGeneratedColumn('uuid')
     id: string;
 
     @ApiProperty({
         example: 'user@example.com',
         description: 'User email address',
     })
-    // @Column({type: 'varchar', length: 255, unique: true})
     email: string;
 
     @ApiProperty({
         example: 'johndoe',
         description: 'User username',
     })
-    // @Column({type: 'varchar', length: 255, unique: true})
     username: string;
 
     @Exclude()
-    // @Column({type: 'varchar', length: 255, nullable: true})
     password?: string;
 
     @ApiProperty({
@@ -44,7 +39,6 @@ export class User extends BaseEntity {
         description: 'User phone number',
         required: false,
     })
-    // @Column({type: 'varchar', length: 15, nullable: true})
     phoneNumber: string;
 
     @ApiProperty({
@@ -52,7 +46,6 @@ export class User extends BaseEntity {
         description: 'User date of birth',
         required: false,
     })
-    // @Column({type: 'date', nullable: true})
     dob: Date;
 
     @ApiProperty({
@@ -71,7 +64,6 @@ export class User extends BaseEntity {
         description: 'User first name',
         required: false,
     })
-    // @Column({type: 'varchar', length: 255, nullable: true})
     firstName: string;
 
     @ApiProperty({
@@ -79,7 +71,6 @@ export class User extends BaseEntity {
         description: 'User last name',
         required: false,
     })
-    // @Column({type: 'varchar', length: 255, nullable: true})
     lastName: string;
 
     @ApiProperty({
@@ -87,7 +78,6 @@ export class User extends BaseEntity {
         description: 'User profile image URL',
         required: false,
     })
-    // @Column({type: 'text', nullable: true})
     profileImageUrl: string;
 
     @ApiProperty({
@@ -95,25 +85,18 @@ export class User extends BaseEntity {
         description: 'User cover image URL',
         required: false,
     })
-    // @Column({type: 'text', nullable: true})
     coverImageUrl: string;
 
     @ApiProperty({
         type: () => UserStatus,
         description: 'User status',
     })
-    // @OneToOne(() => UserStatus, (status) => status.user, {
-    //     cascade: true,
-    // })
     status: UserStatus;
 
     @ApiProperty({
         type: () => [Setting],
         description: 'User settings',
     })
-    // @OneToMany(() => Setting, (setting) => setting.user, {
-    //     cascade: true,
-    // })
     settings: Setting[];
 
     @ApiProperty({
@@ -121,69 +104,19 @@ export class User extends BaseEntity {
         description: 'User profile image URL',
         required: false,
     })
-    // @Column({type: 'text', nullable: true})
     address: string;
 
-    // @OneToMany(() => SecurityAnswer, (securityAnswer) => securityAnswer.user)
     securityAnswers: SecurityAnswer[];
 
     @ApiProperty({
         example: 'public',
         description: 'Profile privacy level',
     })
-    // @Column({
-    //     type: 'enum',
-    //     enum: ['public', 'friends', 'private'],
-    //     default: 'public',
-    // })
     profilePrivacy: ProfilePrivacy;
 
-    // @OneToMany(() => Friend, (friend) => friend.user)
     friends: Friend[];
 
-    // @OneToMany(() => FriendRequest, (request) => request.sender)
     sentFriendRequests: FriendRequest[];
 
-    // @OneToMany(() => FriendRequest, (request) => request.recipient)
     receivedFriendRequests: FriendRequest[];
-
-    // constructor(data: Partial<User> = {}) {
-    //     super();
-    //     Object.assign(this, data);
-    // }
-
-    // @ApiProperty({
-    //     example: '302 Alibaba Street, Lagos, Nigeria',
-    //     description: 'User address',
-    //     required: false,
-    // })
-    // @Column({type: 'text', nullable: true})
-    // @Inject()
-    // private readonly userEventsService: UserEventsService;
-
-    // @AfterInsert()
-    // async afterInsert() {
-    //     await this.userEventsService?.publishUserCreated({
-    //         id: this.id,
-    //         username: this.username,
-    //         email: this.email,
-    //         profileImageUrl: this.profileImageUrl,
-    //     });
-    // }
-
-    // @AfterUpdate()
-    // async afterUpdate() {
-    //     await this.userEventsService?.publishUserUpdated({
-    //         id: this.id,
-    //         username: this.username,
-    //         profileImageUrl: this.profileImageUrl,
-    //     });
-    // }
-
-    // @BeforeRemove()
-    // async beforeRemove() {
-    //     await this.userEventsService?.publishUserDeleted({
-    //         id: this.id,
-    //     });
-    // }
 }

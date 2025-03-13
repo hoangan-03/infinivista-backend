@@ -1,23 +1,29 @@
 services:
     db:
-        image: postgres:14.1
+        image: postgres:15
         container_name: infinivista_db
         restart: always
-        environment:
-            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-            - POSTGRES_USER=${POSTGRES_USER}
+        env_file:
+            - .env
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U postgres']
+            interval: 5s
+            timeout: 5s
+            retries: 5
         volumes:
             - local_pgdata:/var/lib/postgresql/data
-        ports:
-            - 5432:5432
         networks:
             - infinivista_backend
     rabbitmq:
-        image: rabbitmq:3.9.13-management
+        image: rabbitmq:3.11-management
         container_name: infinivista_rabbitmq
         ports:
-            - "5672:5672"
-            - "15672:15672"
+            - '15672:15672'
+        healthcheck:
+            test: ['CMD', 'rabbitmq-diagnostics', 'check_port_connectivity']
+            interval: 5s
+            timeout: 5s
+            retries: 5
         volumes:
             - rabbitmq_data:/var/lib/rabbitmq
         networks:
@@ -29,16 +35,12 @@ services:
         container_name: infinivista_gateway
         restart: always
         ports:
-            - "3000:3000"
+            - '3000:3000'
         env_file:
             - ./api-gateway/.env
-        environment:
-            - RABBITMQ_URL=${RABBITMQ_URL}
-            - USER_QUEUE_NAME=${USER_QUEUE_NAME}
-            - COMMUNICATION_QUEUE_NAME=${COMMUNICATION_QUEUE_NAME}
-            - FEED_QUEUE_NAME=${FEED_QUEUE_NAME}
         depends_on:
-            - rabbitmq
+            rabbitmq:
+                condition: service_healthy
         networks:
             - infinivista_backend
     user:
@@ -49,18 +51,12 @@ services:
         restart: always
         env_file:
             - ./module-user/.env
-        environment:
-            - NODE_ENV=${NODE_ENV}
-            - POSTGRES_HOST=${POSTGRES_HOST}
-            - POSTGRES_PORT=${POSTGRES_PORT}
-            - POSTGRES_USER=${POSTGRES_USER}
-            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-            - POSTGRES_DB=${POSTGRES_DB}
-            - RABBITMQ_URL=${RABBITMQ_URL}
-            - JWT_SECRET=${JWT_SECRET}
+            - ./api-gateway/.env
         depends_on:
-            - db
-            - rabbitmq
+            db:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
         networks:
             - infinivista_backend
 networks:

@@ -1,4 +1,4 @@
-import {Controller, UseGuards} from '@nestjs/common';
+import {UseGuards} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
 import {SecurityAnswer} from '@/entities/security-answer.entity';
@@ -11,9 +11,18 @@ import {UserService} from '@/modules/user/services/user.service';
 
 import {ProfilePrivacy} from '../enums/profile-privacy.enum';
 
-@Controller('users')
 export class UsersController {
     constructor(private readonly userService: UserService) {}
+    @MessagePattern('TestUserCommand')
+    async test(): Promise<string> {
+        return 'This is a test';
+    }
+
+    @MessagePattern('TestAmountUserCommand')
+    async testAmount(payload: {amount: number}): Promise<string> {
+        return `This is a test with amount: ${payload.amount}.\nHere is twice the amount: ${payload.amount * 2}`;
+    }
+
     @MessagePattern('GetAllUserCommand')
     async getList(): Promise<User[]> {
         return this.userService.getAll();

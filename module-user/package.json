@@ -28,7 +28,6 @@
         "docker:clean": "docker-compose down -v --remove-orphans"
     },
     "dependencies": {
-        "@golevelup/nestjs-rabbitmq": "^5.7.0",
         "@nestjs/common": "^11.0.9",
         "@nestjs/config": "^4.0.0",
         "@nestjs/core": "^11.0.9",
@@ -38,7 +37,6 @@
         "@nestjs/mongoose": "^11.0.1",
         "@nestjs/passport": "^11.0.5",
         "@nestjs/platform-express": "^11.0.9",
-        "@nestjs/swagger": "^11.0.3",
         "@nestjs/terminus": "^11.0.0",
         "@nestjs/testing": "^11.0.9",
         "@nestjs/typeorm": "^11.0.0",
@@ -54,6 +52,7 @@
         "class-validator": "^0.14.1",
         "compression": "^1.8.0",
         "cookie-parser": "^1.4.7",
+        "dotenv": "^16.4.7",
         "express-session": "^1.18.1",
         "mongoose": "^8.9.2",
         "passport-jwt": "^4.0.1",

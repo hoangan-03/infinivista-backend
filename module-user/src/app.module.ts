@@ -1,7 +1,5 @@
 import {Module} from '@nestjs/common';
 import {ConfigModule, ConfigService} from '@nestjs/config';
-// import {HealthModule} from '@/rabbitmq/healthcheck/healthcheck.module';
-// import {RabbitmqModule} from '@/rabbitmq/rabbitmq.module';
 import {APP_FILTER} from '@nestjs/core';
 import {TypeOrmModule} from '@nestjs/typeorm';
 
@@ -32,7 +30,6 @@ import {AuthModule} from './modules/auth/auth.module';
         }),
         UserModule,
         AuthModule,
-        // HealthModule, RabbitmqModule
     ],
     controllers: [AppController],
     providers: [

@@ -1,5 +1,5 @@
 // import {ConfigService} from '@nestjs/config';
-import {ValidationPipe} from '@nestjs/common';
+// import {ValidationPipe} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 // import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
 // import * as cookieParser from 'cookie-parser';
@@ -10,6 +10,8 @@ import {NestFactory} from '@nestjs/core';
 import {MicroserviceOptions, Transport} from '@nestjs/microservices';
 
 import {AppModule} from '@/app.module';
+
+import {createDatabase} from './utils/create-database';
 
 // Polyfill global crypto if not defined
 // if (!(global as any).crypto) {
@@ -73,13 +75,13 @@ async function bootstrap() {
     // SwaggerModule.setup('api/swagger-docs', app, document);
 
     // Microservices don't use HTTP middleware and Swagger
-    app.useGlobalPipes(
-        new ValidationPipe({
-            whitelist: false,
-            forbidNonWhitelisted: false,
-        })
-    );
-
+    // app.useGlobalPipes(
+    //     new ValidationPipe({
+    //         whitelist: false,
+    //         forbidNonWhitelisted: false,
+    //     })
+    // );
+    await createDatabase();
     await app.listen();
 }
 bootstrap();
