@@ -1,24 +1,11 @@
-import {Inject} from '@nestjs/common';
 import {ApiProperty} from '@nestjs/swagger';
 import {Exclude} from 'class-transformer';
 import {IsEnum, IsOptional} from 'class-validator';
-// import {
-//     AfterInsert,
-//     AfterUpdate,
-//     BeforeRemove,
-//     Column,
-//     Entity,
-//     OneToMany,
-//     OneToOne,
-//     PrimaryGeneratedColumn,
-// } from 'typeorm';
-import {v4 as uuidv4} from 'uuid';
 
-import {BaseEntity} from '@/entities/base-class';
-import {Gender} from '@/modules/user/enums/gender.enum';
-import {ProfilePrivacy} from '@/modules/user/enums/profile-privacy.enum';
+import {Gender} from '@/enums/user-module/gender.enum';
+import {ProfilePrivacy} from '@/enums/user-module/profile-privacy.enum';
 
-// import {UserEventsService} from '@/rabbitmq/userevent.service';
+import {BaseEntity} from './base-class';
 import {Friend} from './friend.entity';
 import {FriendRequest} from './friend-request.entity';
 import {SecurityAnswer} from './security-answer.entity';
@@ -32,7 +19,7 @@ export class User extends BaseEntity {
         description: 'User unique identifier',
     })
     // @PrimaryGeneratedColumn('uuid')
-    id: string = uuidv4();
+    id: string;
 
     @ApiProperty({
         example: 'user@example.com',
@@ -151,7 +138,6 @@ export class User extends BaseEntity {
     // })
     profilePrivacy: ProfilePrivacy;
 
-    // Existing relationships
     // @OneToMany(() => Friend, (friend) => friend.user)
     friends: Friend[];
 
@@ -161,19 +147,19 @@ export class User extends BaseEntity {
     // @OneToMany(() => FriendRequest, (request) => request.recipient)
     receivedFriendRequests: FriendRequest[];
 
-    constructor(data: Partial<User> = {}) {
-        super();
-        Object.assign(this, data);
-    }
+    // constructor(data: Partial<User> = {}) {
+    //     super();
+    //     Object.assign(this, data);
+    // }
 
-    @ApiProperty({
-        example: '302 Alibaba Street, Lagos, Nigeria',
-        description: 'User address',
-        required: false,
-    })
+    // @ApiProperty({
+    //     example: '302 Alibaba Street, Lagos, Nigeria',
+    //     description: 'User address',
+    //     required: false,
+    // })
     // @Column({type: 'text', nullable: true})
-    @Inject()
-    private readonly userEventsService: UserEventsService;
+    // @Inject()
+    // private readonly userEventsService: UserEventsService;
 
     // @AfterInsert()
     // async afterInsert() {

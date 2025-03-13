@@ -1,27 +1,20 @@
 import {ApiProperty} from '@nestjs/swagger';
-import {Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
-import {BaseEntity} from '@/entities/base-class';
-import {User} from '@/entities/user.entity';
-import {SettingType} from '@/modules/user/enums/setting.enum';
+import {SettingType} from '@/enums/user-module/setting.enum';
 
-@Entity({name: 'settings'})
+import {BaseEntity} from './base-class';
+import {User} from './user.entity';
+
 export class Setting extends BaseEntity {
     @ApiProperty({
         example: '123e4567-e89b-12d3-a456-426614174000',
         description: 'Setting unique identifier',
     })
-    @PrimaryGeneratedColumn('uuid')
     id: string;
 
     @ApiProperty({type: () => User})
-    @ManyToOne(() => User, (user) => user.settings, {
-        onDelete: 'CASCADE',
-    })
-    @JoinColumn({name: 'user_id'})
     user: User;
 
-    @Column({type: 'uuid'})
     user_id: string;
 
     @ApiProperty({
@@ -29,16 +22,11 @@ export class Setting extends BaseEntity {
         example: SettingType.NOTIFICATION,
         description: 'Setting type',
     })
-    @Column({
-        type: 'enum',
-        enum: SettingType,
-    })
     type: SettingType;
 
     @ApiProperty({
         example: 'true',
         description: 'Setting value',
     })
-    @Column({type: 'text'})
     value: string;
 }

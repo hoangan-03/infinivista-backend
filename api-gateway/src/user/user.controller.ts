@@ -1,7 +1,15 @@
-import {Body, Controller, Get, Inject, Param, Patch, Put, UseGuards} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import {ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {lastValueFrom} from 'rxjs';
 import {User} from 'src/entities/user-module/user.entity';
+
+import {AuthUser} from '@/decorators/user.decorator';
+import {UpdateUserDto} from '@/dtos/user-module/update-user.dto';
+import {SecurityAnswer} from '@/entities/user-module/security-answer.entity';
+import {Setting} from '@/entities/user-module/setting.entity';
+import {ProfilePrivacy} from '@/enums/user-module/profile-privacy.enum';
+import {SettingType} from '@/enums/user-module/setting.enum';
 
 @ApiTags('users')
 @Controller('users')
@@ -15,7 +23,7 @@ export class UserController {
         description: 'Unauthorized - Invalid or missing token',
     })
     async getList(): Promise<User[]> {
-        return this.userService.getAll();
+        return await lastValueFrom(this.userServiceClient.send<User[]>('GetAllUserCommand', {}));
     }
 
     @Get(':id')
@@ -34,7 +42,7 @@ export class UserController {
         description: 'Not Found - User not found with the provided ID',
     })
     async getById(@Param('id') id: string): Promise<User> {
-        return this.userService.getOne({where: {id}});
+        return await lastValueFrom(this.userServiceClient.send<User>('GetByIdUserCommand', {id}));
     }
 
     @Patch(':id')
@@ -50,7 +58,7 @@ export class UserController {
         description: 'Not Found - User not found with the provided ID',
     })
     async update(@Param('id') id: string, @Body() user: UpdateUserDto): Promise<User> {
-        return this.userService.updateProfile(id, user);
+        return await lastValueFrom(this.userServiceClient.send<User>('UpdateUserCommand', {id, user}));
     }
 
     @Put(':id/profile-picture')
@@ -80,7 +88,9 @@ export class UserController {
         description: 'Not Found - User not found with the provided ID',
     })
     async updateProfilePicture(@Param('id') id: string, @Body('imageUrl') imageUrl: string): Promise<User> {
-        return this.userService.updateProfilePicture(id, imageUrl);
+        return await lastValueFrom(
+            this.userServiceClient.send<User>('UpdateProfilePictureUserCommand', {id, imageUrl})
+        );
     }
 
     @Put(':id/cover-photo')
@@ -106,7 +116,7 @@ export class UserController {
         description: 'Not Found - User not found with the provided ID',
     })
     async updateCoverPhoto(@Param('id') id: string, @Body('imageUrl') imageUrl: string): Promise<User> {
-        return this.userService.updateCoverPhoto(id, imageUrl);
+        return await lastValueFrom(this.userServiceClient.send<User>('UpdateCoverPhotoUserCommand', {id, imageUrl}));
     }
 
     @Put(':id/settings')
@@ -117,6 +127,7 @@ export class UserController {
             properties: {
                 type: {
                     type: 'string',
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                     enum: Object.values(SettingType),
                 },
                 value: {
@@ -139,7 +150,9 @@ export class UserController {
         @Body('type') type: SettingType,
         @Body('value') value: string
     ): Promise<Setting> {
-        return this.userService.updateUserSettings(id, type, value);
+        return await lastValueFrom(
+            this.userServiceClient.send<Setting>('UpdateSettingsUserCommand', {id, type, value})
+        );
     }
 
     @Post(':id/security-questions')
@@ -170,7 +183,9 @@ export class UserController {
         @Param('id') id: string,
         @Body('answers') answers: {questionId: string; answer: string}[]
     ): Promise<SecurityAnswer[]> {
-        return this.userService.setSecurityQuestions(id, answers);
+        return await lastValueFrom(
+            this.userServiceClient.send<SecurityAnswer[]>('SetSecurityQuestionsUserCommand', {id, answers})
+        );
     }
 
     @Put(':id/online-status')
@@ -191,7 +206,7 @@ export class UserController {
         type: User,
     })
     async toggleOnlineStatus(@Param('id') id: string, @Body('isOnline') isOnline: boolean): Promise<User> {
-        return this.userService.toggleOnlineStatus(id, isOnline);
+        return await lastValueFrom(this.userServiceClient.send<User>('ToggleOnlineStatusUserCommand', {id, isOnline}));
     }
 
     @Put(':id/suspend')
@@ -212,7 +227,7 @@ export class UserController {
         type: User,
     })
     async suspendUser(@Param('id') id: string, @Body('suspended') suspended: boolean): Promise<User> {
-        return this.userService.suspendUser(id, suspended);
+        return await lastValueFrom(this.userServiceClient.send<User>('SuspendUserCommand', {id, suspended}));
     }
 
     @Get(':id/full-profile')
@@ -221,34 +236,37 @@ export class UserController {
     })
     @ApiResponse({status: 200, description: 'Full user profile', type: User})
     async getFullProfile(@Param('id') id: string): Promise<User> {
-        return this.userService.getUserWithFullProfile(id);
+        return await lastValueFrom(this.userServiceClient.send<User>('GetProfileUserCommand', {id}));
     }
 
+    // FIXME: This endpoint should be protected by JWTAuthGuard
     @Put(':id/suspend')
-    @UseGuards(JWTAuthGuard)
+    // @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Temporarily suspend account'})
     async suspendAccount(@AuthUser() user: User): Promise<User> {
-        return this.userService.suspendAccount(user.id);
+        return await lastValueFrom(this.userServiceClient.send<User>('SuspendAccountUserCommand', {id: user.id}));
     }
 
     @Put(':id/unsuspend')
-    @UseGuards(JWTAuthGuard)
+    // @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Reactivate suspended account'})
     async unsuspendAccount(@AuthUser() user: User): Promise<User> {
-        return this.userService.unsuspendAccount(user.id);
+        return await lastValueFrom(this.userServiceClient.send<User>('UnsuspendAccountUserCommand', {id: user.id}));
     }
 
     @Delete(':id')
-    @UseGuards(JWTAuthGuard)
+    // @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Permanently delete account'})
     async deleteAccount(@AuthUser() user: User): Promise<void> {
-        return this.userService.deleteAccount(user.id);
+        return await lastValueFrom(this.userServiceClient.send<void>('DeleteUserCommand', {id: user.id}));
     }
 
     @Put(':id/profile-privacy')
-    @UseGuards(JWTAuthGuard)
+    // @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Update profile privacy settings'})
     async updateProfilePrivacy(@AuthUser() user: User, @Body('privacy') privacy: ProfilePrivacy): Promise<User> {
-        return this.userService.updateProfilePrivacy(user.id, privacy);
+        return await lastValueFrom(
+            this.userServiceClient.send<User>('UpdateProfilePrivacyUserCommand', {id: user.id, privacy})
+        );
     }
 }
