@@ -3,14 +3,14 @@ export interface UserCreatedEvent {
     username: string;
     email: string;
     profileImageUrl?: string;
-  }
-  
-  export interface UserUpdatedEvent {
+}
+
+export interface UserUpdatedEvent {
     id: string;
     username?: string;
     profileImageUrl?: string;
-  }
-  
-  export interface UserDeletedEvent {
+}
+
+export interface UserDeletedEvent {
     id: string;
-  }
+}
