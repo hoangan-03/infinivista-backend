@@ -1,15 +1,16 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
-import { Message } from './message.entity';
-import { GroupChat } from './group-chat.entity';
+import {Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
+
+import {GroupChat} from './group-chat.entity';
+import {Message} from './message.entity';
 
 @Entity()
 export class UserMessagesGroupChat {
-  @PrimaryGeneratedColumn()
-  id: number;
+    @PrimaryGeneratedColumn()
+    id: number;
 
-  @ManyToOne(() => Message, (message) => message.groupMessages, { onDelete: 'CASCADE' })
-  message: Message;
+    @ManyToOne(() => Message, (message) => message.groupMessages, {onDelete: 'CASCADE'})
+    message: Message;
 
-  @ManyToOne(() => GroupChat, (groupChat) => groupChat.groupMessages, { onDelete: 'CASCADE' })
-  groupChat: GroupChat;
+    @ManyToOne(() => GroupChat, (groupChat) => groupChat.groupMessages, {onDelete: 'CASCADE'})
+    groupChat: GroupChat;
 }

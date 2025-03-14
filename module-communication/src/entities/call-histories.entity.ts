@@ -1,13 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {Column, Entity, PrimaryGeneratedColumn} from 'typeorm';
 
 @Entity()
 export class CallHistories {
-  @PrimaryGeneratedColumn()
-  call_id: number;
+    @PrimaryGeneratedColumn()
+    call_id: number;
 
-  @Column({ type: 'timestamp' })
-  start_time: Date;
+    @Column({type: 'timestamp'})
+    start_time: Date;
 
-  @Column({ type: 'timestamp' })
-  end_time: Date;
+    @Column({type: 'timestamp'})
+    end_time: Date;
 }

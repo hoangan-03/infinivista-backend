@@ -1,17 +1,18 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { Message } from './message.entity';
+import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
+
+import {Message} from './message.entity';
 
 @Entity()
 export class MessageAttachment {
-  @PrimaryGeneratedColumn()
-  id: number;
+    @PrimaryGeneratedColumn()
+    id: number;
 
-  @Column()
-  attachment_url: string;
+    @Column()
+    attachment_url: string;
 
-  @Column()
-  attachment_name: string;
+    @Column()
+    attachment_name: string;
 
-  @ManyToOne(() => Message, (message) => message.attachment, { onDelete: 'CASCADE' })
-  message: Message;
+    @ManyToOne(() => Message, (message) => message.attachment, {onDelete: 'CASCADE'})
+    message: Message;
 }
