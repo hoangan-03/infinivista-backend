@@ -59,6 +59,22 @@ services:
                 condition: service_healthy
         networks:
             - infinivista_backend
+    feed:
+        build:
+            context: ./module-feed
+            dockerfile: Dockerfile
+        container_name: infinivista_feed_module
+        restart: always
+        env_file:
+            - ./module-feed/.env
+            - ./api-gateway/.env
+        depends_on:
+            db:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+        networks:
+            - infinivista_backend
 networks:
     infinivista_backend:
         driver: bridge
