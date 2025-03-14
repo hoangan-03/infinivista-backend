@@ -7,12 +7,11 @@ import {LoginUserDTO} from '@/modules/auth/dto/login-user.dto';
 import {RegisterUserDto} from '@/modules/auth/dto/register-user.dto';
 import {RegisterUserResponseDto} from '@/modules/auth/dto/register-user-response.dto';
 
-// @Controller('auth')
-// @UseInterceptors(ClassSerializerInterceptor)
+import {JwtPayload} from './interfaces/jwt-payload.interface';
+
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
-    // @UseInterceptors(TokenInterceptor)
     @MessagePattern('RegisterAuthCommand')
     async register(payload: {signUp: RegisterUserDto}): Promise<RegisterUserResponseDto> {
         const user = await this.authService.register(payload.signUp);
@@ -25,16 +24,23 @@ export class AuthController {
         return new RegisterUserResponseDto(user.email, user.username);
     }
 
-    // @UseGuards(LocalAuthGuard)
-    // @UseInterceptors(TokenInterceptor)
     @MessagePattern('LoginAuthCommand')
     async login(payload: {credentials: LoginUserDTO}): Promise<AuthTokenResponseDto> {
         return this.authService.login(payload.credentials.email, payload.credentials.password);
     }
 
-    // @UseGuards(SessionAuthGuard, JWTAuthGuard)
     @MessagePattern('GetProfileAuthCommand')
     async me(payload: {user: User}): Promise<User> {
         return payload.user;
+    }
+
+    @MessagePattern('SignTokenAuthCommand')
+    async signToken(payload: {user: User}): Promise<string> {
+        return this.authService.signToken(payload.user);
+    }
+
+    @MessagePattern('VerifyJwtAuthCommand')
+    async verifyToken(payload: {jwt: JwtPayload}): Promise<User> {
+        return this.authService.verifyPayload(payload.jwt);
     }
 }

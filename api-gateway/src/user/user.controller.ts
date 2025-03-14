@@ -1,4 +1,4 @@
-import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import {ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
@@ -10,6 +10,7 @@ import {SecurityAnswer} from '@/entities/user-module/security-answer.entity';
 import {Setting} from '@/entities/user-module/setting.entity';
 import {ProfilePrivacy} from '@/enums/user-module/profile-privacy.enum';
 import {SettingType} from '@/enums/user-module/setting.enum';
+import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 
 @ApiTags('Users')
 @Controller('users')
@@ -244,30 +245,29 @@ export class UserController {
         return await lastValueFrom(this.userClient.send<User>('GetProfileUserCommand', {id}));
     }
 
-    // FIXME: This endpoint should be protected by JWTAuthGuard
     @Put(':id/suspend')
-    // @UseGuards(JWTAuthGuard)
+    @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Temporarily suspend account'})
     async suspendAccount(@AuthUser() user: User): Promise<User> {
         return await lastValueFrom(this.userClient.send<User>('SuspendAccountUserCommand', {id: user.id}));
     }
 
     @Put(':id/unsuspend')
-    // @UseGuards(JWTAuthGuard)
+    @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Reactivate suspended account'})
     async unsuspendAccount(@AuthUser() user: User): Promise<User> {
         return await lastValueFrom(this.userClient.send<User>('UnsuspendAccountUserCommand', {id: user.id}));
     }
 
     @Delete(':id')
-    // @UseGuards(JWTAuthGuard)
+    @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Permanently delete account'})
     async deleteAccount(@AuthUser() user: User): Promise<void> {
         return await lastValueFrom(this.userClient.send<void>('DeleteUserCommand', {id: user.id}));
     }
 
     @Put(':id/profile-privacy')
-    // @UseGuards(JWTAuthGuard)
+    @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Update profile privacy settings'})
     async updateProfilePrivacy(@AuthUser() user: User, @Body('privacy') privacy: ProfilePrivacy): Promise<User> {
         return await lastValueFrom(

@@ -1,4 +1,15 @@
-import {Body, Controller, Get, HttpCode, HttpStatus, Inject, Post} from '@nestjs/common';
+import {
+    Body,
+    ClassSerializerInterceptor,
+    Controller,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Inject,
+    Post,
+    UseGuards,
+    UseInterceptors,
+} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import {ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
@@ -9,19 +20,19 @@ import {LoginUserDTO} from '@/dtos/user-module/login-user.dto';
 import {RegisterUserDto} from '@/dtos/user-module/register-user.dto';
 import {RegisterUserResponseDto} from '@/dtos/user-module/register-user-response.dto';
 import {User} from '@/entities/user-module/user.entity';
-// import {JWTAuthGuard} from '@/modules/auth/guards/jwt-auth.guard';
-// import {LocalAuthGuard} from '@/modules/auth/guards/local-auth.guard';
-// import {SessionAuthGuard} from '@/modules/auth/guards/session-auth.guard';
-// import {TokenInterceptor} from '@/modules/auth/interceptors/token.interceptor';
+import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
+import {LocalAuthGuard} from '@/guards/local-auth.guard';
+import {SessionAuthGuard} from '@/guards/session-auth.guard';
+import {TokenInterceptor} from '@/interceptors/token.interceptor';
 
 @ApiTags('Auth')
 @Controller('auth')
-// @UseInterceptors(ClassSerializerInterceptor)
+@UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
     constructor(@Inject('USER_SERVICE') private userClient: ClientProxy) {}
 
     @Post('register')
-    // @UseInterceptors(TokenInterceptor)
+    @UseInterceptors(TokenInterceptor)
     @ApiOperation({summary: 'Register a new user'})
     @ApiBody({type: RegisterUserDto})
     @ApiResponse({
@@ -38,9 +49,9 @@ export class AuthController {
     }
 
     @Post('login')
-    // @UseGuards(LocalAuthGuard)
+    @UseGuards(LocalAuthGuard)
     @HttpCode(HttpStatus.OK)
-    // @UseInterceptors(TokenInterceptor)
+    @UseInterceptors(TokenInterceptor)
     @ApiOperation({summary: 'Login with email/username and password'})
     @ApiBody({type: LoginUserDTO})
     @ApiResponse({
@@ -56,8 +67,8 @@ export class AuthController {
         return await lastValueFrom(this.userClient.send('LoginAuthCommand', {credentials}));
     }
 
-    @Get('/me')
-    // @UseGuards(SessionAuthGuard, JWTAuthGuard)
+    @Get('me')
+    @UseGuards(SessionAuthGuard, JWTAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({summary: 'Get current user profile'})
     @ApiResponse({

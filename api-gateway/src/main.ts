@@ -1,17 +1,53 @@
-import {VersioningType} from '@nestjs/common';
+import {ValidationPipe, VersioningType} from '@nestjs/common';
+import {ConfigService} from '@nestjs/config';
 import {NestFactory} from '@nestjs/core';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
+import {useContainer} from 'class-validator';
+import * as compression from 'compression';
+import * as cookieParser from 'cookie-parser';
+import * as session from 'express-session';
 
 import {AppModule} from './app.module';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
+    // Allowing custom validators to use injected services.
+    useContainer(app.select(AppModule), {fallbackOnErrors: true});
+    const configService = app.get(ConfigService);
+    const port = Number(configService.get<number>('PORT')) || 3000;
+
+    const sessionSecret = configService.getOrThrow<string>('SESSION_SECRET');
+
+    app.use(
+        session({
+            secret: sessionSecret,
+            resave: false,
+            saveUninitialized: false,
+            cookie: {
+                maxAge: 60000 * 60 * 24,
+                secure: process.env.NODE_ENV === 'production',
+            },
+        })
+    );
+
+    app.use(cookieParser(sessionSecret));
+    app.use(compression());
+    app.enableCors();
+
     app.setGlobalPrefix('api');
+
     app.enableVersioning({
         type: VersioningType.URI,
         defaultVersion: '1',
     });
+
+    app.useGlobalPipes(
+        new ValidationPipe({
+            whitelist: false,
+            forbidNonWhitelisted: false,
+        })
+    );
 
     const config = new DocumentBuilder()
         .setTitle('INFINIVISTA - User API')
@@ -22,6 +58,6 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/swagger-docs', app, document);
 
-    await app.listen(process.env.PORT ?? 3000);
+    await app.listen(port);
 }
 bootstrap();
