@@ -8,7 +8,6 @@ import {AppService} from '@/app.service';
 import {GlobalExceptionFilter} from '@/exception-filters/global-exception.filter';
 import {MessagingGateway} from '@/modules/messaging/messaging.gateway';
 
-import {AuthModule} from './modules/auth/auth.module';
 import {MessagingModule} from './modules/messaging/messaging.module';
 
 @Module({
@@ -28,7 +27,6 @@ import {MessagingModule} from './modules/messaging/messaging.module';
             }),
             inject: [ConfigService],
         }),
-        AuthModule,
         MessagingModule,
     ],
     controllers: [AppController],

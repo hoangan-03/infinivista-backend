@@ -123,6 +123,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         // Add stack trace if not in production
         if (this.config_service.get('NODE_ENV') !== 'production') {
             // Use array format instead of string with newlines
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             errorResponse.stackFrames = exception.stack ? this.formatStackAsArray(exception.stack) : [];
         }
 
