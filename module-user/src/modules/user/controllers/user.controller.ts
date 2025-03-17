@@ -1,281 +1,102 @@
-import { Controller, Post, Body, Get, Param, Patch, Put, Delete, UseGuards } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from "@nestjs/swagger";
-import { User } from "@/entities/user.entity";
-import { UserService } from "@/modules/user/services/user.service";
-import { UpdateUserDto } from "@/modules/user/dto/update-user.dto";
-import { SecurityAnswer } from "@/entities/security-answer.entity";
-import { Setting } from "@/entities/setting.entity";
-import { SettingType } from "@/modules/user/enums/setting.enum";
-import { JWTAuthGuard } from "@/modules/auth/guards/jwt-auth.guard";
-import { AuthUser } from "../decorators/user.decorator";
-import { ProfilePrivacy } from "../enums/profile-privacy.enum";
+import {UseGuards} from '@nestjs/common';
+import {MessagePattern} from '@nestjs/microservices';
 
-@ApiTags("users")
-@Controller("users")
+import {SecurityAnswer} from '@/entities/security-answer.entity';
+import {Setting} from '@/entities/setting.entity';
+import {User} from '@/entities/user.entity';
+import {JWTAuthGuard} from '@/modules/auth/guards/jwt-auth.guard';
+import {UpdateUserDto} from '@/modules/user/dto/update-user.dto';
+import {SettingType} from '@/modules/user/enums/setting.enum';
+import {UserService} from '@/modules/user/services/user.service';
+
+import {ProfilePrivacy} from '../enums/profile-privacy.enum';
+
 export class UsersController {
-  constructor(private readonly userService: UserService) {}
-  @Get()
-  @ApiOperation({ summary: "Get all users" })
-  @ApiResponse({ status: 200, description: "Return all users", type: [User] })
-  @ApiResponse({
-    status: 401,
-    description: "Unauthorized - Invalid or missing token",
-  })
-  async getList(): Promise<User[]> {
-    return this.userService.getAll();
-  }
+    constructor(private readonly userService: UserService) {}
+    @MessagePattern('TestUserCommand')
+    async test(): Promise<string> {
+        return 'This is a test';
+    }
 
-  @Get(":id")
-  @ApiOperation({ summary: "Get user by ID" })
-  @ApiResponse({ status: 200, description: "Return user by ID", type: User })
-  @ApiResponse({
-    status: 400,
-    description: "Bad Request - Invalid input data",
-  })
-  @ApiResponse({
-    status: 401,
-    description: "Unauthorized - Invalid or missing token",
-  })
-  @ApiResponse({
-    status: 404,
-    description: "Not Found - User not found with the provided ID",
-  })
-  async getById(@Param("id") id: string): Promise<User> {
-    return this.userService.getOne({ where: { id } });
-  }
+    @MessagePattern('TestAmountUserCommand')
+    async testAmount(payload: {amount: number}): Promise<string> {
+        return `This is a test with amount: ${payload.amount}.\nHere is twice the amount: ${payload.amount * 2}`;
+    }
 
-  @Patch(":id")
-  @ApiOperation({ summary: 'Update user' })
-  @ApiBody({ type: UpdateUserDto })
-  @ApiResponse({ status: 200, description: "Return updated user", type: User })
-  @ApiResponse({
-    status: 401,
-    description: "Unauthorized - Invalid credentials",
-  })
-  @ApiResponse({
-    status: 404,
-    description: "Not Found - User not found with the provided ID",
-  })
-  async update(
-    @Param("id") id: string,
-    @Body() user: UpdateUserDto
-  ): Promise<User> {
-    return this.userService.updateProfile(id, user);
-  }
+    @MessagePattern('GetAllUserCommand')
+    async getList(): Promise<User[]> {
+        return this.userService.getAll();
+    }
 
-  @Put(":id/profile-picture")
-  @ApiOperation({ summary: "Update user profile picture" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        imageUrl: {
-          type: "string",
-          example: "https://example.com/image.jpg",
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Profile picture updated",
-    type: User,
-  })
-  @ApiResponse({
-    status: 401,
-    description: "Unauthorized - Invalid credentials",
-  })
-  @ApiResponse({
-    status: 404,
-    description: "Not Found - User not found with the provided ID",
-  })
-  async updateProfilePicture(
-    @Param("id") id: string,
-    @Body("imageUrl") imageUrl: string
-  ): Promise<User> {
-    return this.userService.updateProfilePicture(id, imageUrl);
-  }
+    @MessagePattern('GetByIdUserCommand')
+    async getById(payload: {id: string}): Promise<User> {
+        return this.userService.getOne({where: {id: payload.id}});
+    }
 
-  @Put(":id/cover-photo")
-  @ApiOperation({ summary: "Update user cover photo" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        imageUrl: {
-          type: "string",
-          example: "https://example.com/cover.jpg",
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 200, description: "Cover photo updated", type: User })
-  @ApiResponse({
-    status: 401,
-    description: "Unauthorized - Invalid credentials",
-  })
-  @ApiResponse({
-    status: 404,
-    description: "Not Found - User not found with the provided ID",
-  })
-  async updateCoverPhoto(
-    @Param("id") id: string,
-    @Body("imageUrl") imageUrl: string
-  ): Promise<User> {
-    return this.userService.updateCoverPhoto(id, imageUrl);
-  }
+    @MessagePattern('UpdateUserCommand')
+    async update(payload: {id: string; user: UpdateUserDto}): Promise<User> {
+        return this.userService.updateProfile(payload.id, payload.user);
+    }
 
-  @Put(":id/settings")
-  @ApiOperation({ summary: "Update user settings" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        type: {
-          type: "string",
-          enum: Object.values(SettingType),
-        },
-        value: {
-          type: "string",
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 200, description: "Settings updated", type: Setting })
-  @ApiResponse({
-    status: 401,
-    description: "Unauthorized - Invalid credentials",
-  })
-  @ApiResponse({
-    status: 404,
-    description: "Not Found - User not found with the provided ID",
-  })
-  async updateSettings(
-    @Param("id") id: string,
-    @Body("type") type: SettingType,
-    @Body("value") value: string
-  ): Promise<Setting> {
-    return this.userService.updateUserSettings(id, type, value);
-  }
+    @MessagePattern('UpdateProfilePictureUserCommand')
+    async updateProfilePicture(payload: {id: string; imageUrl: string}): Promise<User> {
+        return this.userService.updateProfilePicture(payload.id, payload.imageUrl);
+    }
 
-  @Post(":id/security-questions")
-  @ApiOperation({ summary: "Set user security questions" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        answers: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              questionId: { type: "string" },
-              answer: { type: "string" },
-            },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 201,
-    description: "Security questions set",
-    type: [SecurityAnswer],
-  })
-  async setSecurityQuestions(
-    @Param("id") id: string,
-    @Body("answers") answers: { questionId: string; answer: string }[]
-  ): Promise<SecurityAnswer[]> {
-    return this.userService.setSecurityQuestions(id, answers);
-  }
+    @MessagePattern('UpdateCoverPhotoUserCommand')
+    async updateCoverPhoto(payload: {id: string; imageUrl: string}): Promise<User> {
+        return this.userService.updateCoverPhoto(payload.id, payload.imageUrl);
+    }
 
-  @Put(":id/online-status")
-  @ApiOperation({ summary: "Toggle user online status" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        isOnline: {
-          type: "boolean",
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Online status updated",
-    type: User,
-  })
-  async toggleOnlineStatus(
-    @Param("id") id: string,
-    @Body("isOnline") isOnline: boolean
-  ): Promise<User> {
-    return this.userService.toggleOnlineStatus(id, isOnline);
-  }
+    @MessagePattern('UpdateSettingsUserCommand')
+    async updateSettings(payload: {id: string; type: SettingType; value: string}): Promise<Setting> {
+        return this.userService.updateUserSettings(payload.id, payload.type, payload.value);
+    }
 
-  @Put(":id/suspend")
-  @ApiOperation({ summary: "Suspend/unsuspend user" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        suspended: {
-          type: "boolean",
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: "User suspension status updated",
-    type: User,
-  })
-  async suspendUser(
-    @Param("id") id: string,
-    @Body("suspended") suspended: boolean
-  ): Promise<User> {
-    return this.userService.suspendUser(id, suspended);
-  }
+    @MessagePattern('SetSecurityQuestionsUserCommand')
+    async setSecurityQuestions(payload: {
+        id: string;
+        answers: {questionId: string; answer: string}[];
+    }): Promise<SecurityAnswer[]> {
+        return this.userService.setSecurityQuestions(payload.id, payload.answers);
+    }
 
-  @Get(":id/full-profile")
-  @ApiOperation({
-    summary:
-      "Get user's full profile including settings and security questions",
-  })
-  @ApiResponse({ status: 200, description: "Full user profile", type: User })
-  async getFullProfile(@Param("id") id: string): Promise<User> {
-    return this.userService.getUserWithFullProfile(id);
-  }
+    @MessagePattern('ToggleOnlineStatusUserCommand')
+    async toggleOnlineStatus(payload: {id: string; isOnline: boolean}): Promise<User> {
+        return this.userService.toggleOnlineStatus(payload.id, payload.isOnline);
+    }
 
-  @Put(':id/suspend')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Temporarily suspend account' })
-  async suspendAccount(@AuthUser() user: User): Promise<User> {
-    return this.userService.suspendAccount(user.id);
-  }
+    @MessagePattern('SuspendUserCommand')
+    async suspendUser(payload: {id: string; suspended: boolean}): Promise<User> {
+        return this.userService.suspendUser(payload.id, payload.suspended);
+    }
 
-  @Put(':id/unsuspend')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Reactivate suspended account' })
-  async unsuspendAccount(@AuthUser() user: User): Promise<User> {
-    return this.userService.unsuspendAccount(user.id);
-  }
+    @MessagePattern('GetProfileUserCommand')
+    async getFullProfile(payload: {id: string}): Promise<User> {
+        return this.userService.getUserWithFullProfile(payload.id);
+    }
 
-  @Delete(':id')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Permanently delete account' })
-  async deleteAccount(@AuthUser() user: User): Promise<void> {
-    return this.userService.deleteAccount(user.id);
-  }
+    @MessagePattern('SuspendAccountUserCommand')
+    @UseGuards(JWTAuthGuard)
+    async suspendAccount(payload: {id: string}): Promise<User> {
+        return this.userService.suspendAccount(payload.id);
+    }
 
-  @Put(':id/profile-privacy')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Update profile privacy settings' })
-  async updateProfilePrivacy(
-    @AuthUser() user: User,
-    @Body('privacy') privacy: ProfilePrivacy
-  ): Promise<User> {
-    return this.userService.updateProfilePrivacy(user.id, privacy);
-  }
+    @MessagePattern('UnsuspendAccountUserCommand')
+    @UseGuards(JWTAuthGuard)
+    async unsuspendAccount(payload: {id: string}): Promise<User> {
+        return this.userService.unsuspendAccount(payload.id);
+    }
 
+    @MessagePattern('DeleteUserCommand')
+    @UseGuards(JWTAuthGuard)
+    async deleteAccount(payload: {id: string}): Promise<void> {
+        return this.userService.deleteAccount(payload.id);
+    }
+
+    @MessagePattern('UpdateProfilePrivacyUserCommand')
+    @UseGuards(JWTAuthGuard)
+    async updateProfilePrivacy(payload: {id: string; privacy: ProfilePrivacy}): Promise<User> {
+        return this.userService.updateProfilePrivacy(payload.id, payload.privacy);
+    }
 }

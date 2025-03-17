@@ -8,5 +8,5 @@ export enum EmoteIcon {
     CRYING = 'crying',
     HEART = 'heart',
     THUMBS_UP = 'thumbs_up',
-    THUMBS_DOWN = 'thumbs_down'
+    THUMBS_DOWN = 'thumbs_down',
 }

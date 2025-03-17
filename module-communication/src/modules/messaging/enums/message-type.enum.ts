@@ -1,4 +1,4 @@
 export enum MessageType {
-  TEXT = "TEXT",
-  ATTACHMENT = "ATTACHMENT",
+    TEXT = 'TEXT',
+    ATTACHMENT = 'ATTACHMENT',
 }

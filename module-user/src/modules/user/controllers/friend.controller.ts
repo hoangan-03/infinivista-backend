@@ -1,80 +1,60 @@
-import { FriendRequest } from "@/entities/friend-request.entity";
-import { Friend } from "@/entities/friend.entity";
-import { User } from "@/entities/user.entity";
-import { JWTAuthGuard } from "@/modules/auth/guards/jwt-auth.guard";
-import { Controller, Post, UseGuards, Param, Put, Body, Delete, Get } from "@nestjs/common";
-import { ApiTags, ApiOperation } from "@nestjs/swagger";
-import { AuthUser } from "../decorators/user.decorator";
-import { FriendService } from "../services/friend.service";
+import {MessagePattern} from '@nestjs/microservices';
 
-@ApiTags('friends')
-@Controller('users/friends')
+import {Friend} from '@/entities/friend.entity';
+import {FriendRequest} from '@/entities/friend-request.entity';
+import {User} from '@/entities/user.entity';
+
+import {FriendService} from '../services/friend.service';
+
 export class FriendController {
-  constructor(private readonly friendService: FriendService) {}
+    constructor(private readonly friendService: FriendService) {}
 
-  @Post('request/:recipientId')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Send friend request' })
-  async sendFriendRequest(
-    @AuthUser() user: User,
-    @Param('recipientId') recipientId: string
-  ): Promise<FriendRequest> {
-    return this.friendService.sendFriendRequest(user.id, recipientId);
-  }
+    // @Post('request/:recipientId')
+    // @UseGuards(JWTAuthGuard)
+    @MessagePattern('SendRequestFriendCommand')
+    async sendFriendRequest(payload: {userId: string; recipientId: string}): Promise<FriendRequest> {
+        return this.friendService.sendFriendRequest(payload.userId, payload.recipientId);
+    }
 
-  @Put('request/:requestId')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Accept or decline friend request' })
-  async respondToRequest(
-    @AuthUser() user: User,
-    @Param('requestId') requestId: string,
-    @Body('accept') accept: boolean
-  ): Promise<void> {
-    return this.friendService.respondToFriendRequest(requestId, user.id, accept);
-  }
+    // @Put('request/:requestId')
+    // @UseGuards(JWTAuthGuard)
+    @MessagePattern('RespondToRequestFriendCommand')
+    async respondToRequest(payload: {userId: string; requestId: string; accept: boolean}): Promise<void> {
+        return this.friendService.respondToFriendRequest(payload.requestId, payload.userId, payload.accept);
+    }
 
-  @Delete(':friendId')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Remove friend' })
-  async removeFriend(
-    @AuthUser() user: User,
-    @Param('friendId') friendId: string
-  ): Promise<void> {
-    return this.friendService.removeFriend(user.id, friendId);
-  }
+    // @Delete(':friendId')
+    // @UseGuards(JWTAuthGuard)
+    @MessagePattern('RemoveFriendCommand')
+    async removeFriend(payload: {userId: string; friendId: string}): Promise<void> {
+        return this.friendService.removeFriend(payload.userId, payload.friendId);
+    }
 
-  @Post('block/:userId')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Block user' })
-  async blockUser(
-    @AuthUser() user: User,
-    @Param('userId') blockedUserId: string
-  ): Promise<void> {
-    return this.friendService.blockUser(user.id, blockedUserId);
-  }
+    // @Post('block/:userId')
+    // @UseGuards(JWTAuthGuard)
+    @MessagePattern('BlockUserCommand')
+    async blockUser(payload: {userId: string; blockedUserId: string}): Promise<void> {
+        return this.friendService.blockUser(payload.userId, payload.blockedUserId);
+    }
 
-  @Get()
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Get friends list' })
-  async getFriends(@AuthUser() user: User): Promise<User[]> {
-    return this.friendService.getFriends(user.id);
-  }
+    // @Get()
+    // @UseGuards(JWTAuthGuard)
+    @MessagePattern('GetAllFriendCommand')
+    async getFriends(payload: {userId: string}): Promise<User[]> {
+        return this.friendService.getFriends(payload.userId);
+    }
 
-  @Get('requests')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Get pending friend requests' })
-  async getFriendRequests(@AuthUser() user: User): Promise<FriendRequest[]> {
-    return this.friendService.getFriendRequests(user.id);
-  }
+    // @Get('requests')
+    // @UseGuards(JWTAuthGuard)
+    @MessagePattern('GetRequestsFriendCommand')
+    async getFriendRequests(payload: {userId: string}): Promise<FriendRequest[]> {
+        return this.friendService.getFriendRequests(payload.userId);
+    }
 
-  @Put(':friendId/group')
-  @UseGuards(JWTAuthGuard)
-  @ApiOperation({ summary: 'Update friend group' })
-  async updateFriendGroup(
-    @AuthUser() user: User,
-    @Param('friendId') friendId: string,
-    @Body('group') group: string
-  ): Promise<Friend> {
-    return this.friendService.updateFriendGroup(user.id, friendId, group);
-  }
+    // @Put(':friendId/group')
+    // @UseGuards(JWTAuthGuard)
+    @MessagePattern('UpdateGroupFriendCommand')
+    async updateFriendGroup(payload: {userId: string; friendId: string; group: string}): Promise<Friend> {
+        return this.friendService.updateFriendGroup(payload.userId, payload.friendId, payload.group);
+    }
 }

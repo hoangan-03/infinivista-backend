@@ -1,0 +1,14 @@
+{
+    "name": "infinivista-backend",
+    "version": "1.0.0",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "up": "docker compose up -d",
+        "down": "docker compose down",
+        "rebuild": "npm run down && docker compose build && npm run up"
+    },
+    "author": "",
+    "license": "ISC",
+    "description": ""
+}
