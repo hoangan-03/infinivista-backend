@@ -1,7 +1,7 @@
 import {Module} from '@nestjs/common';
 import {TypeOrmModule} from '@nestjs/typeorm';
 
-import {CallHistories} from '@/entities/call-histories.entity';
+import {CallHistories} from '@/entities/call-history.entity';
 import {GroupChat} from '@/entities/group-chat.entity';
 import {Message} from '@/entities/message.entity';
 import {MessageAttachment} from '@/entities/message-attachment.entity';

@@ -1,7 +1,7 @@
 import {MessagePattern} from '@nestjs/microservices';
 
-import {NewsFeed} from '@/entities/news-feed.entity';
-import {Post as PostEntity} from '@/entities/post.entity';
+import {NewsFeed} from '@/entities/local/news-feed.entity';
+import {Post as PostEntity} from '@/entities/local/post.entity';
 
 import {FeedService} from './feed.service';
 

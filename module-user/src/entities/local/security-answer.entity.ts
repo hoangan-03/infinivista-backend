@@ -1,8 +1,8 @@
 import {IsNotEmpty, MaxLength} from 'class-validator';
 import {Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
-import {BaseEntity} from '@/entities/base-class';
-import {User} from '@/entities/user.entity';
+import {BaseEntity} from '@/entities/local/base-class';
+import {User} from '@/entities/local/user.entity';
 
 import {SecurityQuestion} from './security-question.entity';
 

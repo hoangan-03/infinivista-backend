@@ -1,13 +1,12 @@
-import {Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {EmoteIcon} from '@/modules/messaging/enums/emote-icon.enum';
 import {MessageStatus} from '@/modules/messaging/enums/message-status.enum';
-import {MessageType} from '@/modules/messaging/enums/message-type.enum';
 
+import {UserReference} from './external/user.entity';
+import {GroupChat} from './group-chat.entity';
 import {MessageAttachment} from './message-attachment.entity';
 import {MessageText} from './message-text.entity';
-import {UserMessagesGroupChat} from './user-messages-group-chat.entity';
-import {UserMessagesUser} from './user-messages-user.entity';
 
 @Entity()
 export class Message {
@@ -32,22 +31,22 @@ export class Message {
     @Column({type: 'enum', enum: EmoteIcon, nullable: true})
     emotion?: EmoteIcon;
 
-    @Column({type: 'enum', enum: MessageType, nullable: false})
-    type: MessageType;
-
-    @OneToOne(() => MessageText, (messageText) => messageText.message, {nullable: true})
+    @OneToOne(() => MessageText, (messageText) => messageText.message, {nullable: true, onDelete: 'CASCADE'})
     @JoinColumn()
     textMessage?: MessageText;
 
-    @OneToOne(() => MessageAttachment, (messageAttachment) => messageAttachment.message, {nullable: true})
-    @JoinColumn()
-    attachment?: MessageAttachment;
+    @OneToMany(() => MessageAttachment, (messageAttachment) => messageAttachment.message, {
+        nullable: true,
+        cascade: true,
+    })
+    attachment?: MessageAttachment[];
 
-    @OneToOne(() => UserMessagesUser, (userMessage) => userMessage.message, {nullable: true})
-    @JoinColumn()
-    userMessages?: UserMessagesUser;
+    @ManyToOne(() => UserReference, (sender) => sender.sentMessages)
+    sender: UserReference;
 
-    @OneToOne(() => UserMessagesGroupChat, (groupMessage) => groupMessage.message, {nullable: true})
-    @JoinColumn()
-    groupMessages?: UserMessagesGroupChat;
+    @ManyToOne(() => UserReference, (receiver) => receiver.receivedMessages)
+    receiver: UserReference;
+
+    @ManyToOne(() => GroupChat, (groupChat) => groupChat.messages)
+    groupChat: GroupChat;
 }

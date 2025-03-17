@@ -1,7 +1,7 @@
 import {IsNotEmpty, IsOptional, IsString, Length} from 'class-validator';
 import {Column, Entity, PrimaryGeneratedColumn} from 'typeorm';
 
-import {BaseEntity} from '@/entities/base-class';
+import {BaseEntity} from '@/entities/local/base-class';
 import {PaymentMethodType} from '@/modules/user/enums/payment-method.enum';
 
 @Entity({name: 'payment_methods'})

@@ -1,4 +1,4 @@
-import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {Message} from './message.entity';
 
@@ -10,6 +10,6 @@ export class MessageText {
     @Column({type: 'text'})
     text: string;
 
-    @ManyToOne(() => Message, (message) => message.textMessage, {onDelete: 'CASCADE'})
+    @OneToOne(() => Message, (message) => message.textMessage)
     message: Message;
 }

@@ -2,15 +2,15 @@ import {Injectable, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
-import {LiveStreamHistory} from '@/entities/live-stream-history.entity';
-import {NewsFeed} from '@/entities/news-feed.entity';
-import {Post} from '@/entities/post.entity';
-import {Reaction} from '@/entities/reaction.entity';
-import {Story} from '@/entities/story.entity';
-import {UserCommentsNewsFeed} from '@/entities/user-comments-news-feed.entity';
-import {UserReactsNewsFeed} from '@/entities/user-reacts-news-feed.entity';
-import {UserSharesNewsFeed} from '@/entities/user-shares-news-feed.entity';
-import {UserViewsNewsFeed} from '@/entities/user-views-news-feed.entity';
+import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
+import {NewsFeed} from '@/entities/local/news-feed.entity';
+import {Post} from '@/entities/local/post.entity';
+import {Reaction} from '@/entities/local/reaction.entity';
+import {Story} from '@/entities/local/story.entity';
+// import {UserCommentsNewsFeed} from '@/entities/user-comments-news-feed.entity';
+// import {UserReactsNewsFeed} from '@/entities/user-reacts-news-feed.entity';
+// import {UserSharesNewsFeed} from '@/entities/user-shares-news-feed.entity';
+// import {UserViewsNewsFeed} from '@/entities/user-views-news-feed.entity';
 
 @Injectable()
 export class FeedService {

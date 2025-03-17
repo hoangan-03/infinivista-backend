@@ -1,7 +1,7 @@
 import {Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
-import {BaseEntity} from '@/entities/base-class';
-import {User} from '@/entities/user.entity';
+import {BaseEntity} from '@/entities/local/base-class';
+import {User} from '@/entities/local/user.entity';
 
 @Entity({name: 'user_status'})
 export class UserStatus extends BaseEntity {

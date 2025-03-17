@@ -1,4 +1,4 @@
-import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {NewsFeed} from './news-feed.entity';
 
@@ -16,6 +16,8 @@ export class LiveStreamHistory {
     @Column()
     stream_url: string;
 
-    @ManyToOne(() => NewsFeed, (newsFeed) => newsFeed.liveStreams)
+    // @ManyToOne(() => NewsFeed, (newsFeed) => newsFeed.liveStreams)
+    // newsFeed: NewsFeed;
+    @OneToOne(() => NewsFeed, (newsFeed) => newsFeed.liveStream)
     newsFeed: NewsFeed;
 }

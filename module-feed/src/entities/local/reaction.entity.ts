@@ -1,6 +1,8 @@
-import {Column, Entity, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
-import {BaseEntity} from '@/entities/base-class';
+import {BaseEntity} from '@/entities/local/base-class';
+
+import {NewsFeed} from './news-feed.entity';
 @Entity()
 export class Reaction extends BaseEntity {
     @PrimaryGeneratedColumn()
@@ -11,4 +13,7 @@ export class Reaction extends BaseEntity {
 
     @Column()
     reaction_image_url: string;
+
+    @ManyToOne(() => NewsFeed, (newsFeed) => newsFeed.reactions)
+    newsFeed: NewsFeed;
 }
