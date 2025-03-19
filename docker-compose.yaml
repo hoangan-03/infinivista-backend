@@ -14,86 +14,100 @@ services:
             - local_pgdata:/var/lib/postgresql/data
         networks:
             - infinivista_backend
-    rabbitmq:
-        image: rabbitmq:3.11-management
-        container_name: infinivista_rabbitmq
+    
+    pgadmin:
+        image: dpage/pgadmin4
+        container_name: infinivista_pgadmin
+        restart: always
         ports:
-            - "15672:15672"
-        healthcheck:
-            test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-            interval: 5s
-            timeout: 5s
-            retries: 5
+            - "8888:80"
+        env_file:
+            - .env
         volumes:
-            - rabbitmq_data:/var/lib/rabbitmq
+            - pgadmin_data:/var/lib/pgadmin
         networks:
             - infinivista_backend
-    gateway:
-        build:
-            context: ./api-gateway
-            dockerfile: Dockerfile
-        container_name: infinivista_gateway
-        restart: always
-        ports:
-            - "3000:3000"
-        env_file:
-            - ./api-gateway/.env
-        depends_on:
-            rabbitmq:
-                condition: service_healthy
-        networks:
-            - infinivista_backend
-    user:
-        build:
-            context: ./module-user
-            dockerfile: Dockerfile
-        container_name: infinivista_user_module
-        restart: always
-        env_file:
-            - ./module-user/.env
-            - ./api-gateway/.env
-        depends_on:
-            db:
-                condition: service_healthy
-            rabbitmq:
-                condition: service_healthy
-        networks:
-            - infinivista_backend
-    feed:
-        build:
-            context: ./module-feed
-            dockerfile: Dockerfile
-        container_name: infinivista_feed_module
-        restart: always
-        env_file:
-            - ./module-feed/.env
-            - ./api-gateway/.env
-        depends_on:
-            db:
-                condition: service_healthy
-            rabbitmq:
-                condition: service_healthy
-        networks:
-            - infinivista_backend
-    communication:
-        build:
-            context: ./module-communication
-            dockerfile: Dockerfile
-        container_name: infinivista_communication_module
-        restart: always
-        env_file:
-            - ./module-communication/.env
-            - ./api-gateway/.env
-        depends_on:
-            db:
-                condition: service_healthy
-            rabbitmq:
-                condition: service_healthy
-        networks:
-            - infinivista_backend
+    # rabbitmq:
+    #     image: rabbitmq:3.11-management
+    #     container_name: infinivista_rabbitmq
+    #     ports:
+    #         - "15672:15672"
+    #     healthcheck:
+    #         test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+    #         interval: 5s
+    #         timeout: 5s
+    #         retries: 5
+    #     volumes:
+    #         - rabbitmq_data:/var/lib/rabbitmq
+    #     networks:
+    #         - infinivista_backend
+    # gateway:
+    #     build:
+    #         context: ./api-gateway
+    #         dockerfile: Dockerfile
+    #     container_name: infinivista_gateway
+    #     restart: always
+    #     ports:
+    #         - "3000:3000"
+    #     env_file:
+    #         - ./api-gateway/.env
+    #     depends_on:
+    #         rabbitmq:
+    #             condition: service_healthy
+    #     networks:
+    #         - infinivista_backend
+    # user:
+    #     build:
+    #         context: ./module-user
+    #         dockerfile: Dockerfile
+    #     container_name: infinivista_user_module
+    #     restart: always
+    #     env_file:
+    #         - ./module-user/.env
+    #         - ./api-gateway/.env
+    #     depends_on:
+    #         db:
+    #             condition: service_healthy
+    #         rabbitmq:
+    #             condition: service_healthy
+    #     networks:
+    #         - infinivista_backend
+    # feed:
+    #     build:
+    #         context: ./module-feed
+    #         dockerfile: Dockerfile
+    #     container_name: infinivista_feed_module
+    #     restart: always
+    #     env_file:
+    #         - ./module-feed/.env
+    #         - ./api-gateway/.env
+    #     depends_on:
+    #         db:
+    #             condition: service_healthy
+    #         rabbitmq:
+    #             condition: service_healthy
+    #     networks:
+    #         - infinivista_backend
+    # communication:
+    #     build:
+    #         context: ./module-communication
+    #         dockerfile: Dockerfile
+    #     container_name: infinivista_communication_module
+    #     restart: always
+    #     env_file:
+    #         - ./module-communication/.env
+    #         - ./api-gateway/.env
+    #     depends_on:
+    #         db:
+    #             condition: service_healthy
+    #         rabbitmq:
+    #             condition: service_healthy
+    #     networks:
+    #         - infinivista_backend
 networks:
     infinivista_backend:
         driver: bridge
 volumes:
+    pgadmin_data:
     local_pgdata:
     rabbitmq_data:
