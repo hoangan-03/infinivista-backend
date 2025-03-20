@@ -1,7 +1,5 @@
-import {UnauthorizedException} from '@nestjs/common';
+import {Controller, UnauthorizedException} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
-import {Response} from 'express';
-
 import {User} from '@/entities/local/user.entity';
 import {AuthService} from '@/modules/auth/auth.service';
 import {AuthTokenResponseDto} from '@/modules/auth/dto/auth-token-response.dto';
@@ -11,21 +9,29 @@ import {FacebookUserData} from '@/modules/auth/interfaces/facebook-user.interfac
 import {GoogleUserData} from '@/modules/auth/interfaces/google-user.interface';
 import {JwtPayload} from './interfaces/jwt-payload.interface';
 
+@Controller()
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
-    @MessagePattern('RegisterAuthCommand')
-    async register(payload: {signUp: RegisterUserDto; response: Response}): Promise<RegisterUserResponseDto> {
-        return this.authService.register(payload.signUp, payload.response);
-    }
-
-    @MessagePattern('LoginAuthCommand')
-    async login(payload: {user: User; response: Response}): Promise<AuthTokenResponseDto> {
-        if (!payload.user) {
-            throw new UnauthorizedException('Authentication failed');
+      @MessagePattern('RegisterAuthCommand')
+      async register(payload: { signUp: RegisterUserDto }): Promise<RegisterUserResponseDto> {
+        try {
+          const result = await this.authService.register(payload.signUp);
+          return result;
+        } catch (error) {
+          throw error;
         }
-        return this.authService.login(payload.user, payload.response);
-    }
+      }
+
+       
+      @MessagePattern('LoginAuthCommand')
+      async login(payload: { user: User }): Promise<AuthTokenResponseDto> {
+        if (!payload.user) {
+          throw new UnauthorizedException('Authentication failed');
+        }
+        const result = await this.authService.login(payload.user);
+        return result;
+      }
 
     @MessagePattern('GetProfileAuthCommand')
     async me(payload: {user: User}): Promise<User> {
@@ -33,20 +39,20 @@ export class AuthController {
     }
 
     @MessagePattern('LogoutAuthCommand')
-    async logout(payload: {response: Response}): Promise<{message: string}> {
-        return this.authService.logout(payload.response);
+    async logout(): Promise<{message: string}> {
+        return this.authService.logout();
     }
 
     @MessagePattern('GoogleAuthCommand')
-    async googleAuth(payload: {userData: GoogleUserData; response: Response}): Promise<AuthTokenResponseDto> {
+    async googleAuth(payload: {userData: GoogleUserData}): Promise<AuthTokenResponseDto> {
         const user = await this.authService.validateOrCreateGoogleUser(payload.userData);
-        return this.authService.googleLogin(user, payload.response);
+        return this.authService.googleLogin(user);
     }
 
     @MessagePattern('FacebookAuthCommand')
-    async facebookAuth(payload: {userData: FacebookUserData; response: Response}): Promise<AuthTokenResponseDto> {
+    async facebookAuth(payload: {userData: FacebookUserData}): Promise<AuthTokenResponseDto> {
         const user = await this.authService.validateOrCreateFacebookUser(payload.userData);
-        return this.authService.facebookLogin(user, payload.response);
+        return this.authService.facebookLogin(user);
     }
 
     @MessagePattern('ValidateUserAuthCommand')

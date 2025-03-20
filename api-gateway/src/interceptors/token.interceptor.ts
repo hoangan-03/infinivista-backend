@@ -15,12 +15,8 @@ export class TokenInterceptor implements NestInterceptor {
     intercept(context: ExecutionContext, next: CallHandler<any>): Observable<any> {
         return next.handle().pipe(
             map(async (data) => {
-                // Check if we have valid data to process
                 if (!data) return data;
-
                 const response = context.switchToHttp().getResponse<Response>();
-
-                // Handle different response types
                 let user: User;
 
                 // If it's a response with 'data' property like AuthTokenResponseDto
@@ -39,9 +35,7 @@ export class TokenInterceptor implements NestInterceptor {
                 // If it's a user object directly
                 if (data && data.id) {
                     user = data;
-                    // const token = this.authService.signToken(user);
                     const token = await lastValueFrom(this.userClient.send<string>('SignTokenAuthCommand', {user}));
-
                     response.setHeader('Authorization', `Bearer ${token}`);
                     response.cookie('token', token, {
                         httpOnly: true,
@@ -50,7 +44,6 @@ export class TokenInterceptor implements NestInterceptor {
                         secure: process.env.NODE_ENV === 'production',
                     });
                 }
-
                 return data;
             })
         );

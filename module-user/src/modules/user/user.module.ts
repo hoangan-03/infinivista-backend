@@ -13,6 +13,10 @@ import {UsersController} from '@/modules/user/controllers/user.controller';
 import {UserService} from '@/modules/user/services/user.service';
 import {IsUserAlreadyExist} from '@/modules/user/validators/is-user-already-exist.validator';
 import {IsUserNameAlreadyExist} from '@/modules/user/validators/is-username-already-exist.validator';
+import { GroupReference } from '@/entities/external/group.entity';
+import { NewsFeedReference } from '@/entities/external/news-feed.entity';
+import { PageReference } from '@/entities/external/page.entity';
+import { ProductReference } from '@/entities/external/product.entity';
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -23,7 +27,10 @@ import {IsUserNameAlreadyExist} from '@/modules/user/validators/is-username-alre
             SecurityQuestion,
             PaymentMethods,
             FriendRequest,
-            Friend,
+            Friend,      GroupReference,
+            PageReference,
+            NewsFeedReference,
+            ProductReference
         ]),
     ],
     controllers: [UsersController],

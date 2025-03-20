@@ -5,7 +5,7 @@ import {APP_FILTER} from '@nestjs/core';
 import {AppController} from './app.controller';
 import {AppService} from './app.service';
 import {AuthModule} from './auth/auth.module';
-import {GlobalExceptionFilter} from './exception-filters/global-exception.filter';
+import {RpcClientExceptionFilter} from './exception-filters/rpc-exception.filter';
 // import {FeedModule} from './feed/feed.module';
 // import {MessagingModule} from './messaging/messaging.module';
 // import {UserModule} from './user/user.module';
@@ -25,7 +25,7 @@ import {GlobalExceptionFilter} from './exception-filters/global-exception.filter
         AppService,
         {
             provide: APP_FILTER,
-            useClass: GlobalExceptionFilter,
+            useClass: RpcClientExceptionFilter,
         },
     ],
 })

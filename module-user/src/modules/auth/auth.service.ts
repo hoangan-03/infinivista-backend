@@ -1,4 +1,4 @@
-import {Injectable, InternalServerErrorException, UnauthorizedException} from '@nestjs/common';
+import {BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
 import {Response} from 'express';
 
@@ -20,27 +20,48 @@ export class AuthService {
         private readonly jwtService: JwtService
     ) {}
 
-    async register(signUp: RegisterUserDto, response: Response): Promise<RegisterUserResponseDto> {
+    async register(signUp: RegisterUserDto): Promise<RegisterUserResponseDto & { tokens?: AuthTokenResponseDto }> {
         try {
-            const hashedPassword = await hashPassword(signUp.password);
-            const user: User = await this.userService.create({
-                ...signUp,
-                password: hashedPassword,
-            });
-
-            const tokens = this.generateTokens(user);
-            this.setAuthCookies(response, tokens);
-            return new RegisterUserResponseDto(user.username, user.email);
+          const hashedPassword = await hashPassword(signUp.password);
+          const user: User = await this.userService.create({
+            ...signUp,
+            password: hashedPassword,
+          });
+    
+          const tokens = this.generateTokens(user);
+          
+          // Return both user info and tokens
+          const result = new RegisterUserResponseDto(user.username, user.email);
+          return {
+            ...result,
+            tokens
+          };
         } catch (error: any) {
+            // PostgreSQL unique constraint violation
+            // if (error?.code === '23505') {
+            //   if (error.detail?.includes('email')) {
+            //     throw new BadRequestException('The email address is already registered.');
+            //   } else if (error.detail?.includes('username')) {
+            //     throw new BadRequestException('This username is already taken.');
+            //   } else {
+            //     throw new BadRequestException('A user with these credentials already exists.');
+            //   }
+            // }
+            
+            // Forward other errors
+            if (error.response?.statusCode) {
+              throw error;
+            }
+            
             throw new InternalServerErrorException(error.message || 'Registration failed.');
-        }
+          }
     }
 
-    async login(user: User, response: Response): Promise<AuthTokenResponseDto> {
+    async login(user: User): Promise<AuthTokenResponseDto> {
         const tokens = this.generateTokens(user);
-        // this.setAuthCookies(response, tokens);
         return tokens;
     }
+
     generateTokens(user: User): AuthTokenResponseDto {
         const payload: JwtPayload = {
             sub: user.id.toString(),
@@ -62,17 +83,8 @@ export class AuthService {
             },
         };
     }
-    setAuthCookies(response: Response, tokens: AuthTokenResponseDto): void {
-        // response.cookie('token', tokens.data.access_token, {
-        //     httpOnly: true,
-        //     signed: true,
-        //     sameSite: 'strict',
-        //     secure: process.env.NODE_ENV === 'production',
-        // });
-        // response.setHeader('Authorization', `Bearer ${tokens.data.access_token}`);
-    }
 
-    async verifyPayload(payload: JwtPayload): Promise<User> {
+       async verifyPayload(payload: JwtPayload): Promise<User> {
         const userId = payload.sub;
 
         try {
@@ -103,18 +115,7 @@ export class AuthService {
         return userWithoutPassword;
     }
 
-    logout(response: Response): {message: string} {
-        // Clear authentication cookies
-        response.clearCookie('token', {
-            httpOnly: true,
-            signed: true,
-            sameSite: 'strict',
-            secure: process.env.NODE_ENV === 'production',
-        });
-
-        // Remove the authorization header
-        response.removeHeader('Authorization');
-
+    logout(): {message: string} {
         return {message: 'Logged out successfully'};
     }
 
@@ -142,15 +143,12 @@ export class AuthService {
         }
     }
 
-    async googleLogin(user: User, response: Response): Promise<AuthTokenResponseDto> {
+    async googleLogin(user: User): Promise<AuthTokenResponseDto> {
         if (!user) {
             throw new UnauthorizedException('No user from Google login');
         }
 
-        const tokens = this.generateTokens(user);
-        this.setAuthCookies(response, tokens);
-
-        return tokens;
+        return this.generateTokens(user);
     }
 
     async validateOrCreateGoogleUser(userData: GoogleUserData): Promise<User> {
@@ -177,14 +175,11 @@ export class AuthService {
         }
     }
 
-    async facebookLogin(user: User, response: Response): Promise<AuthTokenResponseDto> {
+    async facebookLogin(user: User): Promise<AuthTokenResponseDto> {
         if (!user) {
             throw new UnauthorizedException('No user from Facebook login');
         }
 
-        const tokens = this.generateTokens(user);
-        this.setAuthCookies(response, tokens);
-
-        return tokens;
+        return this.generateTokens(user);
     }
 }

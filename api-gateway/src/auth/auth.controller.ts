@@ -49,11 +49,8 @@ export class AuthController {
         status: 400,
         description: 'Bad Request - Invalid input data',
     })
-    async register(
-        @Body() signUp: RegisterUserDto,
-        @Res({passthrough: true}) response: Response
-    ): Promise<RegisterUserResponseDto> {
-        return await lastValueFrom(this.userClient.send('RegisterAuthCommand', {signUp, response}));
+    async register(@Body() signUp: RegisterUserDto): Promise<RegisterUserResponseDto> {
+        return await lastValueFrom(this.userClient.send('RegisterAuthCommand', {signUp}));
     }
 
     @Post('login')
@@ -71,15 +68,12 @@ export class AuthController {
         status: 401,
         description: 'Unauthorized - Invalid credentials',
     })
-    async login(
-        @CurrentUser() user: User,
-        @Res({passthrough: true}) response: Response
-    ): Promise<AuthTokenResponseDto> {
+    async login(@CurrentUser() user: User): Promise<AuthTokenResponseDto> {
         if (!user) {
             throw new UnauthorizedException('Authentication failed');
         }
 
-        return await lastValueFrom(this.userClient.send('LoginAuthCommand', {user, response}));
+        return await lastValueFrom(this.userClient.send('LoginAuthCommand', {user}));
     }
 
     @Get('me')
