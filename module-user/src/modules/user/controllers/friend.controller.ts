@@ -1,8 +1,8 @@
 import {MessagePattern} from '@nestjs/microservices';
 
-import {Friend} from '@/entities/friend.entity';
-import {FriendRequest} from '@/entities/friend-request.entity';
-import {User} from '@/entities/user.entity';
+import {Friend} from '@/entities/local/friend.entity';
+import {FriendRequest} from '@/entities/local/friend-request.entity';
+import {User} from '@/entities/local/user.entity';
 
 import {FriendService} from '../services/friend.service';
 

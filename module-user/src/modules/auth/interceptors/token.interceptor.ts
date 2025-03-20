@@ -4,7 +4,7 @@ import type {Response} from 'express';
 import {Observable} from 'rxjs';
 import {map} from 'rxjs/operators';
 
-import type {User} from '@/entities/user.entity';
+import type {User} from '@/entities/local/user.entity';
 import {AuthService} from '@/modules/auth/auth.service';
 
 @Injectable()
@@ -14,12 +14,10 @@ export class TokenInterceptor implements NestInterceptor {
     intercept(context: ExecutionContext, next: CallHandler<any>): Observable<any> {
         return next.handle().pipe(
             map((data) => {
-                // Check if we have valid data to process
                 if (!data) return data;
 
                 const response = context.switchToHttp().getResponse<Response>();
 
-                // Handle different response types
                 let user: User;
 
                 // If it's a response with 'data' property like AuthTokenResponseDto
@@ -35,13 +33,12 @@ export class TokenInterceptor implements NestInterceptor {
                     return data;
                 }
 
-                // If it's a user object directly
                 if (data && data.id) {
                     user = data;
-                    const token = this.authService.signToken(user);
+                    const tokens = this.authService.generateTokens(user);
 
-                    response.setHeader('Authorization', `Bearer ${token}`);
-                    response.cookie('token', token, {
+                    response.setHeader('Authorization', `Bearer ${tokens.data.access_token}`);
+                    response.cookie('token', tokens.data.access_token, {
                         httpOnly: true,
                         signed: true,
                         sameSite: 'strict',

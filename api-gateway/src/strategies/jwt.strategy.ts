@@ -6,7 +6,6 @@ import {ExtractJwt, JwtFromRequestFunction, Strategy} from 'passport-jwt';
 import {lastValueFrom} from 'rxjs';
 
 import {User} from '@/entities/user-module/user.entity';
-// import {AuthService} from '@/modules/auth/auth.service';
 import {JwtPayload} from '@/interfaces/jwt-payload.interface';
 
 const extractJwtFromCookie: JwtFromRequestFunction = (request) => {

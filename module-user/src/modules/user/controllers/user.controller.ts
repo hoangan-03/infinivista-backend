@@ -1,9 +1,9 @@
 import {UseGuards} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
-import {SecurityAnswer} from '@/entities/security-answer.entity';
-import {Setting} from '@/entities/setting.entity';
-import {User} from '@/entities/user.entity';
+import {SecurityAnswer} from '@/entities/local/security-answer.entity';
+import {Setting} from '@/entities/local/setting.entity';
+import {User} from '@/entities/local/user.entity';
 import {JWTAuthGuard} from '@/modules/auth/guards/jwt-auth.guard';
 import {UpdateUserDto} from '@/modules/user/dto/update-user.dto';
 import {SettingType} from '@/modules/user/enums/setting.enum';

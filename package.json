@@ -6,7 +6,9 @@
         "test": "echo \"Error: no test specified\" && exit 1",
         "up": "docker compose up -d",
         "down": "docker compose down",
-        "rebuild": "npm run down && docker compose build && npm run up"
+        "rebuild": "npm run down && docker compose build && npm run up",
+        "lint": "cd api-gateway && npm run lint && cd ../module-communication && npm run lint && cd ../module-feed && npm run lint && cd ../module-user && npm run lint",
+        "format": "cd api-gateway && npm run format && cd ../module-communication && npm run format && cd ../module-feed && npm run format && cd ../module-user && npm run format"
     },
     "author": "",
     "license": "ISC",

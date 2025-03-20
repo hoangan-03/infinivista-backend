@@ -6,19 +6,19 @@ import {AppController} from './app.controller';
 import {AppService} from './app.service';
 import {AuthModule} from './auth/auth.module';
 import {GlobalExceptionFilter} from './exception-filters/global-exception.filter';
-import {FeedModule} from './feed/feed.module';
-import {MessagingModule} from './messaging/messaging.module';
-import {UserModule} from './user/user.module';
+// import {FeedModule} from './feed/feed.module';
+// import {MessagingModule} from './messaging/messaging.module';
+// import {UserModule} from './user/user.module';
 
 @Module({
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
         }),
-        UserModule,
+        // UserModule,
         AuthModule,
-        FeedModule,
-        MessagingModule,
+        // FeedModule,
+        // MessagingModule,
     ],
     controllers: [AppController],
     providers: [

@@ -1,8 +1,8 @@
-import {ValidationPipe, VersioningType} from '@nestjs/common';
+import {BadRequestException, ValidationPipe, VersioningType} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
 import {NestFactory} from '@nestjs/core';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
-import {useContainer} from 'class-validator';
+import {useContainer, ValidationError} from 'class-validator';
 import * as compression from 'compression';
 import * as cookieParser from 'cookie-parser';
 import * as session from 'express-session';
@@ -12,7 +12,6 @@ import {AppModule} from './app.module';
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
-    // Allowing custom validators to use injected services.
     useContainer(app.select(AppModule), {fallbackOnErrors: true});
     const configService = app.get(ConfigService);
     const port = Number(configService.get<number>('PORT')) || 3000;
@@ -44,8 +43,16 @@ async function bootstrap() {
 
     app.useGlobalPipes(
         new ValidationPipe({
-            whitelist: false,
-            forbidNonWhitelisted: false,
+            whitelist: true,
+            transform: true,
+            forbidNonWhitelisted: true,
+            transformOptions: {enableImplicitConversion: true},
+            exceptionFactory: (validationErrors: ValidationError[] = []) => {
+                return new BadRequestException({
+                    message: 'Validation failed',
+                    errors: validationErrors,
+                });
+            },
         })
     );
 

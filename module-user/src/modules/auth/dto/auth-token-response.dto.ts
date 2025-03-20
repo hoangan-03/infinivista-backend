@@ -1,7 +1,7 @@
 export class TokenDataDto {
     access_token: string;
 
-    expires_in: number;
+    // expires_in: number;
     // no need
 
     refresh_token: string;

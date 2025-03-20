@@ -1,8 +1,8 @@
-import {Module} from '@nestjs/common';
+// import {Module} from '@nestjs/common';
 
-import {MessagingController} from './messaging.controller';
+// import {MessagingController} from './messaging.controller';
 
-@Module({
-    controllers: [MessagingController],
-})
-export class MessagingModule {}
+// @Module({
+//     controllers: [MessagingController],
+// })
+// export class MessagingModule {}

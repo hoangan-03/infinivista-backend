@@ -2,10 +2,10 @@ import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
-import {BlockedUser} from '@/entities/blocked-user.entity';
-import {Friend} from '@/entities/friend.entity';
-import {FriendRequest} from '@/entities/friend-request.entity';
-import {User} from '@/entities/user.entity';
+import {BlockedUser} from '@/entities/local/blocked-user.entity';
+import {Friend} from '@/entities/local/friend.entity';
+import {FriendRequest} from '@/entities/local/friend-request.entity';
+import {User} from '@/entities/local/user.entity';
 
 import {FriendStatus} from '../enums/friend-status.enum';
 

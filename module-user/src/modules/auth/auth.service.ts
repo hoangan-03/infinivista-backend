@@ -1,13 +1,17 @@
-import {BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException} from '@nestjs/common';
+import {Injectable, InternalServerErrorException, UnauthorizedException} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs';
+import {Response} from 'express';
 
-import {User} from '@/entities/user.entity';
+import {User} from '@/entities/local/user.entity';
 import {AuthConstant} from '@/modules/auth/constant';
 import {AuthTokenResponseDto} from '@/modules/auth/dto/auth-token-response.dto';
 import {RegisterUserDto} from '@/modules/auth/dto/register-user.dto';
+import {RegisterUserResponseDto} from '@/modules/auth/dto/register-user-response.dto';
+import {FacebookUserData} from '@/modules/auth/interfaces/facebook-user.interface';
+import {GoogleUserData} from '@/modules/auth/interfaces/google-user.interface';
 import {JwtPayload} from '@/modules/auth/interfaces/jwt-payload.interface';
 import {UserService} from '@/modules/user/services/user.service';
+import {checkPassword, hashPassword} from '@/utils/hash-password';
 
 @Injectable()
 export class AuthService {
@@ -16,55 +20,30 @@ export class AuthService {
         private readonly jwtService: JwtService
     ) {}
 
-    async hashPassword(password: string): Promise<string> {
-        const salt = await bcrypt.genSalt();
-        return bcrypt.hash(password, salt);
-    }
-
-    async checkPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-        return hashedPassword ? await bcrypt.compare(plainPassword, hashedPassword) : false;
-    }
-
-    async register(signUp: RegisterUserDto): Promise<User> {
+    async register(signUp: RegisterUserDto, response: Response): Promise<RegisterUserResponseDto> {
         try {
-            const hashedPassword = await this.hashPassword(signUp.password);
-            const user = await this.userService.create({
+            const hashedPassword = await hashPassword(signUp.password);
+            const user: User = await this.userService.create({
                 ...signUp,
                 password: hashedPassword,
             });
-            delete user.password;
-            return user; // Return the full user object with ID
-        } catch (error) {
-            if (error instanceof Error) {
-                if ('code' in error && (error as any).code === '23505') {
-                    throw new BadRequestException('Email or username already exists.');
-                }
-                throw new InternalServerErrorException(error.message || 'Registration failed.');
-            }
-            throw new InternalServerErrorException('An unexpected error occurred.');
+
+            const tokens = this.generateTokens(user);
+            this.setAuthCookies(response, tokens);
+            return new RegisterUserResponseDto(user.username, user.email);
+        } catch (error: any) {
+            throw new InternalServerErrorException(error.message || 'Registration failed.');
         }
     }
 
-    async login(email: string, password: string): Promise<AuthTokenResponseDto> {
-        let user: User;
-
-        try {
-            user = await this.userService.getOne({where: {email}});
-        } catch (error) {
-            throw new UnauthorizedException(`Invalid credentials`);
-        }
-
-        if (!(await this.checkPassword(password, user.password || ''))) {
-            throw new UnauthorizedException(`Invalid credentials`);
-        }
-
-        return this.generateTokens(user);
+    async login(user: User, response: Response): Promise<AuthTokenResponseDto> {
+        const tokens = this.generateTokens(user);
+        // this.setAuthCookies(response, tokens);
+        return tokens;
     }
-
-    private generateTokens(user: User): AuthTokenResponseDto {
+    generateTokens(user: User): AuthTokenResponseDto {
         const payload: JwtPayload = {
             sub: user.id.toString(),
-            email: user.email,
             username: user.username,
         };
 
@@ -79,104 +58,133 @@ export class AuthService {
         return {
             data: {
                 access_token,
-                expires_in: AuthConstant.ACCESS_TOKEN_EXPIRATION,
                 refresh_token,
             },
         };
     }
+    setAuthCookies(response: Response, tokens: AuthTokenResponseDto): void {
+        // response.cookie('token', tokens.data.access_token, {
+        //     httpOnly: true,
+        //     signed: true,
+        //     sameSite: 'strict',
+        //     secure: process.env.NODE_ENV === 'production',
+        // });
+        // response.setHeader('Authorization', `Bearer ${tokens.data.access_token}`);
+    }
 
     async verifyPayload(payload: JwtPayload): Promise<User> {
-        let user: User;
+        const userId = payload.sub;
 
         try {
-            user = await this.userService.getOne({
-                where: {id: payload.sub},
-            });
+            return await this.userService.getOne({where: {id: userId}});
         } catch (error) {
             throw new UnauthorizedException(`There isn't any user with ID: ${payload.sub}`);
         }
-
-        return user;
     }
 
-    async signToken(user: User | any): Promise<string> {
-        // First check if we got a complete user object with ID
+    async validateUser(username: string, password: string): Promise<User> {
+        let user: User;
+
+        try {
+            user = await this.userService.getOne({where: {username}});
+
+            if (!(await checkPassword(password, user.password || ''))) {
+                throw new UnauthorizedException(`Invalid credentials`);
+            }
+            return user;
+        } catch (err) {
+            throw new UnauthorizedException(`Invalid credentials`);
+        }
+    }
+
+    getUserProfile(user: User): Omit<User, 'password'> {
+        const userWithoutPassword = {...user};
+        delete userWithoutPassword.password;
+        return userWithoutPassword;
+    }
+
+    logout(response: Response): {message: string} {
+        // Clear authentication cookies
+        response.clearCookie('token', {
+            httpOnly: true,
+            signed: true,
+            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production',
+        });
+
+        // Remove the authorization header
+        response.removeHeader('Authorization');
+
+        return {message: 'Logged out successfully'};
+    }
+
+    async validateOrCreateFacebookUser(userData: FacebookUserData): Promise<User> {
+        const {email, firstName, lastName} = userData;
+
+        try {
+            const user = await this.userService.getOne({
+                where: {username: email},
+            });
+            return user;
+        } catch (error) {
+            const randomPassword =
+                Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10) + 'A1@';
+
+            const hashedPassword = await hashPassword(randomPassword);
+
+            const newUser = await this.userService.create({
+                email: email,
+                password: hashedPassword,
+                username: `${firstName} ${lastName}`,
+            });
+
+            return newUser;
+        }
+    }
+
+    async googleLogin(user: User, response: Response): Promise<AuthTokenResponseDto> {
         if (!user) {
-            throw new UnauthorizedException('Invalid user data: Missing user object');
+            throw new UnauthorizedException('No user from Google login');
         }
 
-        if (user.id === undefined || user.id === null) {
-            throw new UnauthorizedException('Invalid user data: Missing user ID');
-        }
+        const tokens = this.generateTokens(user);
+        this.setAuthCookies(response, tokens);
 
-        const payload: JwtPayload = {
-            sub: user.id.toString(),
-            email: user.email || '',
-            username: user.username || '',
-            iat: Date.now(),
-            exp: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 days
-        };
-
-        return this.jwtService.sign(payload);
+        return tokens;
     }
 
-    // async generatePasswordResetToken(
-    //   email: string,
-    //   type: "email" | "sms" | "authenticator"
-    // ): Promise<string> {
-    //   const user = await this.userService.findByEmail(email);
-    //   if (!user) {
-    //     throw new NotFoundException(`User with email ${email} not found`);
-    //   }
+    async validateOrCreateGoogleUser(userData: GoogleUserData): Promise<User> {
+        const {email, firstName, lastName} = userData;
 
-    //   // Generate random token
-    //   const token = crypto.randomBytes(32).toString("hex");
+        try {
+            const user = await this.userService.getOne({
+                where: {username: email},
+            });
+            return user;
+        } catch (error) {
+            const randomPassword =
+                Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10) + 'A1@';
 
-    //   // Save token to database
-    //   await this.passwordResetRepository.save({
-    //     email,
-    //     token,
-    //     type,
-    //   });
+            const hashedPassword = await hashPassword(randomPassword);
 
-    //   // If email, send reset email
-    //   if (type === "email") {
-    //     await this.mailerService.sendPasswordResetEmail(email, token);
-    //   }
-    //   // If SMS, send via SMS service
-    //   else if (type === "sms") {
-    //     await this.smsService.sendPasswordResetSMS(user.phoneNumber, token);
-    //   }
+            const newUser = await this.userService.create({
+                email: email,
+                password: hashedPassword,
+                username: `${firstName} ${lastName}`,
+            });
 
-    //   return token;
-    // }
-    // async resetPassword(token: string, newPassword: string): Promise<boolean> {
-    //   // Find valid token (not expired)
-    //   const resetRequest = await this.passwordResetRepository.findOne({
-    //     where: { token },
-    //     order: { created_at: "DESC" },
-    //   });
+            return newUser;
+        }
+    }
 
-    //   if (!resetRequest) {
-    //     throw new UnauthorizedException("Invalid or expired token");
-    //   }
+    async facebookLogin(user: User, response: Response): Promise<AuthTokenResponseDto> {
+        if (!user) {
+            throw new UnauthorizedException('No user from Facebook login');
+        }
 
-    //   // Check if token is not older than 1 hour
-    //   const now = new Date();
-    //   const tokenDate = new Date(resetRequest.created_at);
-    //   if (now.getTime() - tokenDate.getTime() > 3600000) {
-    //     throw new UnauthorizedException("Token has expired");
-    //   }
+        const tokens = this.generateTokens(user);
+        this.setAuthCookies(response, tokens);
 
-    //   // Get user and update password
-    //   const user = await this.userService.findByEmail(resetRequest.email);
-    //   const hashedPassword = await this.hashPassword(newPassword);
-    //   user.password = hashedPassword;
-    //   await this.userService.save(user);
-
-    //   // Delete token
-    //   await this.passwordResetRepository.delete({ token });
-
-    //   return true;
-    // }
+        return tokens;
+    }
 }

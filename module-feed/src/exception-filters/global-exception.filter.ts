@@ -1,135 +1,76 @@
-// module-feed/src/exception-filters/global-exception.filter.ts
-import {
-    ArgumentsHost,
-    BadRequestException,
-    Catch,
-    ExceptionFilter,
-    HttpException,
-    ValidationError,
-} from '@nestjs/common';
+import {ArgumentsHost, BadRequestException, Catch, ExceptionFilter, HttpException, Logger} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
 import {Response} from 'express';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
+    private readonly logger = new Logger(GlobalExceptionFilter.name);
+
     constructor(private readonly config_service: ConfigService) {}
 
-    private formatValidationErrors(errors: ValidationError[]): Record<string, string[]> {
-        const formattedErrors: Record<string, string[]> = {};
+    private formatTimestamp(): string {
+        const now = new Date();
+        const gmtPlus7 = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+        const day = String(gmtPlus7.getUTCDate()).padStart(2, '0');
+        const month = String(gmtPlus7.getUTCMonth() + 1).padStart(2, '0');
+        const year = gmtPlus7.getUTCFullYear();
+        const hours = String(gmtPlus7.getUTCHours()).padStart(2, '0');
+        const minutes = String(gmtPlus7.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(gmtPlus7.getUTCSeconds()).padStart(2, '0');
 
-        errors.forEach((error) => {
-            if (error.constraints) {
-                formattedErrors[error.property] = Object.values(error.constraints);
-            }
-
-            if (error.children?.length) {
-                const childErrors = this.formatValidationErrors(error.children);
-                Object.keys(childErrors).forEach((key) => {
-                    formattedErrors[`${error.property}.${key}`] = childErrors[key];
-                });
-            }
-        });
-
-        return formattedErrors;
-    }
-
-    private formatStackAsArray(stack: string): any[] {
-        if (!stack) return [];
-
-        // Split the stack trace into lines
-        const lines = stack.split('\n');
-
-        // Process each stack frame
-        return lines.map((line) => {
-            // Extract file path, line, and column information
-            const match = line.match(/\s*at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
-            if (match) {
-                const [, functionName, filePath, lineNumber, columnNumber] = match;
-                // Return structured information about the stack frame
-                return {
-                    function: functionName,
-                    file: filePath,
-                    line: parseInt(lineNumber),
-                    column: parseInt(columnNumber),
-                };
-            }
-            // If it doesn't match the pattern, it might be the error message or another format
-            return {text: line.trim()};
-        });
-    }
-
-    private formatTimestampGMT7(date: Date): string {
-        // Create formatter for GMT+7 timezone (Bangkok, Hanoi, Jakarta)
-        const options: Intl.DateTimeFormatOptions = {
-            timeZone: 'Asia/Bangkok',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false,
-        };
-
-        // Format the date using the Thai locale and GMT+7 timezone
-        const formatter = new Intl.DateTimeFormat('en-US', options);
-
-        // Return formatted date string with explicit GMT+7 indicator
-        return formatter.format(date) + ' (GMT+7)';
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
     }
 
     catch(exception: any, host: ArgumentsHost) {
+        this.logger.error(exception);
+
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
         const status = exception instanceof HttpException ? exception.getStatus() : 500;
-        const timestamp = new Date();
 
         const errorResponse: any = {
             statusCode: status,
-            timestamp: this.formatTimestampGMT7(timestamp),
-            timestampISO: timestamp.toISOString(),
+            timestamp: this.formatTimestamp(),
+            message: 'Internal server error',
         };
 
         if (exception instanceof BadRequestException) {
             const exceptionResponse = exception.getResponse() as any;
 
-            if (Array.isArray(exceptionResponse.message)) {
-                const validationErrors: Record<string, string[]> = {};
-                exceptionResponse.message.forEach((message: string) => {
-                    const matches = message.match(/^The\s+(\w+)\s+(.+)$/);
-                    if (matches) {
-                        const [, field, error] = matches;
-                        if (!validationErrors[field]) {
-                            validationErrors[field] = [];
-                        }
-                        validationErrors[field].push(error);
-                    } else {
-                        // For messages that don't match the pattern, add them under a generic key
-                        if (!validationErrors['general']) {
-                            validationErrors['general'] = [];
-                        }
-                        validationErrors['general'].push(message);
-                    }
-                });
+            errorResponse.message = exceptionResponse.message || 'Bad request';
 
-                errorResponse.errors = validationErrors;
-                errorResponse.message = 'Validation failed';
-            } else {
-                errorResponse.message = exceptionResponse.message || 'Bad request';
+            if (exceptionResponse.errors) {
+                errorResponse.errors = exceptionResponse.errors;
+            } else if (Array.isArray(exceptionResponse.message)) {
+                try {
+                    const validationErrors = {};
+                    exceptionResponse.message.forEach((message: string) => {
+                        const matches = message.match(/([a-zA-Z0-9.]+) (.+)/);
+                        if (matches && matches.length >= 3) {
+                            const [, field, error] = matches;
+                            validationErrors[field] = error;
+                        } else {
+                            if (!validationErrors['general']) validationErrors['general'] = [];
+                            validationErrors['general'].push(message);
+                        }
+                    });
+
+                    errorResponse.errors = validationErrors;
+                } catch (e) {
+                    errorResponse.errors = {message: exceptionResponse.message};
+                }
             }
+        } else if (exception instanceof HttpException) {
+            const exceptionResponse = exception.getResponse() as any;
+            errorResponse.message = exceptionResponse.message || exception.message;
         } else {
             errorResponse.message = exception.message || 'Internal server error';
         }
 
-        // Add stack trace if not in production
-        if (this.config_service.get('NODE_ENV') !== 'production') {
-            // Use array format instead of string with newlines
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            errorResponse.stackFrames = exception.stack ? this.formatStackAsArray(exception.stack) : [];
-        }
+        // if (this.config_service.get('NODE_ENV') !== 'production') {
+        //   errorResponse.stack = exception.stack;
+        // }
 
-        response.status(status).json({
-            error: errorResponse,
-        });
+        response.status(status).json(errorResponse);
     }
 }

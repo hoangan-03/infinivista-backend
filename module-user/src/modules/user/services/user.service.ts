@@ -3,10 +3,10 @@ import {InjectRepository} from '@nestjs/typeorm';
 import {FindOneOptions, Repository} from 'typeorm';
 import {validate as uuidValidate} from 'uuid';
 
-import {PaymentMethods} from '@/entities/payment-methods.entity';
-import {SecurityAnswer} from '@/entities/security-answer.entity';
-import {Setting} from '@/entities/setting.entity';
-import {User} from '@/entities/user.entity';
+import {PaymentMethods} from '@/entities/local/payment-methods.entity';
+import {SecurityAnswer} from '@/entities/local/security-answer.entity';
+import {Setting} from '@/entities/local/setting.entity';
+import {User} from '@/entities/local/user.entity';
 import {UpdateUserDto} from '@/modules/user/dto/update-user.dto';
 import {SettingType} from '@/modules/user/enums/setting.enum';
 

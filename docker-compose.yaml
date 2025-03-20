@@ -27,51 +27,51 @@ services:
             - pgadmin_data:/var/lib/pgadmin
         networks:
             - infinivista_backend
-    # rabbitmq:
-    #     image: rabbitmq:3.11-management
-    #     container_name: infinivista_rabbitmq
-    #     ports:
-    #         - "15672:15672"
-    #     healthcheck:
-    #         test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-    #         interval: 5s
-    #         timeout: 5s
-    #         retries: 5
-    #     volumes:
-    #         - rabbitmq_data:/var/lib/rabbitmq
-    #     networks:
-    #         - infinivista_backend
-    # gateway:
-    #     build:
-    #         context: ./api-gateway
-    #         dockerfile: Dockerfile
-    #     container_name: infinivista_gateway
-    #     restart: always
-    #     ports:
-    #         - "3000:3000"
-    #     env_file:
-    #         - ./api-gateway/.env
-    #     depends_on:
-    #         rabbitmq:
-    #             condition: service_healthy
-    #     networks:
-    #         - infinivista_backend
-    # user:
-    #     build:
-    #         context: ./module-user
-    #         dockerfile: Dockerfile
-    #     container_name: infinivista_user_module
-    #     restart: always
-    #     env_file:
-    #         - ./module-user/.env
-    #         - ./api-gateway/.env
-    #     depends_on:
-    #         db:
-    #             condition: service_healthy
-    #         rabbitmq:
-    #             condition: service_healthy
-    #     networks:
-    #         - infinivista_backend
+    rabbitmq:
+        image: rabbitmq:3.11-management
+        container_name: infinivista_rabbitmq
+        ports:
+            - "15672:15672"
+        healthcheck:
+            test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        volumes:
+            - rabbitmq_data:/var/lib/rabbitmq
+        networks:
+            - infinivista_backend
+    gateway:
+        build:
+            context: ./api-gateway
+            dockerfile: Dockerfile
+        container_name: infinivista_gateway
+        restart: always
+        ports:
+            - "3000:3000"
+        env_file:
+            - ./api-gateway/.env
+        depends_on:
+            rabbitmq:
+                condition: service_healthy
+        networks:
+            - infinivista_backend
+    user:
+        build:
+            context: ./module-user
+            dockerfile: Dockerfile
+        container_name: infinivista_user_module
+        restart: always
+        env_file:
+            - ./module-user/.env
+            - ./api-gateway/.env
+        depends_on:
+            db:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+        networks:
+            - infinivista_backend
     # feed:
     #     build:
     #         context: ./module-feed

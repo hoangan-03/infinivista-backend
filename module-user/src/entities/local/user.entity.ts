@@ -28,8 +28,8 @@ export class User extends BaseEntity {
     @Column({type: 'varchar', length: 255, unique: true})
     username: string;
 
-    @Exclude()
     @Column({type: 'varchar', length: 255, nullable: true})
+    @Exclude({toPlainOnly: true})
     password?: string;
 
     @Column({type: 'varchar', length: 15, nullable: true})
