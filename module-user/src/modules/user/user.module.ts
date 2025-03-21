@@ -13,10 +13,9 @@ import {SecurityQuestion} from '@/entities/local/security-question.entity';
 import {Setting} from '@/entities/local/setting.entity';
 import {User} from '@/entities/local/user.entity';
 import {UserStatus} from '@/entities/local/user-status.entity';
-import {UsersController} from '@/modules/user/controllers/user.controller';
+import {UserController} from '@/modules/user/controllers/user.controller';
 import {UserService} from '@/modules/user/services/user.service';
-import {IsUserAlreadyExist} from '@/modules/user/validators/is-user-already-exist.validator';
-import {IsUserNameAlreadyExist} from '@/modules/user/validators/is-username-already-exist.validator';
+
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -34,8 +33,8 @@ import {IsUserNameAlreadyExist} from '@/modules/user/validators/is-username-alre
             ProductReference,
         ]),
     ],
-    controllers: [UsersController],
-    providers: [UserService, IsUserAlreadyExist, IsUserNameAlreadyExist],
+    controllers: [UserController],
+    providers: [UserService],
     exports: [UserService],
 })
 export class UserModule {}

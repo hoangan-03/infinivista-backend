@@ -44,17 +44,17 @@ export class AuthController {
         return this.authService.logout(payload.token);
     }
 
-    @MessagePattern('GoogleAuthCommand')
-    async googleAuth(payload: {userData: GoogleUserData}): Promise<AuthTokenResponseDto> {
-        const user = await this.authService.validateOrCreateGoogleUser(payload.userData);
-        return this.authService.googleLogin(user);
-    }
+    // @MessagePattern('GoogleAuthCommand')
+    // async googleAuth(payload: {userData: GoogleUserData}): Promise<AuthTokenResponseDto> {
+    //     const user = await this.authService.validateOrCreateGoogleUser(payload.userData);
+    //     return this.authService.googleLogin(user);
+    // }
 
-    @MessagePattern('FacebookAuthCommand')
-    async facebookAuth(payload: {userData: FacebookUserData}): Promise<AuthTokenResponseDto> {
-        const user = await this.authService.validateOrCreateFacebookUser(payload.userData);
-        return this.authService.facebookLogin(user);
-    }
+    // @MessagePattern('FacebookAuthCommand')
+    // async facebookAuth(payload: {userData: FacebookUserData}): Promise<AuthTokenResponseDto> {
+    //     const user = await this.authService.validateOrCreateFacebookUser(payload.userData);
+    //     return this.authService.facebookLogin(user);
+    // }
 
     @MessagePattern('ValidateUserAuthCommand')
     async validateUser(payload: {identifier: string; password: string}): Promise<User> {

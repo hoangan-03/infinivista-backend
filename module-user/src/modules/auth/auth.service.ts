@@ -31,31 +31,14 @@ export class AuthService {
     ) {}
 
     async register(signUp: RegisterUserDto): Promise<RegisterUserResponseDto & {tokens?: AuthTokenResponseDto}> {
-        try {
+     
             const hashedPassword = await hashPassword(signUp.password);
             const user: User = await this.userService.create({
                 ...signUp,
                 password: hashedPassword,
             });
             return new RegisterUserResponseDto(user.username, user.email);
-        } catch (error: any) {
-            // PostgreSQL unique constraint violation
-            if (error?.code === '23505') {
-                if (error.detail?.includes('email')) {
-                    throw new BadRequestException('The email address is already registered.');
-                } else if (error.detail?.includes('username')) {
-                    throw new BadRequestException('This username is already taken.');
-                } else {
-                    throw new BadRequestException('A user with these credentials already exists.');
-                }
-            }
-            // Forward other errors
-            if (error.response?.statusCode) {
-                throw error;
-            }
-
-            throw new InternalServerErrorException(error.message || 'Registration failed.');
-        }
+     
     }
 
     async login(user: User): Promise<AuthTokenResponseDto> {

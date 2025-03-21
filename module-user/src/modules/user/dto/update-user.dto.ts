@@ -8,7 +8,7 @@ export class UpdateUserDto {
     phoneNumber?: string;
 
     @IsOptional()
-    @IsDateString()
+    // @IsDateString()
     dob?: Date;
 
     @IsOptional()

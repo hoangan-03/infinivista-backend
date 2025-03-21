@@ -1,4 +1,3 @@
-// module-user/src/modules/auth/interceptors/token.interceptor.ts
 import {CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import type {Response} from 'express';
@@ -6,7 +5,6 @@ import {lastValueFrom, Observable} from 'rxjs';
 import {map} from 'rxjs/operators';
 
 import type {User} from '@/entities/user-module/user.entity';
-// import {AuthService} from '@/modules/auth/auth.service';
 
 @Injectable()
 export class TokenInterceptor implements NestInterceptor {

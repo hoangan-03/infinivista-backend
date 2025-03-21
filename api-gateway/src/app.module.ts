@@ -8,14 +8,14 @@ import {AuthModule} from './auth/auth.module';
 import {RpcExceptionFilter} from './exception-filters/rpc-exception.filter';
 // import {FeedModule} from './feed/feed.module';
 // import {MessagingModule} from './messaging/messaging.module';
-// import {UserModule} from './user/user.module';
+import {UserModule} from './user/user.module';
 
 @Module({
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
         }),
-        // UserModule,
+        UserModule,
         AuthModule,
         // FeedModule,
         // MessagingModule,

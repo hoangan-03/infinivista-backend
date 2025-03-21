@@ -19,7 +19,7 @@ export class UpdateUserDto {
         required: false,
     })
     @IsOptional()
-    @IsDateString()
+    // @IsDateString()
     dob?: Date;
 
     @ApiProperty({

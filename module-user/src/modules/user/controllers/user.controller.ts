@@ -9,8 +9,10 @@ import {SettingType} from '@/modules/user/enums/setting.enum';
 import {UserService} from '@/modules/user/services/user.service';
 
 import {ProfilePrivacy} from '../enums/profile-privacy.enum';
+import {Controller} from '@nestjs/common';
 
-export class UsersController {
+@Controller()
+export class UserController {
     constructor(private readonly userService: UserService) {}
     @MessagePattern('TestUserCommand')
     async test(): Promise<string> {
