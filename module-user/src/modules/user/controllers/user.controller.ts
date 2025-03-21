@@ -4,7 +4,6 @@ import {MessagePattern} from '@nestjs/microservices';
 import {SecurityAnswer} from '@/entities/local/security-answer.entity';
 import {Setting} from '@/entities/local/setting.entity';
 import {User} from '@/entities/local/user.entity';
-import {JWTAuthGuard} from '@/modules/auth/guards/jwt-auth.guard';
 import {UpdateUserDto} from '@/modules/user/dto/update-user.dto';
 import {SettingType} from '@/modules/user/enums/setting.enum';
 import {UserService} from '@/modules/user/services/user.service';
@@ -77,25 +76,21 @@ export class UsersController {
     }
 
     @MessagePattern('SuspendAccountUserCommand')
-    @UseGuards(JWTAuthGuard)
     async suspendAccount(payload: {id: string}): Promise<User> {
         return this.userService.suspendAccount(payload.id);
     }
 
     @MessagePattern('UnsuspendAccountUserCommand')
-    @UseGuards(JWTAuthGuard)
     async unsuspendAccount(payload: {id: string}): Promise<User> {
         return this.userService.unsuspendAccount(payload.id);
     }
 
     @MessagePattern('DeleteUserCommand')
-    @UseGuards(JWTAuthGuard)
     async deleteAccount(payload: {id: string}): Promise<void> {
         return this.userService.deleteAccount(payload.id);
     }
 
     @MessagePattern('UpdateProfilePrivacyUserCommand')
-    @UseGuards(JWTAuthGuard)
     async updateProfilePrivacy(payload: {id: string; privacy: ProfilePrivacy}): Promise<User> {
         return this.userService.updateProfilePrivacy(payload.id, payload.privacy);
     }

@@ -10,10 +10,14 @@ import {FacebookUserData} from '@/modules/auth/interfaces/facebook-user.interfac
 import {GoogleUserData} from '@/modules/auth/interfaces/google-user.interface';
 
 import {JwtPayload} from './interfaces/jwt-payload.interface';
+import {TokenBlacklistService} from './token-blacklist/token-blacklist.service';
 
 @Controller()
 export class AuthController {
-    constructor(private readonly authService: AuthService) {}
+    constructor(
+        private readonly authService: AuthService,
+        private readonly tokenBlacklistService: TokenBlacklistService
+    ) {}
 
     @MessagePattern('RegisterAuthCommand')
     async register(payload: {signUp: RegisterUserDto}): Promise<RegisterUserResponseDto> {
@@ -36,8 +40,8 @@ export class AuthController {
     }
 
     @MessagePattern('LogoutAuthCommand')
-    async logout(): Promise<{message: string}> {
-        return this.authService.logout();
+    async logout(payload: {token: string}): Promise<{message: string}> {
+        return this.authService.logout(payload.token);
     }
 
     @MessagePattern('GoogleAuthCommand')
@@ -55,6 +59,13 @@ export class AuthController {
     @MessagePattern('ValidateUserAuthCommand')
     async validateUser(payload: {identifier: string; password: string}): Promise<User> {
         return this.authService.validateUser(payload.identifier, payload.password);
+    }
+
+    @MessagePattern('CheckTokenBlacklistCommand')
+    async isTokenBlacklisted(payload: {token: string}): Promise<boolean> {
+        // Extract just the token part if it has the Bearer prefix
+        const tokenValue = payload.token?.replace('Bearer ', '');
+        return this.tokenBlacklistService.isBlacklisted(tokenValue);
     }
 
     @MessagePattern('VerifyJwtAuthCommand')

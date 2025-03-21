@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import {
     Body,
     ClassSerializerInterceptor,
@@ -7,6 +8,7 @@ import {
     HttpStatus,
     Inject,
     Post,
+    Req,
     Res,
     UnauthorizedException,
     UseGuards,
@@ -26,8 +28,8 @@ import {User} from '@/entities/user-module/user.entity';
 import {FacebookAuthGuard} from '@/guards/facebook-auth.guard';
 import {GoogleAuthGuard} from '@/guards/google-auth.guard';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
+import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 import {LocalAuthGuard} from '@/guards/local-auth.guard';
-import {SessionAuthGuard} from '@/guards/session-auth.guard';
 import {TokenInterceptor} from '@/interceptors/token.interceptor';
 
 @ApiTags('Auth')
@@ -54,7 +56,7 @@ export class AuthController {
     }
 
     @Post('login')
-    @UseGuards(LocalAuthGuard)
+    @UseGuards(JwtBlacklistGuard, LocalAuthGuard)
     @HttpCode(HttpStatus.OK)
     @UseInterceptors(TokenInterceptor)
     @ApiOperation({summary: 'Login with email/username and password'})
@@ -77,7 +79,7 @@ export class AuthController {
     }
 
     @Get('me')
-    @UseGuards(SessionAuthGuard, JWTAuthGuard)
+    @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
     @ApiBearerAuth()
     @ApiOperation({summary: 'Get current user profile'})
     @ApiResponse({
@@ -94,7 +96,7 @@ export class AuthController {
     }
 
     @Post('logout')
-    @UseGuards(JWTAuthGuard)
+    @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
     @ApiOperation({summary: 'Logout the current user'})
@@ -111,37 +113,57 @@ export class AuthController {
             },
         },
     })
-    async logout(@Res({passthrough: true}) response: Response): Promise<{message: string}> {
-        return await lastValueFrom(this.userClient.send('LogoutAuthCommand', {response}));
+    async logout(@Req() request: Request, @Res({passthrough: true}) response: Response): Promise<{message: string}> {
+        response.clearCookie('connect.sid');
+        response.clearCookie('token');
+
+        const token = (request.headers as any).authorization;
+
+        return await lastValueFrom(this.userClient.send('LogoutAuthCommand', {token}));
+    }
+
+    // Add these to your AuthController
+    @Get('google')
+    @UseGuards(GoogleAuthGuard)
+    @ApiOperation({summary: 'Login with Google'})
+    async googleAuth() {
+        // This is handled by the guard
+        // The guard redirects to Google
+    }
+
+    @Get('facebook')
+    @UseGuards(FacebookAuthGuard)
+    @ApiOperation({summary: 'Login with Facebook'})
+    async facebookAuth() {
+        // This is handled by the guard
+        // The guard redirects to Facebook
     }
 
     @Get('google/callback')
-    @UseGuards(GoogleAuthGuard)
+    @UseGuards(JwtBlacklistGuard, GoogleAuthGuard)
+    @UseInterceptors(TokenInterceptor)
     @ApiOperation({summary: 'Handle Google OAuth callback'})
     @ApiResponse({
         status: 200,
         description: 'User successfully logged in with Google',
         type: AuthTokenResponseDto,
     })
-    async googleAuthCallback(
-        @CurrentUser() userData: any,
-        @Res({passthrough: true}) response: Response
-    ): Promise<AuthTokenResponseDto> {
-        return await lastValueFrom(this.userClient.send('GoogleAuthCommand', {userData, response}));
+    async googleAuthCallback(@CurrentUser() userData: any): Promise<AuthTokenResponseDto> {
+        console.log('Google callback userData:', JSON.stringify(userData));
+        return await lastValueFrom(this.userClient.send('GoogleAuthCommand', {userData}));
     }
 
     @Get('facebook/callback')
-    @UseGuards(FacebookAuthGuard)
+    @UseGuards(JwtBlacklistGuard, FacebookAuthGuard)
+    @UseInterceptors(TokenInterceptor)
     @ApiOperation({summary: 'Handle Facebook OAuth callback'})
     @ApiResponse({
         status: 200,
         description: 'User successfully logged in with Facebook',
         type: AuthTokenResponseDto,
     })
-    async facebookAuthCallback(
-        @CurrentUser() userData: any,
-        @Res({passthrough: true}) response: Response
-    ): Promise<AuthTokenResponseDto> {
-        return await lastValueFrom(this.userClient.send('FacebookAuthCommand', {userData, response}));
+    async facebookAuthCallback(@CurrentUser() userData: any): Promise<AuthTokenResponseDto> {
+        console.log('Facebook callback userData:', JSON.stringify(userData));
+        return await lastValueFrom(this.userClient.send('FacebookAuthCommand', {userData}));
     }
 }

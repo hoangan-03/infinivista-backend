@@ -15,10 +15,10 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
         });
     }
 
-    async validate(username: string, password: string): Promise<User> {
+    async validate(identifier: string, password: string): Promise<User> {
         try {
             const user = await lastValueFrom(
-                this.userClient.send<User>('ValidateUserAuthCommand', {username, password})
+                this.userClient.send<User>('ValidateUserAuthCommand', {identifier, password})
             );
 
             if (!user) {

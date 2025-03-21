@@ -5,10 +5,9 @@ import {PassportModule} from '@nestjs/passport';
 
 import {AuthController} from '@/modules/auth/auth.controller';
 import {AuthService} from '@/modules/auth/auth.service';
-import {SessionSerializer} from '@/modules/auth/session.serializer';
-import {JwtStrategy} from '@/modules/auth/strategies/jwt.strategy';
-import {LocalStrategy} from '@/modules/auth/strategies/local.strategy';
 import {UserModule} from '@/modules/user/user.module';
+
+import {TokenBlacklistService} from './token-blacklist/token-blacklist.service';
 
 @Module({
     imports: [
@@ -31,6 +30,6 @@ import {UserModule} from '@/modules/user/user.module';
         }),
     ],
     controllers: [AuthController],
-    providers: [AuthService, LocalStrategy, JwtStrategy, SessionSerializer],
+    providers: [AuthService, TokenBlacklistService],
 })
 export class AuthModule {}

@@ -1,4 +1,10 @@
-import {BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException} from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    InternalServerErrorException,
+    Logger,
+    UnauthorizedException,
+} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
 
 import {User} from '@/entities/local/user.entity';
@@ -12,11 +18,16 @@ import {JwtPayload} from '@/modules/auth/interfaces/jwt-payload.interface';
 import {UserService} from '@/modules/user/services/user.service';
 import {checkPassword, hashPassword} from '@/utils/hash-password';
 
+import {TokenBlacklistService} from './token-blacklist/token-blacklist.service';
+
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
     constructor(
         private readonly userService: UserService,
-        private readonly jwtService: JwtService
+        private readonly jwtService: JwtService,
+
+        private readonly tokenBlacklistService: TokenBlacklistService
     ) {}
 
     async register(signUp: RegisterUserDto): Promise<RegisterUserResponseDto & {tokens?: AuthTokenResponseDto}> {
@@ -26,15 +37,7 @@ export class AuthService {
                 ...signUp,
                 password: hashedPassword,
             });
-
-            const tokens = this.generateTokens(user);
-
-            // Return both user info and tokens
-            const result = new RegisterUserResponseDto(user.username, user.email);
-            return {
-                ...result,
-                tokens,
-            };
+            return new RegisterUserResponseDto(user.username, user.email);
         } catch (error: any) {
             // PostgreSQL unique constraint violation
             if (error?.code === '23505') {
@@ -56,6 +59,7 @@ export class AuthService {
     }
 
     async login(user: User): Promise<AuthTokenResponseDto> {
+        this.logger.debug(`Logging in user: ${user.username}`);
         const tokens = this.generateTokens(user);
         return tokens;
     }
@@ -86,9 +90,16 @@ export class AuthService {
         const userId = payload.sub;
 
         try {
-            return await this.userService.getOne({where: {id: userId}});
-        } catch (error) {
-            throw new UnauthorizedException(`There isn't any user with ID: ${payload.sub}`);
+            this.logger.debug(`Verifying JWT payload: ${JSON.stringify(payload)}`);
+
+            const user = await this.userService.getOne({where: {id: userId}});
+
+            this.logger.log(`JWT verified for user: ${userId}, found: ${user.id} (${user.username})`);
+
+            return user;
+        } catch (error: any) {
+            this.logger.error(`JWT verification failed for user ID: ${userId}`, error.stack);
+            throw new UnauthorizedException('Invalid token payload');
         }
     }
 
@@ -110,13 +121,19 @@ export class AuthService {
             throw new UnauthorizedException(`Invalid credentials`);
         }
     }
-    getUserProfile(user: User): Omit<User, 'password'> {
+    getUserProfile(user: User) {
         const userWithoutPassword = {...user};
+        this.logger.log(`User profile retrieved: ${user.username}`);
         delete userWithoutPassword.password;
         return userWithoutPassword;
     }
 
-    logout(): {message: string} {
+    async logout(token: string): Promise<{message: string}> {
+        if (token) {
+            // Extract token from "Bearer TOKEN" format
+            const tokenValue = token.replace('Bearer ', '');
+            await this.tokenBlacklistService.blacklistToken(tokenValue);
+        }
         return {message: 'Logged out successfully'};
     }
 
