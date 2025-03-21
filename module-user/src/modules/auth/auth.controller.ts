@@ -1,5 +1,6 @@
 import {Controller, UnauthorizedException} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
+
 import {User} from '@/entities/local/user.entity';
 import {AuthService} from '@/modules/auth/auth.service';
 import {AuthTokenResponseDto} from '@/modules/auth/dto/auth-token-response.dto';
@@ -7,31 +8,27 @@ import {RegisterUserDto} from '@/modules/auth/dto/register-user.dto';
 import {RegisterUserResponseDto} from '@/modules/auth/dto/register-user-response.dto';
 import {FacebookUserData} from '@/modules/auth/interfaces/facebook-user.interface';
 import {GoogleUserData} from '@/modules/auth/interfaces/google-user.interface';
+
 import {JwtPayload} from './interfaces/jwt-payload.interface';
 
 @Controller()
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
-      @MessagePattern('RegisterAuthCommand')
-      async register(payload: { signUp: RegisterUserDto }): Promise<RegisterUserResponseDto> {
-        try {
-          const result = await this.authService.register(payload.signUp);
-          return result;
-        } catch (error) {
-          throw error;
-        }
-      }
+    @MessagePattern('RegisterAuthCommand')
+    async register(payload: {signUp: RegisterUserDto}): Promise<RegisterUserResponseDto> {
+        const result = await this.authService.register(payload.signUp);
+        return result;
+    }
 
-       
-      @MessagePattern('LoginAuthCommand')
-      async login(payload: { user: User }): Promise<AuthTokenResponseDto> {
+    @MessagePattern('LoginAuthCommand')
+    async login(payload: {user: User}): Promise<AuthTokenResponseDto> {
         if (!payload.user) {
-          throw new UnauthorizedException('Authentication failed');
+            throw new UnauthorizedException('Authentication failed');
         }
         const result = await this.authService.login(payload.user);
         return result;
-      }
+    }
 
     @MessagePattern('GetProfileAuthCommand')
     async me(payload: {user: User}): Promise<User> {
@@ -56,8 +53,8 @@ export class AuthController {
     }
 
     @MessagePattern('ValidateUserAuthCommand')
-    async validateUser(payload: {username: string; password: string}): Promise<User> {
-        return this.authService.validateUser(payload.username, payload.password);
+    async validateUser(payload: {identifier: string; password: string}): Promise<User> {
+        return this.authService.validateUser(payload.identifier, payload.password);
     }
 
     @MessagePattern('VerifyJwtAuthCommand')

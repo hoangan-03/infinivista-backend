@@ -6,8 +6,8 @@ import {AppModule} from '@/app.module';
 import {createDatabase} from './utils/create-database';
 
 async function bootstrap() {
-        console.log('Waiting for database to be ready...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    console.log('Waiting for database to be ready...');
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
         transport: Transport.RMQ,
         options: {

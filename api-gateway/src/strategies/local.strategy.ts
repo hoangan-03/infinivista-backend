@@ -10,7 +10,7 @@ import {User} from '@/entities/user-module/user.entity';
 export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
     constructor(@Inject('USER_SERVICE') private userClient: ClientProxy) {
         super({
-            usernameField: 'email',
+            usernameField: 'identifier',
             passReqToCallback: false,
         });
     }
@@ -26,8 +26,8 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
             }
 
             return user;
-        } catch (error) {
-            throw new UnauthorizedException('Invalid credentials');
+        } catch (_error) {
+            throw new UnauthorizedException(_error.message || 'Authentication failed');
         }
     }
 }

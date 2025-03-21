@@ -1,6 +1,5 @@
-import {BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException} from '@nestjs/common';
+import {BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
-import {Response} from 'express';
 
 import {User} from '@/entities/local/user.entity';
 import {AuthConstant} from '@/modules/auth/constant';
@@ -20,41 +19,40 @@ export class AuthService {
         private readonly jwtService: JwtService
     ) {}
 
-    async register(signUp: RegisterUserDto): Promise<RegisterUserResponseDto & { tokens?: AuthTokenResponseDto }> {
+    async register(signUp: RegisterUserDto): Promise<RegisterUserResponseDto & {tokens?: AuthTokenResponseDto}> {
         try {
-          const hashedPassword = await hashPassword(signUp.password);
-          const user: User = await this.userService.create({
-            ...signUp,
-            password: hashedPassword,
-          });
-    
-          const tokens = this.generateTokens(user);
-          
-          // Return both user info and tokens
-          const result = new RegisterUserResponseDto(user.username, user.email);
-          return {
-            ...result,
-            tokens
-          };
+            const hashedPassword = await hashPassword(signUp.password);
+            const user: User = await this.userService.create({
+                ...signUp,
+                password: hashedPassword,
+            });
+
+            const tokens = this.generateTokens(user);
+
+            // Return both user info and tokens
+            const result = new RegisterUserResponseDto(user.username, user.email);
+            return {
+                ...result,
+                tokens,
+            };
         } catch (error: any) {
             // PostgreSQL unique constraint violation
-            // if (error?.code === '23505') {
-            //   if (error.detail?.includes('email')) {
-            //     throw new BadRequestException('The email address is already registered.');
-            //   } else if (error.detail?.includes('username')) {
-            //     throw new BadRequestException('This username is already taken.');
-            //   } else {
-            //     throw new BadRequestException('A user with these credentials already exists.');
-            //   }
-            // }
-            
+            if (error?.code === '23505') {
+                if (error.detail?.includes('email')) {
+                    throw new BadRequestException('The email address is already registered.');
+                } else if (error.detail?.includes('username')) {
+                    throw new BadRequestException('This username is already taken.');
+                } else {
+                    throw new BadRequestException('A user with these credentials already exists.');
+                }
+            }
             // Forward other errors
             if (error.response?.statusCode) {
-              throw error;
+                throw error;
             }
-            
+
             throw new InternalServerErrorException(error.message || 'Registration failed.');
-          }
+        }
     }
 
     async login(user: User): Promise<AuthTokenResponseDto> {
@@ -84,7 +82,7 @@ export class AuthService {
         };
     }
 
-       async verifyPayload(payload: JwtPayload): Promise<User> {
+    async verifyPayload(payload: JwtPayload): Promise<User> {
         const userId = payload.sub;
 
         try {
@@ -94,11 +92,15 @@ export class AuthService {
         }
     }
 
-    async validateUser(username: string, password: string): Promise<User> {
+    async validateUser(identifier: string, password: string): Promise<User> {
         let user: User;
 
         try {
-            user = await this.userService.getOne({where: {username}});
+            try {
+                user = await this.userService.getOne({where: {email: identifier}});
+            } catch (error) {
+                user = await this.userService.getOne({where: {username: identifier}});
+            }
 
             if (!(await checkPassword(password, user.password || ''))) {
                 throw new UnauthorizedException(`Invalid credentials`);
@@ -108,7 +110,6 @@ export class AuthService {
             throw new UnauthorizedException(`Invalid credentials`);
         }
     }
-
     getUserProfile(user: User): Omit<User, 'password'> {
         const userWithoutPassword = {...user};
         delete userWithoutPassword.password;

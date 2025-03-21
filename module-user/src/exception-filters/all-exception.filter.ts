@@ -1,53 +1,49 @@
-import { Catch, ArgumentsHost, HttpStatus, Logger, Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
-import { Observable, throwError } from 'rxjs';
-import { BaseExceptionFilter } from '@nestjs/core';
+import {ArgumentsHost, Catch, Injectable, Logger} from '@nestjs/common';
+import {BaseExceptionFilter} from '@nestjs/core';
+import {Observable, throwError} from 'rxjs';
+
+import {ApiValidationError, ValidationErrorDetail, ValidationErrorResponse} from '../interfaces/error.interface';
 
 @Catch()
 @Injectable()
 export class AllExceptionsFilter extends BaseExceptionFilter {
-  private readonly logger = new Logger(AllExceptionsFilter.name);
-  catch(exception: any, host: ArgumentsHost): Observable<any> {
-    this.logger.error('This is from all-exception: ' + exception);
-    
-    const contextType = host.getType();
-    
-    if (contextType === 'rpc') {
-      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-      let message = 'Internal server error';
-      let errors = null;
-      
-      if (exception instanceof RpcException) {
-        return throwError(() => exception);
-      }
-      
-      // HTTP exceptions (like BadRequestException, etc.)
-      if (exception.getStatus && typeof exception.getStatus === 'function') {
-        statusCode = exception.getStatus();
-        const response = exception.getResponse();
-        
-        if (typeof response === 'object') {
-          message = response.message || exception.message;
-          errors = response.errors || null;
-        } else {
-          message = response || exception.message;
+    private readonly logger = new Logger(AllExceptionsFilter.name);
+
+    catch(exception: ApiValidationError, host: ArgumentsHost): Observable<ApiValidationError> {
+        // this.logger.error('This is from all-exception: ' + exception);
+        // this.logger.debug('Exception type:', typeof exception);
+        // this.logger.debug('Exception details:', JSON.stringify(exception, null, 2));
+
+        const contextType = host.getType();
+
+        if (contextType === 'rpc') {
+            const status = exception.status;
+            const name = exception.name;
+            const message = exception.message;
+
+            const errorObj: ValidationErrorDetail = {
+                property: 'server',
+                children: [],
+                constraints: {
+                    [name.replace('Exception', '')]: message,
+                },
+            };
+
+            const validationResponse: ValidationErrorResponse = {
+                message: message,
+                errors: [errorObj],
+            };
+
+            const errorResponse: ApiValidationError = {
+                response: validationResponse,
+                status,
+                options: {},
+                message,
+                name,
+            };
+
+            return throwError(() => errorResponse);
         }
-      } 
-      // Other errors
-      else if (exception.message) {
-        message = exception.message;
-      }
-      
-      return throwError(() => new RpcException({
-        statusCode,
-        message,
-        errors,
-        timestamp: new Date().toISOString()
-      }));
+        return throwError(() => exception);
     }
-    
-    // For HTTP contexts (only in hybrid apps)
-    super.catch(exception, host);
-    return throwError(() => exception);
-  }
 }

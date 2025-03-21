@@ -1,6 +1,10 @@
 import {Module} from '@nestjs/common';
 import {TypeOrmModule} from '@nestjs/typeorm';
 
+import {GroupReference} from '@/entities/external/group.entity';
+import {NewsFeedReference} from '@/entities/external/news-feed.entity';
+import {PageReference} from '@/entities/external/page.entity';
+import {ProductReference} from '@/entities/external/product.entity';
 import {Friend} from '@/entities/local/friend.entity';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {PaymentMethods} from '@/entities/local/payment-methods.entity';
@@ -13,10 +17,6 @@ import {UsersController} from '@/modules/user/controllers/user.controller';
 import {UserService} from '@/modules/user/services/user.service';
 import {IsUserAlreadyExist} from '@/modules/user/validators/is-user-already-exist.validator';
 import {IsUserNameAlreadyExist} from '@/modules/user/validators/is-username-already-exist.validator';
-import { GroupReference } from '@/entities/external/group.entity';
-import { NewsFeedReference } from '@/entities/external/news-feed.entity';
-import { PageReference } from '@/entities/external/page.entity';
-import { ProductReference } from '@/entities/external/product.entity';
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -27,10 +27,11 @@ import { ProductReference } from '@/entities/external/product.entity';
             SecurityQuestion,
             PaymentMethods,
             FriendRequest,
-            Friend,      GroupReference,
+            Friend,
+            GroupReference,
             PageReference,
             NewsFeedReference,
-            ProductReference
+            ProductReference,
         ]),
     ],
     controllers: [UsersController],
