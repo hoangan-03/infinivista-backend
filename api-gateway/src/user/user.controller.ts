@@ -1,4 +1,4 @@
-import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put, UseGuards} from '@nestjs/common';
+import {Body, Controller, Get, Inject, Param, Patch, Post, Put, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import {ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
@@ -202,80 +202,80 @@ export class UserController {
         );
     }
 
-    @Put(':id/online-status')
-    @ApiOperation({summary: 'Toggle user online status'})
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                isOnline: {
-                    type: 'boolean',
-                },
-            },
-        },
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Online status updated',
-        type: User,
-    })
-    async toggleOnlineStatus(@Param('id') id: string, @Body('isOnline') isOnline: boolean): Promise<User> {
-        return await lastValueFrom(this.userClient.send<User>('ToggleOnlineStatusUserCommand', {id, isOnline}));
-    }
-
-    @Put(':id/suspend')
-    @ApiOperation({summary: 'Suspend/unsuspend user'})
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                suspended: {
-                    type: 'boolean',
-                },
-            },
-        },
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'User suspension status updated',
-        type: User,
-    })
-    async suspendUser(@Param('id') id: string, @Body('suspended') suspended: boolean): Promise<User> {
-        return await lastValueFrom(this.userClient.send<User>('SuspendUserCommand', {id, suspended}));
-    }
-
-    @Get(':id/full-profile')
-    @ApiOperation({
-        summary: "Get user's full profile including settings and security questions",
-    })
-    @ApiResponse({status: 200, description: 'Full user profile', type: User})
-    async getFullProfile(@Param('id') id: string): Promise<User> {
-        return await lastValueFrom(this.userClient.send<User>('GetProfileUserCommand', {id}));
-    }
-
-    @Put('/account/suspend')
-    @ApiOperation({summary: 'Temporarily suspend account'})
-    async suspendAccount(@CurrentUser() user: User): Promise<User> {
-        return await lastValueFrom(this.userClient.send<User>('SuspendAccountUserCommand', {id: user.id}));
-    }
-
-    @Put('/account/unsuspend')
-    @ApiOperation({summary: 'Reactivate suspended account'})
-    async unsuspendAccount(@CurrentUser() user: User): Promise<User> {
-        return await lastValueFrom(this.userClient.send<User>('UnsuspendAccountUserCommand', {id: user.id}));
-    }
-
-    @Delete('/account')
-    @ApiOperation({summary: 'Permanently delete account'})
-    async deleteAccount(@CurrentUser() user: User): Promise<void> {
-        return await lastValueFrom(this.userClient.send<void>('DeleteUserCommand', {id: user.id}));
-    }
-
-    @Put(':id/profile-privacy')
+    @Put('/profile-privacy')
     @ApiOperation({summary: 'Update profile privacy settings'})
     async updateProfilePrivacy(@CurrentUser() user: User, @Body('privacy') privacy: ProfilePrivacy): Promise<User> {
         return await lastValueFrom(
             this.userClient.send<User>('UpdateProfilePrivacyUserCommand', {id: user.id, privacy})
         );
     }
+
+    // @Put(':id/online-status')
+    // @ApiOperation({summary: 'Toggle user online status'})
+    // @ApiBody({
+    //     schema: {
+    //         type: 'object',
+    //         properties: {
+    //             isOnline: {
+    //                 type: 'boolean',
+    //             },
+    //         },
+    //     },
+    // })
+    // @ApiResponse({
+    //     status: 200,
+    //     description: 'Online status updated',
+    //     type: User,
+    // })
+    // async toggleOnlineStatus(@Param('id') id: string, @Body('isOnline') isOnline: boolean): Promise<User> {
+    //     return await lastValueFrom(this.userClient.send<User>('ToggleOnlineStatusUserCommand', {id, isOnline}));
+    // }
+
+    // @Put(':id/suspend')
+    // @ApiOperation({summary: 'Suspend/unsuspend user'})
+    // @ApiBody({
+    //     schema: {
+    //         type: 'object',
+    //         properties: {
+    //             suspended: {
+    //                 type: 'boolean',
+    //             },
+    //         },
+    //     },
+    // })
+    // @ApiResponse({
+    //     status: 200,
+    //     description: 'User suspension status updated',
+    //     type: User,
+    // })
+    // async suspendUser(@Param('id') id: string, @Body('suspended') suspended: boolean): Promise<User> {
+    //     return await lastValueFrom(this.userClient.send<User>('SuspendUserCommand', {id, suspended}));
+    // }
+
+    // @Get(':id/full-profile')
+    // @ApiOperation({
+    //     summary: "Get user's full profile including settings and security questions",
+    // })
+    // @ApiResponse({status: 200, description: 'Full user profile', type: User})
+    // async getFullProfile(@Param('id') id: string): Promise<User> {
+    //     return await lastValueFrom(this.userClient.send<User>('GetProfileUserCommand', {id}));
+    // }
+
+    // @Put('/account/suspend')
+    // @ApiOperation({summary: 'Temporarily suspend account'})
+    // async suspendAccount(@CurrentUser() user: User): Promise<User> {
+    //     return await lastValueFrom(this.userClient.send<User>('SuspendAccountUserCommand', {id: user.id}));
+    // }
+
+    // @Put('/account/unsuspend')
+    // @ApiOperation({summary: 'Reactivate suspended account'})
+    // async unsuspendAccount(@CurrentUser() user: User): Promise<User> {
+    //     return await lastValueFrom(this.userClient.send<User>('UnsuspendAccountUserCommand', {id: user.id}));
+    // }
+
+    // @Delete('/account')
+    // @ApiOperation({summary: 'Permanently delete account'})
+    // async deleteAccount(@CurrentUser() user: User): Promise<void> {
+    //     return await lastValueFrom(this.userClient.send<void>('DeleteUserCommand', {id: user.id}));
+    // }
 }

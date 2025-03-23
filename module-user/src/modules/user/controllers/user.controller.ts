@@ -14,16 +14,6 @@ import {Controller} from '@nestjs/common';
 @Controller()
 export class UserController {
     constructor(private readonly userService: UserService) {}
-    @MessagePattern('TestUserCommand')
-    async test(): Promise<string> {
-        return 'This is a test';
-    }
-
-    @MessagePattern('TestAmountUserCommand')
-    async testAmount(payload: {amount: number}): Promise<string> {
-        return `This is a test with amount: ${payload.amount}.\nHere is twice the amount: ${payload.amount * 2}`;
-    }
-
     @MessagePattern('GetAllUserCommand')
     async getList(): Promise<User[]> {
         return this.userService.getAll();
@@ -62,38 +52,40 @@ export class UserController {
         return this.userService.setSecurityQuestions(payload.id, payload.answers);
     }
 
-    @MessagePattern('ToggleOnlineStatusUserCommand')
-    async toggleOnlineStatus(payload: {id: string; isOnline: boolean}): Promise<User> {
-        return this.userService.toggleOnlineStatus(payload.id, payload.isOnline);
-    }
-
-    @MessagePattern('SuspendUserCommand')
-    async suspendUser(payload: {id: string; suspended: boolean}): Promise<User> {
-        return this.userService.suspendUser(payload.id, payload.suspended);
-    }
-
-    @MessagePattern('GetProfileUserCommand')
-    async getFullProfile(payload: {id: string}): Promise<User> {
-        return this.userService.getUserWithFullProfile(payload.id);
-    }
-
-    @MessagePattern('SuspendAccountUserCommand')
-    async suspendAccount(payload: {id: string}): Promise<User> {
-        return this.userService.suspendAccount(payload.id);
-    }
-
-    @MessagePattern('UnsuspendAccountUserCommand')
-    async unsuspendAccount(payload: {id: string}): Promise<User> {
-        return this.userService.unsuspendAccount(payload.id);
-    }
-
-    @MessagePattern('DeleteUserCommand')
-    async deleteAccount(payload: {id: string}): Promise<void> {
-        return this.userService.deleteAccount(payload.id);
-    }
-
     @MessagePattern('UpdateProfilePrivacyUserCommand')
     async updateProfilePrivacy(payload: {id: string; privacy: ProfilePrivacy}): Promise<User> {
         return this.userService.updateProfilePrivacy(payload.id, payload.privacy);
     }
+
+    // @MessagePattern('ToggleOnlineStatusUserCommand')
+    // async toggleOnlineStatus(payload: {id: string; isOnline: boolean}): Promise<User> {
+    //     return this.userService.toggleOnlineStatus(payload.id, payload.isOnline);
+    // }
+
+    // @MessagePattern('SuspendUserCommand')
+    // async suspendUser(payload: {id: string; suspended: boolean}): Promise<User> {
+    //     return this.userService.suspendUser(payload.id, payload.suspended);
+    // }
+
+    // @MessagePattern('GetProfileUserCommand')
+    // async getFullProfile(payload: {id: string}): Promise<User> {
+    //     return this.userService.getUserWithFullProfile(payload.id);
+    // }
+
+    // @MessagePattern('SuspendAccountUserCommand')
+    // async suspendAccount(payload: {id: string}): Promise<User> {
+    //     return this.userService.suspendAccount(payload.id);
+    // }
+
+    // @MessagePattern('UnsuspendAccountUserCommand')
+    // async unsuspendAccount(payload: {id: string}): Promise<User> {
+    //     return this.userService.unsuspendAccount(payload.id);
+    // }
+
+    // @MessagePattern('DeleteUserCommand')
+    // async deleteAccount(payload: {id: string}): Promise<void> {
+    //     return this.userService.deleteAccount(payload.id);
+    // }
+
+
 }
