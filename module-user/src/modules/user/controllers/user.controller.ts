@@ -1,4 +1,5 @@
 import {UseGuards} from '@nestjs/common';
+import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
 import {SecurityAnswer} from '@/entities/local/security-answer.entity';
@@ -9,7 +10,6 @@ import {SettingType} from '@/modules/user/enums/setting.enum';
 import {UserService} from '@/modules/user/services/user.service';
 
 import {ProfilePrivacy} from '../enums/profile-privacy.enum';
-import {Controller} from '@nestjs/common';
 
 @Controller()
 export class UserController {
@@ -86,6 +86,4 @@ export class UserController {
     // async deleteAccount(payload: {id: string}): Promise<void> {
     //     return this.userService.deleteAccount(payload.id);
     // }
-
-
 }

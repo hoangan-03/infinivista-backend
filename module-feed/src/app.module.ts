@@ -6,7 +6,7 @@ import {TypeOrmModule} from '@nestjs/typeorm';
 
 import {AppController} from '@/app.controller';
 import {AppService} from '@/app.service';
-import {GlobalExceptionFilter} from '@/exception-filters/global-exception.filter';
+import {AllExceptionsFilter} from '@/exception-filters/all-exception.filter';
 
 import {FeedModule} from './modules/feed/feed.module';
 
@@ -34,7 +34,7 @@ import {FeedModule} from './modules/feed/feed.module';
         AppService,
         {
             provide: APP_FILTER,
-            useClass: GlobalExceptionFilter,
+            useClass: AllExceptionsFilter,
         },
     ],
 })

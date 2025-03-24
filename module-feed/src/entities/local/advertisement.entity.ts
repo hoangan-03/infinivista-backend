@@ -13,8 +13,6 @@ export class Advertisement {
     @Column({type: 'timestamp'})
     end_time: Date;
 
-    // @ManyToOne(() => NewsFeed, (newsFeed) => newsFeed.advertisements)
-    // newsFeed: NewsFeed;
-    @OneToOne(() => NewsFeed, (newsFeed) => newsFeed.advertisement)
+    @OneToOne(() => NewsFeed, (newsFeed) => newsFeed.advertisements)
     newsFeed: NewsFeed;
 }

@@ -1,6 +1,6 @@
-// module-feed/src/utils/drop-database.ts
 import {ConfigService} from '@nestjs/config';
 import * as dotenv from 'dotenv';
+import * as fs from 'fs';
 import {DataSource} from 'typeorm';
 
 dotenv.config();
@@ -8,47 +8,105 @@ dotenv.config();
 const configService = new ConfigService();
 
 const dropDatabase = async () => {
-    const dataSource = new DataSource({
-        type: 'postgres',
-        host: configService.get<string>('POSTGRES_HOST'),
-        port: configService.get<number>('POSTGRES_PORT'),
-        username: configService.get<string>('POSTGRES_USER'),
-        password: configService.get<string>('POSTGRES_PASSWORD'),
-        database: configService.get<string>('POSTGRES_DB'),
-        synchronize: false,
-        logging: true,
-    });
+    // Determine if running locally or in Docker
+    const isRunningLocally = !fs.existsSync('/.dockerenv');
+
+    // Use localhost if running outside Docker
+    const host = isRunningLocally ? 'localhost' : configService.get<string>('POSTGRES_HOST');
+    const port = isRunningLocally ? 5432 : configService.get<number>('POSTGRES_PORT');
+    const dbName = configService.get<string>('POSTGRES_DB');
+    const username = configService.get<string>('POSTGRES_USER');
+    const password = configService.get<string>('POSTGRES_PASSWORD');
+
+    console.log(`Connecting to database at ${host}:${port}`);
 
     try {
-        await dataSource.initialize();
+        // First connect to 'postgres' database to create our target database if needed
+        if (isRunningLocally) {
+            console.log('Running locally - connecting to postgres database first');
+            const pgDataSource = new DataSource({
+                type: 'postgres',
+                host,
+                port,
+                username,
+                password,
+                database: 'postgres',
+                synchronize: false,
+                logging: true,
+            });
 
-        // Drop tables in correct order due to foreign key constraints
+            await pgDataSource.initialize();
+            const pgQueryRunner = pgDataSource.createQueryRunner();
+
+            // Create database if it doesn't exist
+            try {
+                console.log(`Creating database ${dbName} if it doesn't exist...`);
+                await pgQueryRunner.query(`CREATE DATABASE "${dbName}"`);
+                console.log(`Created database ${dbName}`);
+            } catch (e) {
+                console.log(`Database ${dbName} already exists`);
+            }
+
+            await pgDataSource.destroy();
+        }
+
+        const dataSource = new DataSource({
+            type: 'postgres',
+            host,
+            port,
+            username,
+            password,
+            database: dbName,
+            synchronize: false,
+            logging: true,
+        });
+
+        await dataSource.initialize();
         const queryRunner = dataSource.createQueryRunner();
 
         console.log('Dropping feed database tables...');
 
-        // Drop tables with foreign keys first
+        // First drop all join tables and tables with foreign keys
         await queryRunner.query('DROP TABLE IF EXISTS user_comments_news_feed CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS user_shares_news_feed CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS user_views_news_feed CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS user_reacts_news_feed CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS user_has_news_feed CASCADE');
+
+        // Rest of your drop queries...
+        // Drop tables with relationships to news_feed
+        await queryRunner.query('DROP TABLE IF EXISTS comment CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS post_attachment CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS post CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS story CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS live_stream_history CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS reaction CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS news_feed CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS reel CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS advertisement CASCADE');
 
-        // Drop any remaining types
-        await queryRunner.query('DROP TYPE IF EXISTS reaction_type_enum CASCADE');
+        // Drop many-to-many join tables
+        await queryRunner.query('DROP TABLE IF EXISTS news_feed_tags_hash_tag CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS news_feed_tagged_users_user_references CASCADE');
+
+        // Drop main entities
+        await queryRunner.query('DROP TABLE IF EXISTS news_feed CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS hash_tag CASCADE');
+
+        // Drop reference tables
+        await queryRunner.query('DROP TABLE IF EXISTS user_references CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS community_references CASCADE');
+
+        // Drop any enum types
+        await queryRunner.query('DROP TYPE IF EXISTS news_feed_visibility_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS reaction_reaction_type_enum CASCADE');
         await queryRunner.query('DROP TYPE IF EXISTS content_type_enum CASCADE');
 
-        console.log(`Feed database ${configService.get<string>('POSTGRES_DB')} tables dropped successfully.`);
+        console.log(`Feed database ${dbName} tables dropped successfully.`);
+
+        await dataSource.destroy();
     } catch (error) {
         console.error('Error dropping feed database tables:', error);
-    } finally {
-        if (dataSource.isInitialized) {
-            await dataSource.destroy();
-        }
+        throw error;
     }
 };
 

@@ -1,4 +1,4 @@
-import {Column, Entity, ManyToMany, PrimaryColumn} from 'typeorm';
+import {Entity, ManyToMany, PrimaryColumn} from 'typeorm';
 
 import {User} from '../local/user.entity';
 
@@ -6,9 +6,6 @@ import {User} from '../local/user.entity';
 export class ProductReference {
     @PrimaryColumn()
     id: string;
-
-    @Column()
-    product_id: string;
 
     @ManyToMany(() => User, (user) => user.wishlistProducts)
     wishlistedUsers: User[];

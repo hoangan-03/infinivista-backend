@@ -1,5 +1,9 @@
 import {DataSource} from 'typeorm';
 
+import {GroupReference} from '@/entities/external/group.entity';
+import {NewsFeedReference} from '@/entities/external/news-feed.entity';
+import {PageReference} from '@/entities/external/page.entity';
+import {ProductReference} from '@/entities/external/product.entity';
 import {Friend} from '@/entities/local/friend.entity';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {PaymentMethods} from '@/entities/local/payment-methods.entity';
@@ -11,15 +15,25 @@ import {UserStatus} from '@/entities/local/user-status.entity';
 
 export const AppDataSource = new DataSource({
     type: 'postgres',
-    host: 'infinivista_db',
+    host: 'localhost',
     port: 5432,
-    // host: 'db',
-    // port: 5432,
-    // For inside Docker container
     username: 'postgres',
     password: 'postgres',
     database: 'infinivista-user',
-    entities: [User, SecurityQuestion, SecurityAnswer, Setting, PaymentMethods, UserStatus, FriendRequest, Friend],
+    entities: [
+        User,
+        SecurityQuestion,
+        SecurityAnswer,
+        Setting,
+        PaymentMethods,
+        UserStatus,
+        FriendRequest,
+        Friend,
+        GroupReference,
+        PageReference,
+        NewsFeedReference,
+        ProductReference,
+    ],
     migrations: ['migrations/*.ts'],
     synchronize: true, // set to false in production
 });

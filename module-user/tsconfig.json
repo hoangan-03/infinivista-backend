@@ -1,27 +1,40 @@
 {
-  "compilerOptions": {
-    "module": "CommonJS",
-    "declaration": true,
-    "removeComments": true,
-    "target": "ES2017",
-    "sourceMap": true,
-    "moduleResolution": "node",
-    "lib": ["ES2017"],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
+    "compilerOptions": {
+        "module": "CommonJS",
+        "declaration": true,
+        "removeComments": true,
+        "target": "ES2017",
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "lib": ["ES2017"],
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/*"]
+        },
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "allowSyntheticDefaultImports": true,
+        "strictPropertyInitialization": false,
+        "noImplicitAny": false,
+        "skipLibCheck": true
     },
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "allowSyntheticDefaultImports": true,
-    "strictPropertyInitialization": false,
-    "noImplicitAny": false,
-    "skipLibCheck": true
-  },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+    "watchOptions": {
+        // Use native file system events for files and directories
+        "watchFile": "priorityPollingInterval",
+        "watchDirectory": "dynamicprioritypolling",
+        // Poll files for updates more frequently
+        // when they're updated a lot.
+        "fallbackPolling": "dynamicPriority",
+        // Don't coalesce watch notification
+        "synchronousWatchDirectory": true,
+        // Finally, two additional settings for reducing the amount of possible
+        // files to track  work from these directories
+        "excludeDirectories": ["**/node_modules", "dist"]
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules", "dist"]
 }

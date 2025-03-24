@@ -56,12 +56,7 @@ async function bootstrap() {
         })
     );
 
-    const config = new DocumentBuilder()
-        .setTitle('INFINIVISTA - User API')
-        .setDescription('API for user and auth modules')
-        .setVersion('1.0')
-        .addBearerAuth()
-        .build();
+    const config = new DocumentBuilder().setTitle('INFINIVISTA - Microservices API').addBearerAuth().build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/swagger-docs', app, document);
 

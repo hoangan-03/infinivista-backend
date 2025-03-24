@@ -1,6 +1,6 @@
 import {Body, Controller, Get, Inject, Param, Patch, Post, Put, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 import {User} from 'src/entities/user-module/user.entity';
 
@@ -14,6 +14,7 @@ import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 
 @ApiTags('Users')
+@ApiBearerAuth()
 @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
 @Controller('users')
 export class UserController {

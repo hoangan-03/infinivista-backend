@@ -1,5 +1,7 @@
 import {DataSource} from 'typeorm';
 
+import {CommunityReference} from '@/entities/external/community.entity';
+import {UserReference} from '@/entities/external/user.entity';
 import {Advertisement} from '@/entities/local/advertisement.entity';
 import {Comment} from '@/entities/local/comment.entity';
 import {HashTag} from '@/entities/local/hashtag.entity';
@@ -14,10 +16,7 @@ import {Story} from '@/entities/local/story.entity';
 export const AppDataSource = new DataSource({
     type: 'postgres',
     host: 'localhost',
-    port: 5435,
-    // host: 'db',
-    // port: 5432,
-    // For inside Docker container
+    port: 5432,
     username: 'postgres',
     password: 'postgres',
     database: 'infinivista-feed',
@@ -32,6 +31,8 @@ export const AppDataSource = new DataSource({
         Reaction,
         Reel,
         Story,
+        UserReference,
+        CommunityReference,
     ],
     migrations: ['migrations/*.ts'],
     synchronize: true, // set to false in production

@@ -7,14 +7,13 @@ import {NewsFeed} from '@/entities/local/news-feed.entity';
 import {Post} from '@/entities/local/post.entity';
 import {Reaction} from '@/entities/local/reaction.entity';
 import {Story} from '@/entities/local/story.entity';
-// import {UserCommentsNewsFeed} from '@/entities/user-comments-news-feed.entity';
-// import {UserReactsNewsFeed} from '@/entities/user-reacts-news-feed.entity';
-// import {UserSharesNewsFeed} from '@/entities/user-shares-news-feed.entity';
-// import {UserViewsNewsFeed} from '@/entities/user-views-news-feed.entity';
+
+import {UserReferenceService} from '../user-reference/user-reference.service';
 
 @Injectable()
 export class FeedService {
     constructor(
+        private readonly userReferenceService: UserReferenceService,
         @InjectRepository(NewsFeed)
         private readonly newsFeedRepository: Repository<NewsFeed>,
         @InjectRepository(Post)
@@ -23,32 +22,58 @@ export class FeedService {
         private readonly storyRepository: Repository<Story>,
         @InjectRepository(LiveStreamHistory)
         private readonly liveStreamRepository: Repository<LiveStreamHistory>,
-        @InjectRepository(UserCommentsNewsFeed)
-        private readonly commentsRepository: Repository<UserCommentsNewsFeed>,
-        @InjectRepository(UserSharesNewsFeed)
-        private readonly sharesRepository: Repository<UserSharesNewsFeed>,
-        @InjectRepository(UserViewsNewsFeed)
-        private readonly viewsRepository: Repository<UserViewsNewsFeed>,
-        @InjectRepository(UserReactsNewsFeed)
-        private readonly reactsRepository: Repository<UserReactsNewsFeed>,
         @InjectRepository(Reaction)
         private readonly reactionRepository: Repository<Reaction>
     ) {}
 
-    // News Feed Management
-    async createNewsFeed(data: Partial<NewsFeed>): Promise<NewsFeed> {
-        const newsFeed = this.newsFeedRepository.create(data);
+    async createNewsFeed(userId: string, data: Partial<NewsFeed>): Promise<NewsFeed> {
+        const userRef = await this.userReferenceService.findById(userId);
+
+        const existingFeed = await this.newsFeedRepository.findOne({
+            where: {owner: {id: userId}},
+        });
+
+        if (existingFeed) {
+            throw new Error('User already has a news feed');
+        }
+
+        const newsFeed = this.newsFeedRepository.create({
+            ...data,
+            owner: userRef,
+        });
+
         return this.newsFeedRepository.save(newsFeed);
     }
 
     async getAllNewsFeeds(): Promise<NewsFeed[]> {
-        return this.newsFeedRepository.find();
+        return this.newsFeedRepository.find({
+            relations: ['owner'],
+        });
+    }
+
+    async getAllPostofUser(userId: string): Promise<Post[]> {
+        const userFeed = await this.newsFeedRepository.findOne({
+            where: {owner: {id: userId}},
+        });
+        if (!userFeed) {
+            throw new NotFoundException(`News feed for user ${userId} not found`);
+        }
+        const userPosts = await this.postRepository.find({
+            where: {newsFeed: {id: userFeed.id}},
+            relations: ['posts', 'stories', 'liveStreams', 'comments', 'reactions', 'reel'],
+        });
+
+        if (!userPosts) {
+            throw new NotFoundException('No posts found for this user');
+        }
+
+        return userPosts;
     }
 
     async getNewsFeedById(id: number): Promise<NewsFeed> {
         const newsFeed = await this.newsFeedRepository.findOne({
-            where: {news_feed_id: id},
-            relations: ['posts', 'stories', 'liveStreams', 'comments', 'shares', 'views', 'reactions'],
+            where: {id},
+            relations: ['posts', 'stories', 'liveStreams', 'comments', 'reactions', 'reel', 'owner'],
         });
 
         if (!newsFeed) {
@@ -70,8 +95,6 @@ export class FeedService {
             throw new NotFoundException(`News feed with ID ${id} not found`);
         }
     }
-
-    // Post Management
     async createPost(newsFeedId: number, postData: Partial<Post>): Promise<Post> {
         const newsFeed = await this.getNewsFeedById(newsFeedId);
 
@@ -86,7 +109,7 @@ export class FeedService {
     async getPostById(id: number): Promise<Post> {
         const post = await this.postRepository.findOne({
             where: {id},
-            relations: ['newsFeed'],
+            relations: ['newsFeed', 'newsFeed.owner'],
         });
 
         if (!post) {
@@ -98,12 +121,11 @@ export class FeedService {
 
     async getPostsByNewsFeedId(newsFeedId: number): Promise<Post[]> {
         return this.postRepository.find({
-            where: {newsFeed: {news_feed_id: newsFeedId}},
-            relations: ['newsFeed'],
+            where: {newsFeed: {id: newsFeedId}},
+            relations: ['newsFeed', 'newsFeed.owner'],
         });
     }
 
-    // Story Management
     async createStory(newsFeedId: number, storyData: Partial<Story>): Promise<Story> {
         const newsFeed = await this.getNewsFeedById(newsFeedId);
 
@@ -117,12 +139,11 @@ export class FeedService {
 
     async getStoriesByNewsFeedId(newsFeedId: number): Promise<Story[]> {
         return this.storyRepository.find({
-            where: {newsFeed: {news_feed_id: newsFeedId}},
+            where: {newsFeed: {id: newsFeedId}},
             relations: ['newsFeed'],
         });
     }
 
-    // Live Stream Management
     async createLiveStream(newsFeedId: number, streamData: Partial<LiveStreamHistory>): Promise<LiveStreamHistory> {
         const newsFeed = await this.getNewsFeedById(newsFeedId);
 
@@ -143,85 +164,5 @@ export class FeedService {
 
         stream.end_time = endTime;
         return this.liveStreamRepository.save(stream);
-    }
-
-    // Engagement Management
-    async addComment(newsFeedId: number, comment: string, parentCommentId?: number): Promise<UserCommentsNewsFeed> {
-        const newsFeed = await this.getNewsFeedById(newsFeedId);
-
-        const newComment = this.commentsRepository.create({
-            comment,
-            parent_comment_id: parentCommentId,
-            newsFeed,
-        });
-
-        return this.commentsRepository.save(newComment);
-    }
-
-    async addReaction(newsFeedId: number, reactionId: number): Promise<UserReactsNewsFeed> {
-        const newsFeed = await this.getNewsFeedById(newsFeedId);
-        const reaction = await this.reactionRepository.findOne({where: {reaction_id: reactionId}});
-
-        if (!reaction) {
-            throw new NotFoundException(`Reaction with ID ${reactionId} not found`);
-        }
-
-        const userReaction = this.reactsRepository.create({
-            newsFeed,
-            reaction,
-        });
-
-        return this.reactsRepository.save(userReaction);
-    }
-
-    async recordShare(newsFeedId: number): Promise<UserSharesNewsFeed> {
-        const newsFeed = await this.getNewsFeedById(newsFeedId);
-
-        const share = this.sharesRepository.create({
-            newsFeed,
-            shared_at: new Date(),
-        });
-
-        return this.sharesRepository.save(share);
-    }
-
-    async recordView(newsFeedId: number): Promise<UserViewsNewsFeed> {
-        const newsFeed = await this.getNewsFeedById(newsFeedId);
-
-        const view = this.viewsRepository.create({
-            newsFeed,
-            viewed_at: new Date(),
-        });
-
-        return this.viewsRepository.save(view);
-    }
-
-    // Analytics
-    async getEngagementStats(newsFeedId: number): Promise<any> {
-        // Removed the unused newsFeed retrieval
-
-        const commentCount = await this.commentsRepository.count({
-            where: {newsFeed: {news_feed_id: newsFeedId}},
-        });
-
-        const shareCount = await this.sharesRepository.count({
-            where: {newsFeed: {news_feed_id: newsFeedId}},
-        });
-
-        const viewCount = await this.viewsRepository.count({
-            where: {newsFeed: {news_feed_id: newsFeedId}},
-        });
-
-        const reactionCount = await this.reactsRepository.count({
-            where: {newsFeed: {news_feed_id: newsFeedId}},
-        });
-
-        return {
-            newsFeedId,
-            commentCount,
-            shareCount,
-            viewCount,
-            reactionCount,
-        };
     }
 }

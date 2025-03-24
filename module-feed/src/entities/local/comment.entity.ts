@@ -2,7 +2,7 @@ import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {UserReference} from '../external/user.entity';
 import {BaseEntity} from './base-class';
-import {NewsFeed} from './news-feed.entity';
+import {Post} from './post.entity';
 
 @Entity()
 export class Comment extends BaseEntity {
@@ -18,6 +18,6 @@ export class Comment extends BaseEntity {
     @ManyToOne(() => UserReference, (user) => user.comments)
     user: UserReference;
 
-    @ManyToOne(() => NewsFeed, (newsFeed) => newsFeed.comments)
-    newsFeed: NewsFeed;
+    @ManyToOne(() => Post, (post) => post.comments)
+    post: Post;
 }

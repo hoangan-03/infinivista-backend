@@ -1,0 +1,36 @@
+services:
+  gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./api-gateway/src:/usr/src/app/src
+      - /usr/src/app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
+    command: npm run start:dev -- --watch --poll=1000
+
+  user:
+    build:
+      context: ./module-user
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./module-user/src:/usr/src/app/src
+      - /usr/src/app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
+    command: npm run start:dev -- --watch --poll=1000
+
+  feed:
+    build:
+      context: ./module-feed
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./module-feed/src:/usr/src/app/src
+      - /usr/src/app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
+    command: npm run start:dev -- --watch --poll=1000

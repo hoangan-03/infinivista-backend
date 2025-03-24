@@ -31,14 +31,12 @@ export class AuthService {
     ) {}
 
     async register(signUp: RegisterUserDto): Promise<RegisterUserResponseDto & {tokens?: AuthTokenResponseDto}> {
-     
-            const hashedPassword = await hashPassword(signUp.password);
-            const user: User = await this.userService.create({
-                ...signUp,
-                password: hashedPassword,
-            });
-            return new RegisterUserResponseDto(user.username, user.email);
-     
+        const hashedPassword = await hashPassword(signUp.password);
+        const user: User = await this.userService.create({
+            ...signUp,
+            password: hashedPassword,
+        });
+        return new RegisterUserResponseDto(user.username, user.email);
     }
 
     async login(user: User): Promise<AuthTokenResponseDto> {
