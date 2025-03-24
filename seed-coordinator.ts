@@ -6,7 +6,6 @@ dotenv.config();
 async function seedCoordinator() {
   console.log('Starting coordinated seeding process...');
   
-  // Connect to RabbitMQ
   const connection = await amqp.connect(
     `amqp://${process.env.RABBITMQ_HOST_NAME}:${process.env.RABBITMQ_PORT}`
   );

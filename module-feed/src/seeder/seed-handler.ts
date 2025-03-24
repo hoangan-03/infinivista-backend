@@ -76,7 +76,7 @@ export class SeedHandlerController {
         const communities = await this.createCommunities(3);
 
         // Create user references and news feeds
-        const userRefs = [];
+        const userRefs: UserReference[] = [];
         for (const userRefData of payload.userReferences) {
             const userRef = await this.createUserReference(userRefData);
             userRefs.push(userRef);
@@ -128,7 +128,7 @@ export class SeedHandlerController {
     }
 
     private async createCommunities(count: number): Promise<CommunityReference[]> {
-        const communities = [];
+        const communities: CommunityReference[] = [];
         for (let i = 0; i < count; i++) {
             const community = this.communityReferenceRepository.create({
                 id: faker.string.uuid(),
@@ -153,7 +153,7 @@ export class SeedHandlerController {
             'business',
         ];
 
-        const hashtags = [];
+        const hashtags: HashTag[] = [];
         for (const name of hashtagNames) {
             const hashtag = this.hashTagRepository.create({
                 name,
@@ -172,7 +172,7 @@ export class SeedHandlerController {
         const newsFeed = this.newsFeedRepository.create({
             description: community
                 ? `Community feed for ${faker.company.name()}`
-                : `Personal feed for ${owner.username || 'user'}`,
+                : `Personal feed for ${'user with id' + owner.id}`,
             visibility: faker.helpers.arrayElement(Object.values(visibilityEnum)),
             owner,
             community: community || undefined,
