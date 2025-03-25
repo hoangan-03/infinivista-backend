@@ -1,7 +1,7 @@
 import {ApiProperty} from '@nestjs/swagger';
 import {IsNotEmpty, MaxLength} from 'class-validator';
 
-import {BaseEntity} from './base-class';
+import {BaseEntity} from '../../base/base-class';
 import {SecurityQuestion} from './security-question.entity';
 import {User} from './user.entity';
 

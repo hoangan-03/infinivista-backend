@@ -1,7 +1,8 @@
 import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
-import {UserReference} from '../external/user.entity';
-import {BaseEntity} from './base-class';
+import {BaseEntity} from '@/entities/base/base-class';
+
+import {UserReference} from '../external/user-ref.entity';
 import {Post} from './post.entity';
 
 @Entity()
@@ -9,7 +10,7 @@ export class Comment extends BaseEntity {
     @PrimaryGeneratedColumn()
     id: string;
 
-    @Column()
+    @Column({type: 'text', nullable: false})
     text: string;
 
     @Column()

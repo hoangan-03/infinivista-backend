@@ -1,7 +1,7 @@
 import {DataSource} from 'typeorm';
 
 import {GroupReference} from '@/entities/external/group.entity';
-import {NewsFeedReference} from '@/entities/external/news-feed.entity';
+import {NewsFeedReference} from '@/entities/external/newsfeed-ref.entity';
 import {PageReference} from '@/entities/external/page.entity';
 import {ProductReference} from '@/entities/external/product.entity';
 import {Friend} from '@/entities/local/friend.entity';

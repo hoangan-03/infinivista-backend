@@ -7,10 +7,7 @@ import {BaseEntity} from '@/entities/local/base-class';
 import {Gender} from '@/modules/user/enums/gender.enum';
 import {ProfilePrivacy} from '@/modules/user/enums/profile-privacy.enum';
 
-import {GroupReference} from '../external/group.entity';
-import {NewsFeedReference} from '../external/news-feed.entity';
-import {PageReference} from '../external/page.entity';
-import {ProductReference} from '../external/product.entity';
+import {NewsFeedReference} from '../external/newsfeed-ref.entity';
 import {Friend} from './friend.entity';
 import {FriendRequest} from './friend-request.entity';
 import {SecurityAnswer} from './security-answer.entity';
@@ -72,8 +69,8 @@ export class User extends BaseEntity {
 
     @Column({
         type: 'enum',
-        enum: ['public', 'friends', 'private'],
-        default: 'public',
+        enum: ProfilePrivacy,
+        default: ProfilePrivacy.PUBLIC,
     })
     profilePrivacy: ProfilePrivacy;
 
@@ -87,20 +84,20 @@ export class User extends BaseEntity {
     @OneToMany(() => FriendRequest, (request) => request.recipient)
     receivedFriendRequests: FriendRequest[];
 
-    @ManyToMany(() => GroupReference, (group) => group.members)
-    joinedGroups: GroupReference[];
+    // @ManyToMany(() => GroupReference, (group) => group.members)
+    // joinedGroups: GroupReference[];
 
-    @ManyToMany(() => PageReference, (page) => page.likedUsers)
-    likedPages: PageReference[];
+    // @ManyToMany(() => PageReference, (page) => page.likedUsers)
+    // likedPages: PageReference[];
 
-    @ManyToMany(() => PageReference, (page) => page.followedUsers)
-    followedPages: PageReference[];
+    // @ManyToMany(() => PageReference, (page) => page.followedUsers)
+    // followedPages: PageReference[];
 
     @ManyToMany(() => NewsFeedReference, (newsFeed) => newsFeed.sharedUsers)
     sharedNewsFeeds: NewsFeedReference[];
 
-    @ManyToMany(() => ProductReference, (product) => product.wishlistedUsers)
-    wishlistProducts: ProductReference[];
+    // @ManyToMany(() => ProductReference, (product) => product.wishlistedUsers)
+    // wishlistProducts: ProductReference[];
 
     constructor(data: Partial<User> = {}) {
         super();

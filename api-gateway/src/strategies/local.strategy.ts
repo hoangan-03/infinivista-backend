@@ -4,7 +4,7 @@ import {PassportStrategy} from '@nestjs/passport';
 import {Strategy} from 'passport-local';
 import {lastValueFrom} from 'rxjs';
 
-import {User} from '@/entities/user-module/user.entity';
+import {User} from '@/entities/user-module/local/user.entity';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy, 'local') {

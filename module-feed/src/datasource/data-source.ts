@@ -1,12 +1,12 @@
 import {DataSource} from 'typeorm';
 
-import {CommunityReference} from '@/entities/external/community.entity';
-import {UserReference} from '@/entities/external/user.entity';
+import {CommunityReference} from '@/entities/external/community-ref.entity';
+import {UserReference} from '@/entities/external/user-ref.entity';
 import {Advertisement} from '@/entities/local/advertisement.entity';
 import {Comment} from '@/entities/local/comment.entity';
 import {HashTag} from '@/entities/local/hashtag.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
-import {NewsFeed} from '@/entities/local/news-feed.entity';
+import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post} from '@/entities/local/post.entity';
 import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reaction} from '@/entities/local/reaction.entity';

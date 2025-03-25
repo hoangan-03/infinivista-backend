@@ -1,15 +1,15 @@
 import {Column, Entity, JoinColumn, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
+import {BaseEntity} from '@/entities/base/base-class';
 import {Advertisement} from '@/entities/local/advertisement.entity';
-import {BaseEntity} from '@/entities/local/base-class';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {Post} from '@/entities/local/post.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {visibilityEnum} from '@/enum/visibility.enum';
 
-import {CommunityReference} from '../external/community.entity';
-import {UserReference} from '../external/user.entity';
+import {CommunityReference} from '../external/community-ref.entity';
+import {UserReference} from '../external/user-ref.entity';
 import {HashTag} from './hashtag.entity';
 import {Reaction} from './reaction.entity';
 

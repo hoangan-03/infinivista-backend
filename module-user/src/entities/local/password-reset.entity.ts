@@ -1,5 +1,7 @@
 import {Column, CreateDateColumn, Entity, PrimaryGeneratedColumn} from 'typeorm';
 
+import {PasswordResetEnum} from '@/modules/auth/enums/password-reset.enum';
+
 @Entity({name: 'password_resets'})
 export class PasswordReset {
     @PrimaryGeneratedColumn('uuid')
@@ -12,7 +14,7 @@ export class PasswordReset {
     token: string;
 
     @Column({type: 'varchar', length: 20})
-    type: 'email' | 'sms' | 'authenticator';
+    type: PasswordResetEnum;
 
     @CreateDateColumn()
     created_at: Date;

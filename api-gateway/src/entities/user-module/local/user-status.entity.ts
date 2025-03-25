@@ -1,6 +1,6 @@
 import {ApiProperty} from '@nestjs/swagger';
 
-import {BaseEntity} from './base-class';
+import {BaseEntity} from '../../base/base-class';
 import {User} from './user.entity';
 
 export class UserStatus extends BaseEntity {

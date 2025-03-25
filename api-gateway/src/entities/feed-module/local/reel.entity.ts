@@ -1,18 +1,35 @@
-import {Column, Entity, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {ApiProperty} from '@nestjs/swagger';
 
-import {BaseEntity} from './base-class';
+import {BaseEntity} from '../../base/base-class';
 import {NewsFeed} from './news-feed.entity';
-@Entity()
+
 export class Reel extends BaseEntity {
-    @PrimaryGeneratedColumn()
+    @ApiProperty({
+        description: 'Unique identifier for the reel',
+        example: 1,
+        type: Number,
+    })
     id: number;
 
-    @Column()
-    reel_video_url: string;
+    @ApiProperty({
+        description: 'URL to the reel video',
+        example: 'https://storage.infinivista.com/reels/video123.mp4',
+        type: String,
+    })
+    reel_url: string;
 
-    @Column({type: 'int'})
+    @ApiProperty({
+        description: 'Duration of the reel in seconds',
+        example: 30,
+        minimum: 5,
+        maximum: 60,
+        type: Number,
+    })
     duration: number;
 
-    @OneToOne(() => NewsFeed, (newsFeed) => newsFeed.reel)
+    @ApiProperty({
+        description: 'The news feed this reel belongs to',
+        type: () => NewsFeed,
+    })
     newsFeed: NewsFeed;
 }

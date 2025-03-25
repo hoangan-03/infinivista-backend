@@ -23,7 +23,7 @@ import {LoginUserDTO} from '@/auth/dtos/login-user.dto';
 import {RegisterUserDto} from '@/auth/dtos/register-user.dto';
 import {RegisterUserResponseDto} from '@/auth/dtos/register-user-response.dto';
 import {CurrentUser} from '@/decorators/user.decorator';
-import {User} from '@/entities/user-module/user.entity';
+import {User} from '@/entities/user-module/local/user.entity';
 // import {FacebookAuthGuard} from '@/guards/facebook-auth.guard';
 // import {GoogleAuthGuard} from '@/guards/google-auth.guard';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';

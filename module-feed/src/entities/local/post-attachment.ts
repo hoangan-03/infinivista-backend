@@ -4,7 +4,7 @@ import {Post} from './post.entity';
 
 @Entity()
 export class PostAttachment {
-    @PrimaryGeneratedColumn()
+    @PrimaryGeneratedColumn('uuid')
     id: string;
 
     @Column()

@@ -2,12 +2,12 @@ import {Body, Controller, Get, Inject, Param, Patch, Post, Put, UseGuards} from 
 import {ClientProxy} from '@nestjs/microservices';
 import {ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
-import {User} from 'src/entities/user-module/user.entity';
 
 import {UpdateUserDto} from '@/auth/dtos/update-user.dto';
 import {CurrentUser} from '@/decorators/user.decorator';
-import {SecurityAnswer} from '@/entities/user-module/security-answer.entity';
-import {Setting} from '@/entities/user-module/setting.entity';
+import {SecurityAnswer} from '@/entities/user-module/local/security-answer.entity';
+import {Setting} from '@/entities/user-module/local/setting.entity';
+import {User} from '@/entities/user-module/local/user.entity';
 import {ProfilePrivacy} from '@/enums/user-module/profile-privacy.enum';
 import {SettingType} from '@/enums/user-module/setting.enum';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';

@@ -1,6 +1,6 @@
 import {Entity, OneToMany, PrimaryColumn} from 'typeorm';
 
-import {NewsFeed} from '../local/news-feed.entity';
+import {NewsFeed} from '../local/newsfeed.entity';
 
 @Entity()
 export class CommunityReference {

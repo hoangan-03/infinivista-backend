@@ -1,20 +1,42 @@
-import {Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
+import {ApiProperty} from '@nestjs/swagger';
 
-import {BaseEntity} from './base-class';
+import {BaseEntity} from '../../base/base-class';
 import {Comment} from './comment.entity';
 import {NewsFeed} from './news-feed.entity';
 import {PostAttachment} from './post-attachment';
-@Entity()
+
 export class Post extends BaseEntity {
-    @PrimaryGeneratedColumn()
+    @ApiProperty({
+        description: 'Unique identifier for the post',
+        example: 1,
+        type: Number,
+    })
     id: number;
 
-    @ManyToOne(() => NewsFeed, (newsFeed) => newsFeed.posts)
+    @ApiProperty({
+        description: 'Content text of the post',
+        example: 'This is my first post on InfiniVista!',
+        type: String,
+    })
+    content: string;
+
+    @ApiProperty({
+        description: 'The news feed this post belongs to',
+        type: () => NewsFeed,
+    })
     newsFeed: NewsFeed;
 
-    @OneToMany(() => Comment, (comment) => comment.post)
+    @ApiProperty({
+        description: 'Comments on this post',
+        type: () => [Comment],
+        isArray: true,
+    })
     comments: Comment[];
 
-    @OneToMany(() => PostAttachment, (postAttachment) => postAttachment.post)
+    @ApiProperty({
+        description: 'Attachments (images, videos) for this post',
+        type: () => [PostAttachment],
+        isArray: true,
+    })
     postAttachments: PostAttachment[];
 }

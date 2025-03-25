@@ -4,7 +4,7 @@ import type {Response} from 'express';
 import {lastValueFrom, Observable} from 'rxjs';
 import {map} from 'rxjs/operators';
 
-import type {User} from '@/entities/user-module/user.entity';
+import type {User} from '@/entities/user-module/local/user.entity';
 
 @Injectable()
 export class TokenInterceptor implements NestInterceptor {

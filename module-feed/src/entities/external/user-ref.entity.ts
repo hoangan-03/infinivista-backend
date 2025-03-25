@@ -1,7 +1,7 @@
 import {Entity, JoinColumn, OneToMany, OneToOne, PrimaryColumn} from 'typeorm';
 
 import {Comment} from '../local/comment.entity';
-import {NewsFeed} from '../local/news-feed.entity';
+import {NewsFeed} from '../local/newsfeed.entity';
 
 @Entity('user_references')
 export class UserReference {

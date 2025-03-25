@@ -1,12 +1,26 @@
-import {Column, Entity, ManyToMany, PrimaryGeneratedColumn} from 'typeorm';
+import {ApiProperty} from '@nestjs/swagger';
 
 import {NewsFeed} from './news-feed.entity';
 
-@Entity()
 export class HashTag {
-    @PrimaryGeneratedColumn()
+    @ApiProperty({
+        description: 'Unique identifier for the hashtag',
+        example: '550e8400-e29b-41d4-a716-446655440000',
+        type: String,
+    })
     id: string;
 
-    @ManyToMany(() => NewsFeed, (newsFeed) => newsFeed.tags)
+    @ApiProperty({
+        description: 'Name of the hashtag (without the # symbol)',
+        example: 'infinivista',
+        type: String,
+    })
+    name: string;
+
+    @ApiProperty({
+        description: 'News feeds that use this hashtag',
+        type: () => [NewsFeed],
+        isArray: true,
+    })
     newsFeeds: NewsFeed[];
 }

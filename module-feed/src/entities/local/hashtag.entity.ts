@@ -1,6 +1,6 @@
 import {Column, Entity, ManyToMany, PrimaryGeneratedColumn} from 'typeorm';
 
-import {NewsFeed} from './news-feed.entity';
+import {NewsFeed} from './newsfeed.entity';
 
 @Entity()
 export class HashTag {

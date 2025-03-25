@@ -2,7 +2,7 @@ import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
-import {NewsFeed} from '@/entities/local/news-feed.entity';
+import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post as PostEntity} from '@/entities/local/post.entity';
 import {Story} from '@/entities/local/story.entity';
 

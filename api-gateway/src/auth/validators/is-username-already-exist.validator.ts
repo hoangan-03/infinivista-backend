@@ -3,7 +3,7 @@ import {InjectRepository} from '@nestjs/typeorm';
 import {ValidatorConstraint, ValidatorConstraintInterface} from 'class-validator';
 import {Repository} from 'typeorm';
 
-import {User} from '@/entities/user-module/user.entity';
+import {User} from '@/entities/user-module/local/user.entity';
 
 @ValidatorConstraint({name: 'isUserNameAlreadyExist', async: true})
 @Injectable()

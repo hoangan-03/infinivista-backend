@@ -2,7 +2,7 @@ import {ApiProperty} from '@nestjs/swagger';
 
 import {SettingType} from '@/enums/user-module/setting.enum';
 
-import {BaseEntity} from './base-class';
+import {BaseEntity} from '../../base/base-class';
 import {User} from './user.entity';
 
 export class Setting extends BaseEntity {

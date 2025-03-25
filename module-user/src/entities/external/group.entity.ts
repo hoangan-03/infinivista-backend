@@ -1,12 +1,12 @@
-import {Entity, ManyToMany, PrimaryColumn} from 'typeorm';
+// import {Entity, ManyToMany, PrimaryColumn} from 'typeorm';
 
-import {User} from '../local/user.entity';
+// import {User} from '../local/user.entity';
 
-@Entity()
-export class GroupReference {
-    @PrimaryColumn()
-    id: string;
+// @Entity()
+// export class GroupReference {
+//     @PrimaryColumn()
+//     id: string;
 
-    @ManyToMany(() => User, (user) => user.joinedGroups)
-    members: User[];
-}
+//     @ManyToMany(() => User, (user) => user.joinedGroups)
+//     members: User[];
+// }

@@ -4,18 +4,19 @@ import {MessagePattern} from '@nestjs/microservices';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
-import {CommunityReference} from '@/entities/external/community.entity';
-import {UserReference} from '@/entities/external/user.entity';
+import {CommunityReference} from '@/entities/external/community-ref.entity';
+import {UserReference} from '@/entities/external/user-ref.entity';
 import {Advertisement} from '@/entities/local/advertisement.entity';
 import {Comment} from '@/entities/local/comment.entity';
 import {HashTag} from '@/entities/local/hashtag.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
-import {NewsFeed} from '@/entities/local/news-feed.entity';
+import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post} from '@/entities/local/post.entity';
 import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reaction} from '@/entities/local/reaction.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
+import {ReactionType} from '@/enum/reaction-type';
 import {visibilityEnum} from '@/enum/visibility.enum';
 
 @Controller()
@@ -99,7 +100,7 @@ export class SeedHandlerController {
 
         for (const newsFeed of newsFeeds) {
             await this.createPostsForNewsFeed(newsFeed, userRefs);
-            await this.createReactionsForNewsFeed(newsFeed, userRefs);
+            await this.createReactionsForNewsFeed(newsFeed);
             await this.createStoryForNewsFeed(newsFeed);
 
             // Add either a reel or a livestream history (50/50 chance)
@@ -121,8 +122,6 @@ export class SeedHandlerController {
     private async createUserReference(userRefData: any): Promise<UserReference> {
         const userRef = this.userReferenceRepository.create({
             id: userRefData.id,
-            username: userRefData.username || `user_${faker.string.alphanumeric(5)}`,
-            profileImageUrl: userRefData.profileImageUrl || faker.image.avatar(),
         });
         return this.userReferenceRepository.save(userRef);
     }
@@ -219,14 +218,14 @@ export class SeedHandlerController {
         }
     }
 
-    private async createReactionsForNewsFeed(newsFeed: NewsFeed, allUsers: UserReference[]): Promise<void> {
+    private async createReactionsForNewsFeed(newsFeed: NewsFeed): Promise<void> {
         // Add 0-10 reactions to the news feed
         const reactionCount = faker.number.int({min: 0, max: 10});
         const reactionTypes = ['LIKE', 'HEART', 'CARE', 'SAD', 'WOW', 'ANGRY'];
 
         for (let i = 0; i < reactionCount; i++) {
             const reaction = this.reactionRepository.create({
-                reaction_type: faker.helpers.arrayElement(reactionTypes),
+                reaction_type: faker.helpers.arrayElement(reactionTypes) as ReactionType,
                 reaction_image_url: faker.image.url(),
                 newsFeed,
             });
@@ -248,7 +247,7 @@ export class SeedHandlerController {
 
     private async createReelForNewsFeed(newsFeed: NewsFeed): Promise<void> {
         const reel = this.reelRepository.create({
-            reel_video_url: faker.internet.url(),
+            reel_url: faker.internet.url(),
             duration: faker.number.int({min: 15, max: 60}), // 15-60 seconds
             newsFeed,
         });

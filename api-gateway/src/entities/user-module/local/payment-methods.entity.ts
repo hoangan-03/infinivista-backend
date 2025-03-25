@@ -3,7 +3,7 @@ import {IsNotEmpty, IsOptional, IsString, Length} from 'class-validator';
 
 import {PaymentMethodType} from '@/enums/user-module/payment-method.enum';
 
-import {BaseEntity} from './base-class';
+import {BaseEntity} from '../../base/base-class';
 
 export class PaymentMethods extends BaseEntity {
     @ApiProperty({

@@ -1,6 +1,6 @@
 import {Column, Entity, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
-import {NewsFeed} from '@/entities/local/news-feed.entity';
+import {NewsFeed} from '@/entities/local/newsfeed.entity';
 
 @Entity()
 export class Advertisement {

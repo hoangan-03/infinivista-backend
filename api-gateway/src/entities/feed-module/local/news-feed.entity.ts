@@ -1,11 +1,9 @@
-import {Column, Entity, JoinColumn, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {ApiProperty} from '@nestjs/swagger';
 
-import {visibilityEnum} from '@/enums/feed-module/visibility.enum';
-
+import {BaseEntity} from '../../base/base-class';
 import {CommunityReference} from '../external/community.entity';
 import {UserReference} from '../external/user.entity';
 import {Advertisement} from './advertisement.entity';
-import {BaseEntity} from './base-class';
 import {HashTag} from './hashtag.entity';
 import {LiveStreamHistory} from './live-stream-history.entity';
 import {Post} from './post.entity';
@@ -13,47 +11,96 @@ import {Reaction} from './reaction.entity';
 import {Reel} from './reel.entity';
 import {Story} from './story.entity';
 
-@Entity()
 export class NewsFeed extends BaseEntity {
-    @PrimaryGeneratedColumn()
+    @ApiProperty({
+        description: 'Unique identifier for the news feed',
+        example: 1,
+        type: Number,
+    })
     id: number;
 
-    @Column({type: 'text', nullable: true})
+    @ApiProperty({
+        description: 'Description or text content of the news feed',
+        example: 'My journey through Europe',
+        type: String,
+        required: false,
+    })
     description?: string;
 
-    @Column({type: 'enum', enum: visibilityEnum, default: visibilityEnum.PUBLIC})
-    visibility: visibilityEnum;
+    @ApiProperty({
+        description: 'Visibility setting for the news feed',
+        enum: ['PUBLIC', 'FRIENDS_ONLY', 'PRIVATE'],
+        example: 'PUBLIC',
+        enumName: 'VisibilityEnum',
+    })
+    visibility: string;
 
-    @OneToOne(() => Reel, (reel) => reel.newsFeed, {nullable: true})
-    @JoinColumn()
+    @ApiProperty({
+        description: 'Reel associated with this news feed',
+        type: () => Reel,
+        required: false,
+    })
     reel?: Reel;
 
-    @OneToMany(() => Story, (story) => story.newsFeed)
+    @ApiProperty({
+        description: 'Stories associated with this news feed',
+        type: () => [Story],
+        isArray: true,
+    })
     stories: Story[];
 
-    @OneToMany(() => Post, (post) => post.newsFeed)
+    @ApiProperty({
+        description: 'Posts in this news feed',
+        type: () => [Post],
+        isArray: true,
+    })
     posts: Post[];
 
-    @OneToMany(() => LiveStreamHistory, (liveStream) => liveStream.newsFeed)
+    @ApiProperty({
+        description: 'Live stream history records for this news feed',
+        type: () => [LiveStreamHistory],
+        isArray: true,
+    })
     liveStreams: LiveStreamHistory[];
 
-    @OneToMany(() => Advertisement, (ad) => ad.newsFeed)
+    @ApiProperty({
+        description: 'Advertisements associated with this news feed',
+        type: () => [Advertisement],
+        isArray: true,
+    })
     advertisements: Advertisement[];
 
-    @OneToMany(() => Reaction, (reaction) => reaction.newsFeed)
+    @ApiProperty({
+        description: 'Reactions to this news feed',
+        type: () => [Reaction],
+        isArray: true,
+    })
     reactions: Reaction[];
 
-    @ManyToOne(() => CommunityReference, (community) => community.newsFeeds, {nullable: true})
+    @ApiProperty({
+        description: 'Community that owns this news feed (if applicable)',
+        type: () => CommunityReference,
+        required: false,
+    })
     community?: CommunityReference;
 
-    @OneToOne(() => UserReference, (userRef) => userRef.newsFeed)
+    @ApiProperty({
+        description: 'User who owns this news feed',
+        type: () => UserReference,
+    })
     owner: UserReference;
 
-    @ManyToMany(() => HashTag, (tag) => tag.newsFeeds)
-    @JoinColumn()
+    @ApiProperty({
+        description: 'Hashtags used in this news feed',
+        type: () => [HashTag],
+        isArray: true,
+    })
     tags: HashTag[];
 
-    @ManyToMany(() => UserReference)
-    @JoinColumn()
+    @ApiProperty({
+        description: 'Users tagged in this news feed',
+        type: () => [UserReference],
+        isArray: true,
+    })
     taggedUsers: UserReference[];
 }

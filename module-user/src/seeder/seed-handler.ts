@@ -62,7 +62,7 @@ export class SeedHandlerController {
         const securityQuestions = await this.createSecurityQuestions();
 
         // Create users with related entities
-        const users = [];
+        const users: User[] = [];
         for (let i = 0; i < payload.count; i++) {
             const user = await this.createUser(i, securityQuestions);
             users.push(user);
@@ -88,7 +88,7 @@ export class SeedHandlerController {
             'What is your favorite movie?',
         ];
 
-        const securityQuestions = [];
+        const securityQuestions: SecurityQuestion[] = [];
         for (const question of questions) {
             const securityQuestion = this.securityQuestionRepository.create({
                 question,
@@ -113,7 +113,7 @@ export class SeedHandlerController {
             firstName,
             lastName,
             phoneNumber: faker.phone.number(),
-            dob: faker.date.birthdate({years: 18, mode: 'age'}),
+            dob: faker.date.birthdate({mode: 'age', min: 18, max: 24}),
             gender: faker.helpers.arrayElement(Object.values(Gender)),
             profileImageUrl: faker.image.avatar(),
             coverImageUrl: faker.image.url(),
@@ -164,7 +164,7 @@ export class SeedHandlerController {
         const paymentMethodsCount = faker.number.int({min: 1, max: 2});
         for (let i = 0; i < paymentMethodsCount; i++) {
             const paymentMethod = this.paymentMethodsRepository.create({
-                user_id: user.id,
+                id: user.id,
                 payment_method: faker.helpers.arrayElement(Object.values(PaymentMethodType)),
                 card_last_four: faker.finance.creditCardNumber('####'),
                 payment_token: `tok_${faker.string.alphanumeric(10)}`,
@@ -187,24 +187,22 @@ export class SeedHandlerController {
                 // Check if friendship already exists in either direction
                 const existingFriendship = await this.friendRepository.findOne({
                     where: [
-                        {user_id: user.id, friend_id: friend.id},
-                        {user_id: friend.id, friend_id: user.id},
+                        {user: user, friend: friend},
+                        {user: friend, friend: user},
                     ],
                 });
 
                 if (!existingFriendship) {
                     const friendship = this.friendRepository.create({
-                        user_id: user.id,
-                        friend_id: friend.id,
-                        group: faker.helpers.arrayElement(['Close Friends', 'Family', 'Work', null]),
+                        user: user,
+                        friend: friend,
                     });
                     await this.friendRepository.save(friendship);
 
                     // Create the reverse friendship too
                     const reverseFriendship = this.friendRepository.create({
-                        user_id: friend.id,
-                        friend_id: user.id,
-                        group: faker.helpers.arrayElement(['Close Friends', 'Family', 'Work', null]),
+                        user: friend,
+                        friend: user,
                     });
                     await this.friendRepository.save(reverseFriendship);
                 }

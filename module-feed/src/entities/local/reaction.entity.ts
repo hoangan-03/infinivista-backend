@@ -1,15 +1,16 @@
 import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
-import {BaseEntity} from '@/entities/local/base-class';
+import {BaseEntity} from '@/entities/base/base-class';
+import {ReactionType} from '@/enum/reaction-type';
 
-import {NewsFeed} from './news-feed.entity';
+import {NewsFeed} from './newsfeed.entity';
 @Entity()
 export class Reaction extends BaseEntity {
-    @PrimaryGeneratedColumn()
+    @PrimaryGeneratedColumn('uuid')
     reaction_id: number;
 
-    @Column({type: 'enum', enum: ['LIKE', 'HEART', 'CARE', 'SAD', 'WOW', 'ANGRY']})
-    reaction_type: string;
+    @Column({type: 'enum', enum: ReactionType})
+    reaction_type: ReactionType;
 
     @Column()
     reaction_image_url: string;

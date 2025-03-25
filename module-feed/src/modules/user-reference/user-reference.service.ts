@@ -2,7 +2,7 @@ import {Injectable} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
-import {UserReference} from '@/entities/external/user.entity';
+import {UserReference} from '@/entities/external/user-ref.entity';
 
 @Injectable()
 export class UserReferenceService {

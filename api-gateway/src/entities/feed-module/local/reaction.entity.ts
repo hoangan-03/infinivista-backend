@@ -1,18 +1,33 @@
-import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {ApiProperty} from '@nestjs/swagger';
 
-import {BaseEntity} from './base-class';
+import {BaseEntity} from '../../base/base-class';
 import {NewsFeed} from './news-feed.entity';
-@Entity()
+
 export class Reaction extends BaseEntity {
-    @PrimaryGeneratedColumn()
+    @ApiProperty({
+        description: 'Unique identifier for the reaction',
+        example: 1,
+        type: Number,
+    })
     reaction_id: number;
 
-    @Column({type: 'enum', enum: ['LIKE', 'HEART', 'CARE', 'SAD', 'WOW', 'ANGRY']})
-    reaction_type: string;
+    @ApiProperty({
+        description: 'Type of reaction',
+        enum: ReactionType,
+        example: ReactionType.LIKE,
+    })
+    reaction_type: ReactionType;
 
-    @Column()
+    @ApiProperty({
+        description: 'URL to the reaction image',
+        example: 'https://storage.infinivista.com/reactions/like.png',
+        type: String,
+    })
     reaction_image_url: string;
 
-    @ManyToOne(() => NewsFeed, (newsFeed) => newsFeed.reactions)
+    @ApiProperty({
+        description: 'The news feed this reaction belongs to',
+        type: () => NewsFeed,
+    })
     newsFeed: NewsFeed;
 }

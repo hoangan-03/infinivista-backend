@@ -3,7 +3,7 @@ import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
-import {NewsFeed} from '@/entities/local/news-feed.entity';
+import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post} from '@/entities/local/post.entity';
 import {Reaction} from '@/entities/local/reaction.entity';
 import {Story} from '@/entities/local/story.entity';
