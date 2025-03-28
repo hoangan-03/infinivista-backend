@@ -1,5 +1,7 @@
 import {ApiProperty} from '@nestjs/swagger';
 
+import {visibilityEnum} from '@/enums/feed-module/visibility.enum';
+
 import {BaseEntity} from '../../base/base-class';
 import {CommunityReference} from '../external/community.entity';
 import {UserReference} from '../external/user.entity';
@@ -29,9 +31,7 @@ export class NewsFeed extends BaseEntity {
 
     @ApiProperty({
         description: 'Visibility setting for the news feed',
-        enum: ['PUBLIC', 'FRIENDS_ONLY', 'PRIVATE'],
-        example: 'PUBLIC',
-        enumName: 'VisibilityEnum',
+        enum: visibilityEnum,
     })
     visibility: string;
 

@@ -1,5 +1,7 @@
 import {ApiProperty} from '@nestjs/swagger';
 
+import {ReactionType} from '@/enums/feed-module/reaction-type';
+
 import {BaseEntity} from '../../base/base-class';
 import {NewsFeed} from './news-feed.entity';
 

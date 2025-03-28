@@ -1,4 +1,3 @@
-import {UseGuards} from '@nestjs/common';
 import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 

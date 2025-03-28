@@ -17,8 +17,20 @@ export class Friend extends BaseEntity {
     user: User;
 
     @ApiProperty({
+        description: 'The user id who own this friendship',
+        type: String,
+    })
+    user_id: string;
+
+    @ApiProperty({
         description: 'The friend of the user',
         type: () => User,
     })
     friend: User;
+
+    @ApiProperty({
+        description: 'The friend id of the user',
+        type: String,
+    })
+    friend_id: string;
 }

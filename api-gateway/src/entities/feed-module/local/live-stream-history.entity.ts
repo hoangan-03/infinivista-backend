@@ -1,4 +1,5 @@
 import {ApiProperty} from '@nestjs/swagger';
+
 import {BaseEntity} from '../../base/base-class';
 import {NewsFeed} from './news-feed.entity';
 

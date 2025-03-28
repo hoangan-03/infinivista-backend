@@ -131,16 +131,16 @@ export class FriendService {
         });
     }
 
-    async updateFriendGroup(userId: string, friendId: string, group: string): Promise<Friend> {
-        const friendship = await this.friendRepository.findOne({
-            where: {user_id: userId, friend_id: friendId},
-        });
+    // async updateFriendGroup(userId: string, friendId: string, group: string): Promise<Friend> {
+    //     const friendship = await this.friendRepository.findOne({
+    //         where: {user_id: userId, friend_id: friendId},
+    //     });
 
-        if (!friendship) {
-            throw new NotFoundException('Friend relationship not found');
-        }
+    //     if (!friendship) {
+    //         throw new NotFoundException('Friend relationship not found');
+    //     }
 
-        friendship.group = group;
-        return this.friendRepository.save(friendship);
-    }
+    //     friendship.group = group;
+    //     return this.friendRepository.save(friendship);
+    // }
 }

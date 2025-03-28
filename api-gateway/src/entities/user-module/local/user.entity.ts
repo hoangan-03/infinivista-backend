@@ -110,7 +110,7 @@ export class User extends BaseEntity {
     securityAnswers: SecurityAnswer[];
 
     @ApiProperty({
-        example: 'public',
+        example: ProfilePrivacy.PUBLIC,
         description: 'Profile privacy level',
     })
     profilePrivacy: ProfilePrivacy;

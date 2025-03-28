@@ -1,9 +1,6 @@
 import {DataSource} from 'typeorm';
 
-import {GroupReference} from '@/entities/external/group.entity';
 import {NewsFeedReference} from '@/entities/external/newsfeed-ref.entity';
-import {PageReference} from '@/entities/external/page.entity';
-import {ProductReference} from '@/entities/external/product.entity';
 import {Friend} from '@/entities/local/friend.entity';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {PaymentMethods} from '@/entities/local/payment-methods.entity';
@@ -29,10 +26,7 @@ export const AppDataSource = new DataSource({
         UserStatus,
         FriendRequest,
         Friend,
-        GroupReference,
-        PageReference,
         NewsFeedReference,
-        ProductReference,
     ],
     migrations: ['migrations/*.ts'],
     synchronize: true, // set to false in production

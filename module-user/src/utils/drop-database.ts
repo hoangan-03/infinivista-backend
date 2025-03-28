@@ -89,6 +89,9 @@ const dropDatabase = async () => {
         await queryRunner.query('DROP TYPE IF EXISTS gender_enum CASCADE');
         await queryRunner.query('DROP TYPE IF EXISTS setting_type_enum CASCADE');
         await queryRunner.query('DROP TYPE IF EXISTS payment_method_type_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS profile_privacy_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS password_reset_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS friend_status_enum CASCADE');
 
         console.log(`Database ${configService.get<string>('POSTGRES_DB')} tables dropped successfully.`);
     } catch (error) {
