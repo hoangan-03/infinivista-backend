@@ -1,8 +1,5 @@
 import {ApiProperty} from '@nestjs/swagger';
-import {IsDefined, IsEmail, IsNotEmpty, Matches, MinLength, Validate} from 'class-validator';
-
-import {IsUserAlreadyExist} from '@/auth/validators/is-user-already-exist.validator';
-import {IsUserNameAlreadyExist} from '@/auth/validators/is-username-already-exist.validator';
+import {IsDefined, IsEmail, IsNotEmpty, Matches, MinLength} from 'class-validator';
 
 export class RegisterUserDto {
     @ApiProperty({
@@ -11,7 +8,6 @@ export class RegisterUserDto {
     })
     @IsDefined()
     @IsNotEmpty()
-    @Validate(IsUserNameAlreadyExist)
     readonly username: string;
 
     @ApiProperty({
@@ -21,7 +17,6 @@ export class RegisterUserDto {
     @IsDefined()
     @IsEmail()
     @IsNotEmpty()
-    @Validate(IsUserAlreadyExist)
     readonly email: string;
 
     @ApiProperty({

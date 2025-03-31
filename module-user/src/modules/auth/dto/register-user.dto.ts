@@ -1,13 +1,18 @@
 import {IsDefined, IsEmail, IsNotEmpty, Matches, MinLength, Validate} from 'class-validator';
 
+import {IsUserAlreadyExist} from '../validators/is-user-already-exist.validator';
+import {IsUserNameAlreadyExist} from '../validators/is-username-already-exist.validator';
+
 export class RegisterUserDto {
     @IsDefined()
     @IsNotEmpty()
+    @Validate(IsUserNameAlreadyExist)
     readonly username: string;
 
     @IsDefined()
     @IsEmail()
     @IsNotEmpty()
+    @Validate(IsUserAlreadyExist)
     readonly email: string;
 
     @IsDefined()
