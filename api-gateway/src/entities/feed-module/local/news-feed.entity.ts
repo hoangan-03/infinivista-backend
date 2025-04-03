@@ -1,7 +1,6 @@
 import {ApiProperty} from '@nestjs/swagger';
 
-import {visibilityEnum} from '@/enums/feed-module/visibility.enum';
-
+import {visibilityEnum} from '../../../enums/feed-module/visibility.enum';
 import {BaseEntity} from '../../base/base-class';
 import {CommunityReference} from '../external/community.entity';
 import {UserReference} from '../external/user.entity';

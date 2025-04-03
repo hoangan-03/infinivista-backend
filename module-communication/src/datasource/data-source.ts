@@ -12,9 +12,6 @@ export const AppDataSource = new DataSource({
     type: 'postgres',
     host: 'localhost',
     port: 5435,
-    // host: 'db',
-    // port: 5432,
-    // For inside Docker container
     username: 'postgres',
     password: 'postgres',
     database: 'infinivista-communication',
@@ -28,5 +25,6 @@ export const AppDataSource = new DataSource({
         MessageText,
     ],
     migrations: ['migrations/*.ts'],
-    synchronize: true, // set to false in production
+    synchronize: false,
+    migrationsRun: true, // set to false in production
 });

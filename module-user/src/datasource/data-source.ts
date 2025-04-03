@@ -13,7 +13,7 @@ import {UserStatus} from '@/entities/local/user-status.entity';
 export const AppDataSource = new DataSource({
     type: 'postgres',
     host: 'localhost',
-    port: 5432,
+    port: 5435,
     username: 'postgres',
     password: 'postgres',
     database: 'infinivista-user',
@@ -29,5 +29,6 @@ export const AppDataSource = new DataSource({
         NewsFeedReference,
     ],
     migrations: ['migrations/*.ts'],
-    synchronize: true, // set to false in production
+    synchronize: false,
+    migrationsRun: true, // set to false in production
 });

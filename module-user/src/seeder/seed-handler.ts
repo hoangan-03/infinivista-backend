@@ -135,7 +135,7 @@ export class SeedHandlerController {
         // Create user settings
         const settingValues = [
             {type: SettingType.NOTIFICATION, value: faker.datatype.boolean().toString()},
-            {type: SettingType.ACCOUNT_PRIVACY, value: faker.helpers.arrayElement(['public', 'private', 'friends'])},
+            {type: SettingType.ACCOUNT_PRIVACY, value: faker.helpers.arrayElement(['PUBLIC', 'PRIVATE', 'FRIENDS'])},
             {type: SettingType.LANGUAGE, value: faker.helpers.arrayElement(['en', 'fr', 'es', 'de'])},
             {type: SettingType.THEME, value: faker.helpers.arrayElement(['light', 'dark'])},
         ];

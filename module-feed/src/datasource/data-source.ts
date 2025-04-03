@@ -16,7 +16,7 @@ import {Story} from '@/entities/local/story.entity';
 export const AppDataSource = new DataSource({
     type: 'postgres',
     host: 'localhost',
-    port: 5432,
+    port: 5435,
     username: 'postgres',
     password: 'postgres',
     database: 'infinivista-feed',
@@ -35,5 +35,6 @@ export const AppDataSource = new DataSource({
         CommunityReference,
     ],
     migrations: ['migrations/*.ts'],
-    synchronize: true, // set to false in production
+    synchronize: false,
+    migrationsRun: true, // set to false in production
 });

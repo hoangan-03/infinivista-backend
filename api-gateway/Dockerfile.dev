@@ -5,14 +5,10 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 COPY tsconfig*.json ./
 
-# Install all dependencies including dev dependencies
 RUN npm install
-# Install NestJS CLI globally
 RUN npm install -g @nestjs/cli
 
-
-# Enable polling for file watching
 ENV CHOKIDAR_USEPOLLING=true
 ENV NODE_ENV=development
-# Copy source code (this will be overridden by volume mounts in docker-compose)
+
 CMD ["npm", "run", "start:dev", "--", "--watch", "--poll=1000"]
