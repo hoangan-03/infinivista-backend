@@ -1,4 +1,4 @@
-import {Column, Entity, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, ManyToOne, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
@@ -6,7 +6,7 @@ import {NewsFeed} from '@/entities/local/newsfeed.entity';
 @Entity()
 export class Story extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
-    id: number;
+    id: string;
 
     @Column()
     story_url: string;
@@ -14,6 +14,6 @@ export class Story extends BaseEntity {
     @Column()
     duration: number;
 
-    @OneToOne(() => NewsFeed, (newsFeed) => newsFeed.stories)
+    @ManyToOne(() => NewsFeed, (newsFeed) => newsFeed.stories)
     newsFeed: NewsFeed;
 }

@@ -4,8 +4,8 @@ import {NewsFeed} from '@/entities/local/newsfeed.entity';
 
 @Entity()
 export class Advertisement {
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column({type: 'timestamp'})
     start_time: Date;

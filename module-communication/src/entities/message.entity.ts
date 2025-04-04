@@ -10,8 +10,8 @@ import {MessageText} from './message-text.entity';
 
 @Entity()
 export class Message {
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column({type: 'timestamp', nullable: true})
     sent_at?: Date;

@@ -5,7 +5,7 @@ import {NewsFeed} from '@/entities/local/newsfeed.entity';
 @Entity()
 export class Reel extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
-    id: number;
+    id: string;
 
     @Column()
     reel_url: string;

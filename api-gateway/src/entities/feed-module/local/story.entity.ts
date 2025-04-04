@@ -1,5 +1,5 @@
 import {ApiProperty} from '@nestjs/swagger';
-import {Entity, OneToOne} from 'typeorm';
+import {Entity, ManyToOne, OneToOne} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
 
@@ -11,7 +11,7 @@ export class Story extends BaseEntity {
         description: 'Unique identifier for the story',
         example: '550e8400-e29b-41d4-a716-446655440000',
     })
-    id: number;
+    id: string;
 
     @ApiProperty({
         description: 'URL to the story media (image or video)',
@@ -31,6 +31,5 @@ export class Story extends BaseEntity {
         description: 'The news feed this story belongs to',
         type: () => NewsFeed,
     })
-    @OneToOne(() => NewsFeed, (newsFeed) => newsFeed.stories)
     newsFeed: NewsFeed;
 }

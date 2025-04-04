@@ -4,8 +4,8 @@ import {Message} from './message.entity';
 
 @Entity()
 export class MessageText {
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column({type: 'text'})
     text: string;

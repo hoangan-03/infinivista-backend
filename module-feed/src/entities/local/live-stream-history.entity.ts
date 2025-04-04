@@ -4,8 +4,8 @@ import {NewsFeed} from './newsfeed.entity';
 
 @Entity()
 export class LiveStreamHistory {
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column({type: 'timestamp'})
     start_time: Date;

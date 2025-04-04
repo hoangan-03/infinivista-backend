@@ -4,8 +4,8 @@ import {Message} from './message.entity';
 
 @Entity()
 export class GroupChat {
-    @PrimaryGeneratedColumn()
-    group_chat_id: number;
+    @PrimaryGeneratedColumn('uuid')
+    group_chat_id: string;
 
     @Column()
     group_name: string;

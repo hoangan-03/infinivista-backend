@@ -1,16 +1,17 @@
 services:
+  # Database services
   db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: infinivista_db
     restart: always
     env_file:
       - .env
-    # ports:
-    #   - "5435:5432"
+    ports:
+      - "5435:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -34,8 +35,9 @@ services:
       - pgadmin_data:/var/lib/pgadmin
     networks:
       - infinivista_backend
+
   rabbitmq:
-    image: rabbitmq:3.11-management
+    image: rabbitmq:3.11-management-alpine
     container_name: infinivista_rabbitmq
     ports:
       - "15672:15672"
@@ -48,18 +50,21 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - infinivista_backend
+
+  # Microservices - Development Configuration
   gateway:
     build:
       context: ./api-gateway
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: infinivista_gateway
     restart: always
     ports:
       - "3001:3000"
-    volumes:
-      - ./api-gateway/src:/usr/src/app/src
-      - ./api-gateway/node_modules:/usr/src/app/node_modules
-    command: npm run start:dev
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
     env_file:
       - ./api-gateway/.env
     depends_on:
@@ -67,16 +72,18 @@ services:
         condition: service_healthy
     networks:
       - infinivista_backend
+
   user:
     build:
       context: ./module-user
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: infinivista_user_module
     restart: always
-    volumes:
-      - ./module-user/src:/usr/src/app/src
-      - ./module-user/node_modules:/usr/src/app/node_modules
-    command: npm run start:dev
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
     env_file:
       - ./module-user/.env
       - ./api-gateway/.env
@@ -87,12 +94,18 @@ services:
         condition: service_healthy
     networks:
       - infinivista_backend
+
   feed:
     build:
       context: ./module-feed
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: infinivista_feed_module
     restart: always
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
     env_file:
       - ./module-feed/.env
       - ./api-gateway/.env
@@ -103,26 +116,13 @@ services:
         condition: service_healthy
     networks:
       - infinivista_backend
-  # communication:
-  #     build:
-  #         context: ./module-communication
-  #         dockerfile: Dockerfile
-  #     container_name: infinivista_communication_module
-  #     restart: always
-  #     env_file:
-  #         - ./module-communication/.env
-  #         - ./api-gateway/.env
-  #     depends_on:
-  #         db:
-  #             condition: service_healthy
-  #         rabbitmq:
-  #             condition: service_healthy
-  #     networks:
-  #         - infinivista_backend
+
 networks:
   infinivista_backend:
     driver: bridge
+
 volumes:
+  # Database volumes
   pgadmin_data:
   local_pgdata:
   rabbitmq_data:

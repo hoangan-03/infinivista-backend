@@ -9,7 +9,7 @@ export class LiveStreamHistory extends BaseEntity {
         example: 1,
         type: Number,
     })
-    id: number;
+    id: string;
 
     @ApiProperty({
         description: 'URL to access the live stream recording',

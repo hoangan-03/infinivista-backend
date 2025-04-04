@@ -26,7 +26,7 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
             }
 
             return user;
-        } catch (_error) {
+        } catch (_error: any) {
             throw new UnauthorizedException(_error.message || 'Authentication failed');
         }
     }

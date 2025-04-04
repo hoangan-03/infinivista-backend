@@ -8,7 +8,7 @@ import {PostAttachment} from './post-attachment';
 @Entity()
 export class Post extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
-    id: number;
+    id: string;
 
     @Column({type: 'text', nullable: false})
     content: string;

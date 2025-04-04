@@ -18,7 +18,7 @@ export class NewsFeed extends BaseEntity {
         example: 1,
         type: Number,
     })
-    id: number;
+    id: string;
 
     @ApiProperty({
         description: 'Description or text content of the news feed',

@@ -9,9 +9,8 @@ export class Reaction extends BaseEntity {
     @ApiProperty({
         description: 'Unique identifier for the reaction',
         example: 1,
-        type: Number,
     })
-    reaction_id: number;
+    reaction_id: string;
 
     @ApiProperty({
         description: 'Type of reaction',

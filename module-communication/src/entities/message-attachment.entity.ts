@@ -4,8 +4,8 @@ import {Message} from './message.entity';
 
 @Entity()
 export class MessageAttachment {
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column()
     attachment_url: string;

@@ -1,4 +1,4 @@
-import {Body, Controller, Delete, Get, Inject, Param, ParseIntPipe, Post, Put, UseGuards} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Inject, Param, Post, Put, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import {ApiBearerAuth, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
@@ -34,15 +34,15 @@ export class FeedController {
     }
 
     @Get('news-feed/user')
-    @ApiOperation({summary: 'Get all news feeds of a user'})
+    @ApiOperation({summary: 'Get all posts in a newsfeed of a user'})
     async getAllNewsFeedsOfUser(@CurrentUser() user): Promise<NewsFeed[]> {
-        console.log(`User ${user.id} is getting all feeds of user ${user.id}`);
-        return await lastValueFrom(this.feedClient.send('GetAllNewsFeedOfUserCommand', {id: user.id}));
+        console.log(`User ${user.id} is getting all posts of user ${user.id}`);
+        return await lastValueFrom(this.feedClient.send('GetAllPostOfUserCommand', {id: user.id}));
     }
 
     @Get('news-feed/:id')
     @ApiOperation({summary: 'Get a news feed by ID'})
-    async getNewsFeedById(@CurrentUser() user, @Param('id', ParseIntPipe) id: number): Promise<NewsFeed> {
+    async getNewsFeedById(@CurrentUser() user, @Param('id') id: string): Promise<NewsFeed> {
         console.log(`User ${user.id} is getting feed with ID ${id}`);
         return await lastValueFrom(this.feedClient.send('GetByIdNewsFeedCommand', {id}));
     }
@@ -51,7 +51,7 @@ export class FeedController {
     @ApiOperation({summary: 'Update a news feed'})
     async updateNewsFeed(
         @CurrentUser() user,
-        @Param('id', ParseIntPipe) id: number,
+        @Param('id') id: string,
         @Body() data: Partial<NewsFeed>
     ): Promise<NewsFeed> {
         console.log(`User ${user.id} is updating feed with ID ${id}`);
@@ -60,7 +60,7 @@ export class FeedController {
 
     @Delete('news-feed/:id')
     @ApiOperation({summary: 'Delete a news feed'})
-    async deleteNewsFeed(@CurrentUser() user, @Param('id', ParseIntPipe) id: number): Promise<void> {
+    async deleteNewsFeed(@CurrentUser() user, @Param('id') id: string): Promise<void> {
         console.log(`User ${user.id} is deleting feed with ID ${id}`);
         return await lastValueFrom(this.feedClient.send('DeleteNewsFeedCommand', {id}));
     }
@@ -70,7 +70,7 @@ export class FeedController {
     @ApiOperation({summary: 'Create a post in a news feed'})
     async createPost(
         @CurrentUser() user,
-        @Param('id', ParseIntPipe) newsFeedId: number,
+        @Param('id') newsFeedId: string,
         @Body() postData: Partial<PostEntity>
     ): Promise<PostEntity> {
         console.log(`User ${user.id} is creating a post in feed ${newsFeedId}`);
@@ -79,10 +79,7 @@ export class FeedController {
 
     @Get('news-feed/:id/posts')
     @ApiOperation({summary: 'Get all posts in a news feed'})
-    async getPostsByNewsFeedId(
-        @CurrentUser() user,
-        @Param('id', ParseIntPipe) newsFeedId: number
-    ): Promise<PostEntity[]> {
+    async getPostsByNewsFeedId(@CurrentUser() user, @Param('id') newsFeedId: string): Promise<PostEntity[]> {
         return await lastValueFrom(this.feedClient.send('GetPostsByIdNewsFeedCommand', {newsFeedId}));
     }
 
@@ -90,7 +87,7 @@ export class FeedController {
     @ApiOperation({summary: 'Create a story in a news feed'})
     async createStory(
         @CurrentUser() user,
-        @Param('id', ParseIntPipe) newsFeedId: number,
+        @Param('id') newsFeedId: string,
         @Body() storyData: Partial<Story>
     ): Promise<Story> {
         return await lastValueFrom(this.feedClient.send('CreateStoryNewsFeedCommand', {newsFeedId, storyData}));
@@ -98,7 +95,7 @@ export class FeedController {
 
     @Get('news-feed/:id/stories')
     @ApiOperation({summary: 'Get all stories in a news feed'})
-    async getStoriesByNewsFeedId(@CurrentUser() user, @Param('id', ParseIntPipe) newsFeedId: number): Promise<Story[]> {
+    async getStoriesByNewsFeedId(@CurrentUser() user, @Param('id') newsFeedId: string): Promise<Story[]> {
         return await lastValueFrom(this.feedClient.send('GetStoriesByIdNewsFeedCommand', {newsFeedId}));
     }
 
@@ -106,7 +103,7 @@ export class FeedController {
     @ApiOperation({summary: 'Start a livestream in a news feed'})
     async createLiveStream(
         @CurrentUser() user,
-        @Param('id', ParseIntPipe) newsFeedId: number,
+        @Param('id') newsFeedId: string,
         @Body() streamData: Partial<LiveStreamHistory>
     ): Promise<LiveStreamHistory> {
         return await lastValueFrom(this.feedClient.send('CreateLiveStreamCommand', {newsFeedId, streamData}));
@@ -116,7 +113,7 @@ export class FeedController {
     @ApiOperation({summary: 'End a livestream'})
     async endLiveStream(
         @CurrentUser() user,
-        @Param('id', ParseIntPipe) streamId: number,
+        @Param('id') streamId: string,
         @Body('endTime') endTime: Date
     ): Promise<LiveStreamHistory> {
         return await lastValueFrom(this.feedClient.send('EndLiveStreamCommand', {streamId, endTime}));
@@ -124,7 +121,7 @@ export class FeedController {
 
     // @Get('news-feed/:id/stats')
     // @ApiOperation({summary: 'Get engagement statistics for a news feed'})
-    // async getEngagementStats(@CurrentUser() user, @Param('id', ParseIntPipe) newsFeedId: number): Promise<any> {
+    // async getEngagementStats(@CurrentUser() user, @Param('id') newsFeedId: string): Promise<any> {
     //     return await lastValueFrom(this.feedClient.send('GetEngagementStatsCommand', {newsFeedId}));
     // }
 }

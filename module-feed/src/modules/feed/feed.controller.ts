@@ -22,61 +22,61 @@ export class FeedController {
         return this.feedService.getAllNewsFeeds();
     }
 
-    @MessagePattern('GetAllNewsFeedOfUserCommand')
+    @MessagePattern('GetAllPostOfUserCommand')
     async getAllNewsFeedsOfUser(payload: {id: string}): Promise<PostEntity[]> {
         return this.feedService.getAllPostofUser(payload.id);
     }
 
     @MessagePattern('GetByIdNewsFeedCommand')
-    async getNewsFeedById(payload: {id: number}): Promise<NewsFeed> {
+    async getNewsFeedById(payload: {id: string}): Promise<NewsFeed> {
         return this.feedService.getNewsFeedById(payload.id);
     }
 
     @MessagePattern('UpdateNewsFeedCommand')
-    async updateNewsFeed(payload: {id: number; data: Partial<NewsFeed>}): Promise<NewsFeed> {
+    async updateNewsFeed(payload: {id: string; data: Partial<NewsFeed>}): Promise<NewsFeed> {
         return this.feedService.updateNewsFeed(payload.id, payload.data);
     }
 
     @MessagePattern('DeleteNewsFeedCommand')
-    async deleteNewsFeed(payload: {id: number}): Promise<void> {
+    async deleteNewsFeed(payload: {id: string}): Promise<void> {
         return this.feedService.deleteNewsFeed(payload.id);
     }
 
     @MessagePattern('CreatePostNewsFeedCommand')
-    async createPost(payload: {newsFeedId: number; postData: Partial<PostEntity>}): Promise<PostEntity> {
+    async createPost(payload: {newsFeedId: string; postData: Partial<PostEntity>}): Promise<PostEntity> {
         return this.feedService.createPost(payload.newsFeedId, payload.postData);
     }
 
     @MessagePattern('GetPostsByIdNewsFeedCommand')
-    async getPostsByNewsFeedId(payload: {newsFeedId: number}): Promise<PostEntity[]> {
+    async getPostsByNewsFeedId(payload: {newsFeedId: string}): Promise<PostEntity[]> {
         return this.feedService.getPostsByNewsFeedId(payload.newsFeedId);
     }
 
     @MessagePattern('CreateStoryNewsFeedCommand')
-    async createStory(payload: {newsFeedId: number; storyData: Partial<Story>}): Promise<Story> {
+    async createStory(payload: {newsFeedId: string; storyData: Partial<Story>}): Promise<Story> {
         return this.feedService.createStory(payload.newsFeedId, payload.storyData);
     }
 
     @MessagePattern('GetStoriesByIdNewsFeedCommand')
-    async getStoriesByNewsFeedId(payload: {newsFeedId: number}): Promise<Story[]> {
+    async getStoriesByNewsFeedId(payload: {newsFeedId: string}): Promise<Story[]> {
         return this.feedService.getStoriesByNewsFeedId(payload.newsFeedId);
     }
 
     @MessagePattern('CreateLiveStreamCommand')
     async createLiveStream(payload: {
-        newsFeedId: number;
+        newsFeedId: string;
         streamData: Partial<LiveStreamHistory>;
     }): Promise<LiveStreamHistory> {
         return this.feedService.createLiveStream(payload.newsFeedId, payload.streamData);
     }
 
     @MessagePattern('EndLiveStreamCommand')
-    async endLiveStream(payload: {streamId: number; endTime: Date}): Promise<LiveStreamHistory> {
+    async endLiveStream(payload: {streamId: string; endTime: Date}): Promise<LiveStreamHistory> {
         return this.feedService.endLiveStream(payload.streamId, payload.endTime);
     }
 
     // @MessagePattern('GetEngagementStatsCommand')
-    // async getEngagementStats(payload: {newsFeedId: number}): Promise<any> {
+    // async getEngagementStats(payload: {newsFeedId: string}): Promise<any> {
     //     return this.feedService.getEngagementStats(payload.newsFeedId);
     // }
 }

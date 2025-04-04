@@ -4,7 +4,7 @@ import {NewsFeed} from './newsfeed.entity';
 
 @Entity()
 export class HashTag {
-    @PrimaryGeneratedColumn()
+    @PrimaryGeneratedColumn('uuid')
     id: string;
 
     @Column()

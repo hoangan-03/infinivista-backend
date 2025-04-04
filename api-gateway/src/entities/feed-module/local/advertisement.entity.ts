@@ -9,7 +9,7 @@ export class Advertisement extends BaseEntity {
         example: 1,
         type: Number,
     })
-    id: number;
+    id: string;
 
     @ApiProperty({
         description: 'Title of the advertisement',

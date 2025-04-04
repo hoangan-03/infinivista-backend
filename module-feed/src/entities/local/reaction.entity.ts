@@ -7,7 +7,7 @@ import {NewsFeed} from './newsfeed.entity';
 @Entity()
 export class Reaction extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
-    reaction_id: number;
+    reaction_id: string;
 
     @Column({type: 'enum', enum: ReactionType})
     reaction_type: ReactionType;

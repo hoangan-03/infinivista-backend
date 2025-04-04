@@ -4,8 +4,8 @@ import {UserReference} from './external/user.entity';
 
 @Entity()
 export class CallHistory {
-    @PrimaryGeneratedColumn()
-    call_id: number;
+    @PrimaryGeneratedColumn('uuid')
+    call_id: string;
 
     @Column({type: 'timestamp'})
     start_time: Date;

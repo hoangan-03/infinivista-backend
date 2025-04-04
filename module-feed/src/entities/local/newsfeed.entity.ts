@@ -15,8 +15,8 @@ import {Reaction} from './reaction.entity';
 
 @Entity()
 export class NewsFeed extends BaseEntity {
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
     @Column({type: 'text', nullable: true})
     description?: string;

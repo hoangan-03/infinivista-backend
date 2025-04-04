@@ -1,6 +1,6 @@
 FROM node:20-alpine
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY package*.json ./
 COPY tsconfig*.json ./
@@ -10,5 +10,7 @@ RUN npm install -g @nestjs/cli
 
 ENV CHOKIDAR_USEPOLLING=true
 ENV NODE_ENV=development
+
+COPY . .
 
 CMD ["npm", "run", "start:dev", "--", "--watch", "--poll=1000"]

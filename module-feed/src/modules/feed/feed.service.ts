@@ -60,7 +60,6 @@ export class FeedService {
         }
         const userPosts = await this.postRepository.find({
             where: {newsFeed: {id: userFeed.id}},
-            relations: ['posts', 'stories', 'liveStreams', 'comments', 'reactions', 'reel'],
         });
 
         if (!userPosts) {
@@ -70,10 +69,10 @@ export class FeedService {
         return userPosts;
     }
 
-    async getNewsFeedById(id: number): Promise<NewsFeed> {
+    async getNewsFeedById(id: string): Promise<NewsFeed> {
         const newsFeed = await this.newsFeedRepository.findOne({
             where: {id},
-            relations: ['posts', 'stories', 'liveStreams', 'comments', 'reactions', 'reel', 'owner'],
+            relations: ['posts', 'stories', 'liveStreams', 'reactions', 'reel', 'owner'],
         });
 
         if (!newsFeed) {
@@ -83,19 +82,19 @@ export class FeedService {
         return newsFeed;
     }
 
-    async updateNewsFeed(id: number, data: Partial<NewsFeed>): Promise<NewsFeed> {
+    async updateNewsFeed(id: string, data: Partial<NewsFeed>): Promise<NewsFeed> {
         const newsFeed = await this.getNewsFeedById(id);
         this.newsFeedRepository.merge(newsFeed, data);
         return this.newsFeedRepository.save(newsFeed);
     }
 
-    async deleteNewsFeed(id: number): Promise<void> {
+    async deleteNewsFeed(id: string): Promise<void> {
         const result = await this.newsFeedRepository.delete(id);
         if (result.affected === 0) {
             throw new NotFoundException(`News feed with ID ${id} not found`);
         }
     }
-    async createPost(newsFeedId: number, postData: Partial<Post>): Promise<Post> {
+    async createPost(newsFeedId: string, postData: Partial<Post>): Promise<Post> {
         const newsFeed = await this.getNewsFeedById(newsFeedId);
 
         const post = this.postRepository.create({
@@ -106,7 +105,7 @@ export class FeedService {
         return this.postRepository.save(post);
     }
 
-    async getPostById(id: number): Promise<Post> {
+    async getPostById(id: string): Promise<Post> {
         const post = await this.postRepository.findOne({
             where: {id},
             relations: ['newsFeed', 'newsFeed.owner'],
@@ -119,14 +118,14 @@ export class FeedService {
         return post;
     }
 
-    async getPostsByNewsFeedId(newsFeedId: number): Promise<Post[]> {
+    async getPostsByNewsFeedId(newsFeedId: string): Promise<Post[]> {
         return this.postRepository.find({
             where: {newsFeed: {id: newsFeedId}},
             relations: ['newsFeed', 'newsFeed.owner'],
         });
     }
 
-    async createStory(newsFeedId: number, storyData: Partial<Story>): Promise<Story> {
+    async createStory(newsFeedId: string, storyData: Partial<Story>): Promise<Story> {
         const newsFeed = await this.getNewsFeedById(newsFeedId);
 
         const story = this.storyRepository.create({
@@ -137,14 +136,14 @@ export class FeedService {
         return this.storyRepository.save(story);
     }
 
-    async getStoriesByNewsFeedId(newsFeedId: number): Promise<Story[]> {
+    async getStoriesByNewsFeedId(newsFeedId: string): Promise<Story[]> {
         return this.storyRepository.find({
             where: {newsFeed: {id: newsFeedId}},
             relations: ['newsFeed'],
         });
     }
 
-    async createLiveStream(newsFeedId: number, streamData: Partial<LiveStreamHistory>): Promise<LiveStreamHistory> {
+    async createLiveStream(newsFeedId: string, streamData: Partial<LiveStreamHistory>): Promise<LiveStreamHistory> {
         const newsFeed = await this.getNewsFeedById(newsFeedId);
 
         const liveStream = this.liveStreamRepository.create({
@@ -155,7 +154,7 @@ export class FeedService {
         return this.liveStreamRepository.save(liveStream);
     }
 
-    async endLiveStream(streamId: number, endTime: Date): Promise<LiveStreamHistory> {
+    async endLiveStream(streamId: string, endTime: Date): Promise<LiveStreamHistory> {
         const stream = await this.liveStreamRepository.findOne({where: {id: streamId}});
 
         if (!stream) {
