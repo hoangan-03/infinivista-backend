@@ -2,7 +2,7 @@ import {ApiProperty} from '@nestjs/swagger';
 
 import {BaseEntity} from '../../base/base-class';
 import {Comment} from './comment.entity';
-import {NewsFeed} from './news-feed.entity';
+import {NewsFeed} from './newsfeed.entity';
 import {PostAttachment} from './post-attachment';
 
 export class Post extends BaseEntity {

@@ -69,6 +69,22 @@ export class FeedService {
         return userPosts;
     }
 
+    async getRandomNewsFeed(limit: number = 100): Promise<Post[]> {
+        // Get posts from all newsfeeds
+        const posts = await this.postRepository.find({
+            relations: ['newsFeed', 'newsFeed.owner'],
+        });
+
+        // Shuffle the array using Fisher-Yates algorithm
+        for (let i = posts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [posts[i], posts[j]] = [posts[j], posts[i]];
+        }
+
+        // Return limited number of randomly mixed posts
+        return posts.slice(0, limit);
+    }
+
     async getNewsFeedById(id: string): Promise<NewsFeed> {
         const newsFeed = await this.newsFeedRepository.findOne({
             where: {id},
@@ -103,6 +119,23 @@ export class FeedService {
         });
 
         return this.postRepository.save(post);
+    }
+
+    async updatePost(postId: string, postData: Partial<Post>): Promise<Post> {
+        const post = await this.getPostById(postId);
+        this.postRepository.merge(post, postData);
+        return this.postRepository.save(post);
+    }
+
+    async deletePost(postId: string): Promise<Post> {
+        const post = await this.getPostById(postId);
+        const result = await this.postRepository.delete(postId);
+
+        if (result.affected === 0) {
+            throw new NotFoundException(`Post with ID ${postId} not found`);
+        }
+
+        return post;
     }
 
     async getPostById(id: string): Promise<Post> {

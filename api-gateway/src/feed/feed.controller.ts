@@ -1,11 +1,12 @@
-import {Body, Controller, Delete, Get, Inject, Param, Post, Put, UseGuards} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {CurrentUser} from '@/decorators/user.decorator';
+import {CreatePostDto} from '@/dtos/feed-module/create-post.dto';
 import {LiveStreamHistory} from '@/entities/feed-module/local/live-stream-history.entity';
-import {NewsFeed} from '@/entities/feed-module/local/news-feed.entity';
+import {NewsFeed} from '@/entities/feed-module/local/newsfeed.entity';
 import {Post as PostEntity} from '@/entities/feed-module/local/post.entity';
 import {Story} from '@/entities/feed-module/local/story.entity';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
@@ -26,10 +27,10 @@ export class FeedController {
         return await lastValueFrom(this.feedClient.send('CreateNewsFeedCommand', {id: user.id, data}));
     }
 
+    // for testing purposes only
     @Get('news-feed')
     @ApiOperation({summary: 'Get all news feeds'})
-    async getAllNewsFeeds(@CurrentUser() user): Promise<NewsFeed[]> {
-        console.log(`User ${user.id} is getting all feeds`);
+    async getAllNewsFeeds(): Promise<NewsFeed[]> {
         return await lastValueFrom(this.feedClient.send('GetAllNewsFeedCommand', {}));
     }
 
@@ -40,6 +41,12 @@ export class FeedController {
         return await lastValueFrom(this.feedClient.send('GetAllPostOfUserCommand', {id: user.id}));
     }
 
+    @Get('news-feed/random')
+    @ApiOperation({summary: 'Get a random news feed'})
+    async getRandomNewsFeed(): Promise<NewsFeed> {
+        return await lastValueFrom(this.feedClient.send('GetRandomNewsFeedCommand', {}));
+    }
+
     @Get('news-feed/:id')
     @ApiOperation({summary: 'Get a news feed by ID'})
     async getNewsFeedById(@CurrentUser() user, @Param('id') id: string): Promise<NewsFeed> {
@@ -47,40 +54,41 @@ export class FeedController {
         return await lastValueFrom(this.feedClient.send('GetByIdNewsFeedCommand', {id}));
     }
 
-    @Put('news-feed/:id')
-    @ApiOperation({summary: 'Update a news feed'})
-    async updateNewsFeed(
-        @CurrentUser() user,
-        @Param('id') id: string,
-        @Body() data: Partial<NewsFeed>
-    ): Promise<NewsFeed> {
-        console.log(`User ${user.id} is updating feed with ID ${id}`);
-        return await lastValueFrom(this.feedClient.send('UpdateNewsFeedCommand', {id, data}));
+    @Get('news-feed/:id/posts')
+    @ApiOperation({summary: 'Get all posts in a news feed'})
+    async getPostsByNewsFeedId(@Param('id') newsFeedId: string): Promise<PostEntity[]> {
+        return await lastValueFrom(this.feedClient.send('GetPostsByIdNewsFeedCommand', {newsFeedId}));
     }
 
-    @Delete('news-feed/:id')
-    @ApiOperation({summary: 'Delete a news feed'})
-    async deleteNewsFeed(@CurrentUser() user, @Param('id') id: string): Promise<void> {
-        console.log(`User ${user.id} is deleting feed with ID ${id}`);
-        return await lastValueFrom(this.feedClient.send('DeleteNewsFeedCommand', {id}));
-    }
-
-    // Post Endpoints
     @Post('news-feed/:id/post')
     @ApiOperation({summary: 'Create a post in a news feed'})
+    @ApiBody({
+        description: 'Post data',
+        type: CreatePostDto,
+    })
     async createPost(
         @CurrentUser() user,
         @Param('id') newsFeedId: string,
-        @Body() postData: Partial<PostEntity>
+        @Body() postData: CreatePostDto
     ): Promise<PostEntity> {
         console.log(`User ${user.id} is creating a post in feed ${newsFeedId}`);
         return await lastValueFrom(this.feedClient.send('CreatePostNewsFeedCommand', {newsFeedId, postData}));
     }
 
-    @Get('news-feed/:id/posts')
-    @ApiOperation({summary: 'Get all posts in a news feed'})
-    async getPostsByNewsFeedId(@CurrentUser() user, @Param('id') newsFeedId: string): Promise<PostEntity[]> {
-        return await lastValueFrom(this.feedClient.send('GetPostsByIdNewsFeedCommand', {newsFeedId}));
+    @Patch('news-feed/:id/posts')
+    @ApiOperation({summary: 'Update a post in a news feed'})
+    @ApiBody({
+        description: 'Post data',
+        type: CreatePostDto,
+    })
+    async updatePost(@Param('id') postId: string, @Body() postData: Partial<PostEntity>): Promise<PostEntity> {
+        return await lastValueFrom(this.feedClient.send('UpdatePostNewsFeedCommand', {postId, postData}));
+    }
+
+    @Delete('news-feed/:id/posts')
+    @ApiOperation({summary: 'Delete a post in a news feed'})
+    async deletePost(@Param('id') postId: string): Promise<void> {
+        return await lastValueFrom(this.feedClient.send('DeletePostNewsFeedCommand', {postId}));
     }
 
     @Post('news-feed/:id/story')

@@ -3,7 +3,7 @@ import {Entity, ManyToOne, OneToOne} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
 
-import {NewsFeed} from './news-feed.entity';
+import {NewsFeed} from './newsfeed.entity';
 
 @Entity()
 export class Story extends BaseEntity {

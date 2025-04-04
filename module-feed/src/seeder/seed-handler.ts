@@ -2,6 +2,7 @@ import {faker} from '@faker-js/faker';
 import {Controller, Logger} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 import {InjectRepository} from '@nestjs/typeorm';
+import * as amqp from 'amqplib';
 import {Repository} from 'typeorm';
 
 import {CommunityReference} from '@/entities/external/community-ref.entity';
@@ -18,7 +19,6 @@ import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {ReactionType} from '@/enum/reaction-type';
 import {visibilityEnum} from '@/enum/visibility.enum';
-
 @Controller()
 export class SeedHandlerController {
     private readonly logger = new Logger(SeedHandlerController.name);
@@ -56,74 +56,118 @@ export class SeedHandlerController {
 
         this.logger.log(`Seeding feed module with ${payload.userReferences.length} user references`);
 
-        // Clear existing data in reverse dependency order
-        await this.commentRepository.clear();
-        await this.postAttachmentRepository.clear();
-        await this.postRepository.clear();
-        await this.reactionRepository.clear();
-        await this.storyRepository.clear();
-        await this.liveStreamRepository.clear();
-        await this.advertisementRepository.clear();
-        await this.reelRepository.clear();
-        await this.newsFeedRepository.clear();
-        await this.hashTagRepository.clear();
-        await this.userReferenceRepository.clear();
-        await this.communityReferenceRepository.clear();
+        try {
+            // Clear existing data in reverse dependency order
+            this.logger.log('Clearing existing feed data...');
+            await this.commentRepository.clear();
+            await this.postAttachmentRepository.clear();
+            await this.postRepository.clear();
+            await this.reactionRepository.clear();
+            await this.storyRepository.clear();
+            await this.liveStreamRepository.clear();
+            await this.advertisementRepository.clear();
+            await this.reelRepository.clear();
+            await this.newsFeedRepository.clear();
+            await this.hashTagRepository.clear();
+            await this.userReferenceRepository.clear();
+            await this.communityReferenceRepository.clear();
 
-        // Create hashtags
-        const hashtags = await this.createHashtags();
+            // Create hashtags
+            this.logger.log('Creating hashtags...');
+            const hashtags = await this.createHashtags();
 
-        // Create communities
-        const communities = await this.createCommunities(3);
+            // Create communities
+            this.logger.log('Creating community references...');
+            const communities = await this.createCommunities(3);
 
-        // Create user references and news feeds
-        const userRefs: UserReference[] = [];
-        for (const userRefData of payload.userReferences) {
-            const userRef = await this.createUserReference(userRefData);
-            userRefs.push(userRef);
+            // Create user references and news feeds
+            this.logger.log('Creating user references and news feeds...');
+            const userRefs: UserReference[] = [];
+            for (const userRefData of payload.userReferences) {
+                const userRef = await this.createUserReference(userRefData);
+                userRefs.push(userRef);
 
-            // Create a news feed for each user
-            await this.createNewsFeed(userRef, hashtags, null); // Personal feed
-        }
-
-        // Create community news feeds
-        for (const community of communities) {
-            // Assign random users to each community feed
-            const randomUsers = faker.helpers.arrayElements(userRefs, faker.number.int({min: 2, max: 5}));
-            await this.createNewsFeed(randomUsers[0], hashtags, community);
-        }
-
-        // Create posts, comments, reactions
-        const newsFeeds = await this.newsFeedRepository.find({
-            relations: ['owner'],
-        });
-
-        for (const newsFeed of newsFeeds) {
-            await this.createPostsForNewsFeed(newsFeed, userRefs);
-            await this.createReactionsForNewsFeed(newsFeed);
-            await this.createStoryForNewsFeed(newsFeed);
-
-            // Add either a reel or a livestream history (50/50 chance)
-            if (faker.datatype.boolean()) {
-                await this.createReelForNewsFeed(newsFeed);
-            } else {
-                await this.createLiveStreamHistoryForNewsFeed(newsFeed);
+                // Create a news feed for each user
+                await this.createNewsFeed(userRef, hashtags, null); // Personal feed
             }
 
-            // 20% chance to create an advertisement
-            if (faker.datatype.boolean({probability: 0.2})) {
-                await this.createAdvertisementForNewsFeed(newsFeed);
+            // Create community news feeds
+            this.logger.log('Creating community news feeds...');
+            for (const community of communities) {
+                // Assign random users to each community feed
+                const randomUsers = faker.helpers.arrayElements(userRefs, faker.number.int({min: 2, max: 5}));
+                await this.createNewsFeed(randomUsers[0], hashtags, community);
             }
-        }
 
-        this.logger.log(`Feed seeding complete - Created ${newsFeeds.length} news feeds with content`);
+            // Create posts, comments, reactions
+            this.logger.log('Creating feed content...');
+            const newsFeeds = await this.newsFeedRepository.find({
+                relations: ['owner'],
+            });
+
+            for (const newsFeed of newsFeeds) {
+                await this.createPostsForNewsFeed(newsFeed, userRefs);
+                await this.createReactionsForNewsFeed(newsFeed);
+                await this.createStoryForNewsFeed(newsFeed);
+
+                // Add either a reel or a livestream history (50/50 chance)
+                if (faker.datatype.boolean()) {
+                    await this.createReelForNewsFeed(newsFeed);
+                } else {
+                    await this.createLiveStreamHistoryForNewsFeed(newsFeed);
+                }
+
+                // 20% chance to create an advertisement
+                if (faker.datatype.boolean({probability: 0.2})) {
+                    await this.createAdvertisementForNewsFeed(newsFeed);
+                }
+            }
+
+            // Send confirmation back to coordinator
+            await this.sendSeedingComplete(userRefs.length);
+
+            this.logger.log(`Feed seeding complete - Created ${newsFeeds.length} news feeds with content`);
+        } catch (error: any) {
+            this.logger.error(`Error seeding feed module: ${error.message}`);
+            throw error;
+        }
     }
 
     private async createUserReference(userRefData: any): Promise<UserReference> {
+        // Create a more complete user reference with all provided fields
         const userRef = this.userReferenceRepository.create({
             id: userRefData.id,
+            username: userRefData.username || `user-${userRefData.id.substring(0, 8)}`,
+            firstName: userRefData.firstName || '',
+            lastName: userRefData.lastName || '',
+            email: userRefData.email || '',
+            profileImageUrl: userRefData.profileImageUrl || '',
         });
         return this.userReferenceRepository.save(userRef);
+    }
+
+    // Send confirmation that seeding is complete
+    private async sendSeedingComplete(userCount: number): Promise<void> {
+        try {
+            const connection = await amqp.connect(`amqp://${'localhost'}:${5675}`);
+            const channel = await connection.createChannel();
+
+            await channel.assertQueue('FEED_SEED_RESULT', {durable: false});
+            channel.sendToQueue(
+                'FEED_SEED_RESULT',
+                Buffer.from(
+                    JSON.stringify({
+                        status: 'complete',
+                        message: `Feed module seeded successfully with ${userCount} user references`,
+                    })
+                )
+            );
+
+            await channel.close();
+            await connection.close();
+        } catch (error: any) {
+            this.logger.error(`Failed to send seeding confirmation: ${error.message}`);
+        }
     }
 
     private async createCommunities(count: number): Promise<CommunityReference[]> {

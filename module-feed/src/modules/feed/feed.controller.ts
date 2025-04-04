@@ -27,24 +27,29 @@ export class FeedController {
         return this.feedService.getAllPostofUser(payload.id);
     }
 
+    @MessagePattern('GetRandomNewsFeedCommand')
+    async getRandomNewsFeed(): Promise<PostEntity[]> {
+        return this.feedService.getRandomNewsFeed();
+    }
+
     @MessagePattern('GetByIdNewsFeedCommand')
     async getNewsFeedById(payload: {id: string}): Promise<NewsFeed> {
         return this.feedService.getNewsFeedById(payload.id);
     }
 
-    @MessagePattern('UpdateNewsFeedCommand')
-    async updateNewsFeed(payload: {id: string; data: Partial<NewsFeed>}): Promise<NewsFeed> {
-        return this.feedService.updateNewsFeed(payload.id, payload.data);
-    }
-
-    @MessagePattern('DeleteNewsFeedCommand')
-    async deleteNewsFeed(payload: {id: string}): Promise<void> {
-        return this.feedService.deleteNewsFeed(payload.id);
-    }
-
     @MessagePattern('CreatePostNewsFeedCommand')
     async createPost(payload: {newsFeedId: string; postData: Partial<PostEntity>}): Promise<PostEntity> {
         return this.feedService.createPost(payload.newsFeedId, payload.postData);
+    }
+
+    @MessagePattern('UpdatePostNewsFeedCommand')
+    async updatePost(payload: {postId: string; postData: Partial<PostEntity>}): Promise<PostEntity> {
+        return this.feedService.updatePost(payload.postId, payload.postData);
+    }
+
+    @MessagePattern('DeletePostNewsFeedCommand')
+    async deletePost(payload: {postId: string}): Promise<PostEntity> {
+        return this.feedService.deletePost(payload.postId);
     }
 
     @MessagePattern('GetPostsByIdNewsFeedCommand')

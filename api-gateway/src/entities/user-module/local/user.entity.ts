@@ -2,7 +2,7 @@ import {ApiProperty} from '@nestjs/swagger';
 import {Exclude} from 'class-transformer';
 import {IsEnum, IsOptional} from 'class-validator';
 
-import {NewsFeed} from '@/entities/feed-module/local/news-feed.entity';
+import {NewsFeed} from '@/entities/feed-module/local/newsfeed.entity';
 import {Gender} from '@/enums/user-module/gender.enum';
 import {ProfilePrivacy} from '@/enums/user-module/profile-privacy.enum';
 
@@ -122,4 +122,6 @@ export class User extends BaseEntity {
     receivedFriendRequests: FriendRequest[];
 
     sharedNewsFeeds: NewsFeed[];
+
+    newsfeed: NewsFeed;
 }

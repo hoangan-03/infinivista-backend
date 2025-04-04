@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "main": "index.js",
     "scripts": {
+        "seed": "ts-node seed-coordinator.ts",
         "test": "echo \"Error: no test specified\" && exit 1",
         "up": "docker compose up -d",
         "down": "docker compose down",
@@ -10,8 +11,7 @@
         "rebuild": "npm run down && docker compose -f docker-compose.dev.yaml up -d --build",
         "lint": "cd api-gateway && npm run lint && cd ../module-communication && npm run lint && cd ../module-feed && npm run lint && cd ../module-user && npm run lint",
         "format": "cd api-gateway && npm run format && cd ../module-communication && npm run format && cd ../module-feed && npm run format && cd ../module-user && npm run format",
-        "migrate:fresh": "cd module-feed && npm run migrate:fresh && cd ../module-user && npm run migrate:fresh",
-        "seed": "ts-node seed-coordinator.ts"
+        "migrate:fresh": "cd module-feed && npm run migrate:fresh && cd ../module-user && npm run migrate:fresh"
     },
     "author": "",
     "license": "ISC",
@@ -19,8 +19,12 @@
     "devDependencies": {
         "@types/amqplib": "^0.10.7",
         "@types/dotenv": "^6.1.1",
-        "@types/node": "^22.13.12",
+        "@types/node": "^22.14.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.8.2"
+    },
+    "dependencies": {
+        "amqplib": "^0.10.7",
+        "dotenv": "^16.4.7"
     }
 }

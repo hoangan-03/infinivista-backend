@@ -9,6 +9,7 @@ import {UserModule} from '@/modules/user/user.module';
 
 import {AllExceptionsFilter} from './exception-filters/all-exception.filter';
 import {AuthModule} from './modules/auth/auth.module';
+import {SeederModule} from './seeder/seeder.module';
 
 @Module({
     imports: [
@@ -30,6 +31,7 @@ import {AuthModule} from './modules/auth/auth.module';
         }),
         UserModule,
         AuthModule,
+        SeederModule,
     ],
     controllers: [AppController],
     providers: [

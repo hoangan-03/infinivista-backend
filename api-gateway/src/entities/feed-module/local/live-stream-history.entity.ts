@@ -1,7 +1,7 @@
 import {ApiProperty} from '@nestjs/swagger';
 
 import {BaseEntity} from '../../base/base-class';
-import {NewsFeed} from './news-feed.entity';
+import {NewsFeed} from './newsfeed.entity';
 
 export class LiveStreamHistory extends BaseEntity {
     @ApiProperty({

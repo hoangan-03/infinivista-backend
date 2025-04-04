@@ -14,4 +14,16 @@ export class UserReference {
 
     @OneToMany(() => Comment, (comment) => comment.user)
     comments: Comment[];
+
+    email: string;
+
+    username: string;
+
+    phoneNumber: string;
+
+    firstName: string;
+
+    lastName: string;
+
+    profileImageUrl: string;
 }

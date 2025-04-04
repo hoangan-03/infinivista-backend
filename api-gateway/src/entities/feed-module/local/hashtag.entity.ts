@@ -1,6 +1,6 @@
 import {ApiProperty} from '@nestjs/swagger';
 
-import {NewsFeed} from './news-feed.entity';
+import {NewsFeed} from './newsfeed.entity';
 
 export class HashTag {
     @ApiProperty({
