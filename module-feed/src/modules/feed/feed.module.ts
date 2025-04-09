@@ -13,6 +13,7 @@ import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reaction} from '@/entities/local/reaction.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
+import {UserReactPost} from '@/entities/local/user-react-post.entity';
 
 import {UserReferenceModule} from '../user-reference/user-reference.module';
 import {FeedController} from './feed.controller';
@@ -32,6 +33,7 @@ import {FeedService} from './feed.service';
             Story,
             CommunityReference,
             UserReference,
+            UserReactPost,
         ]),
         UserReferenceModule,
     ],

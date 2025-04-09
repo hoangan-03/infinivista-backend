@@ -7,7 +7,7 @@
         "test": "echo \"Error: no test specified\" && exit 1",
         "up": "docker compose up -d",
         "down": "docker compose down",
-        "clean": "docker compose down -v --remove-orphans",
+        "clean": "node clean-generated-files.js",
         "rebuild": "npm run down && docker compose -f docker-compose.dev.yaml up -d --build",
         "lint": "cd api-gateway && npm run lint && cd ../module-communication && npm run lint && cd ../module-feed && npm run lint && cd ../module-user && npm run lint",
         "format": "cd api-gateway && npm run format && cd ../module-communication && npm run format && cd ../module-feed && npm run format && cd ../module-user && npm run format",

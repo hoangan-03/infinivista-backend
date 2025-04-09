@@ -5,6 +5,9 @@ import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post as PostEntity} from '@/entities/local/post.entity';
 import {Story} from '@/entities/local/story.entity';
+import {Comment} from '@/entities/local/comment.entity';
+import {ReactionType} from '@/enum/reaction-type';
+import {UserReactPost} from '@/entities/local/user-react-post.entity';
 
 import {FeedService} from './feed.service';
 
@@ -80,8 +83,55 @@ export class FeedController {
         return this.feedService.endLiveStream(payload.streamId, payload.endTime);
     }
 
-    // @MessagePattern('GetEngagementStatsCommand')
-    // async getEngagementStats(payload: {newsFeedId: string}): Promise<any> {
-    //     return this.feedService.getEngagementStats(payload.newsFeedId);
-    // }
+    // Comment endpoints
+    @MessagePattern('CreateCommentCommand')
+    async createComment(payload: {
+        postId: string;
+        userId: string;
+        text: string;
+        attachmentUrl?: string;
+    }): Promise<Comment> {
+        return this.feedService.createComment(payload.postId, payload.userId, payload.text, payload.attachmentUrl);
+    }
+
+    @MessagePattern('GetCommentsByPostIdCommand')
+    async getCommentsByPostId(payload: {postId: string}): Promise<Comment[]> {
+        return this.feedService.getCommentsByPostId(payload.postId);
+    }
+
+    @MessagePattern('UpdateCommentCommand')
+    async updateComment(payload: {
+        commentId: string;
+        userId: string;
+        text: string;
+        attachmentUrl?: string;
+    }): Promise<Comment> {
+        return this.feedService.updateComment(payload.commentId, payload.userId, payload.text, payload.attachmentUrl);
+    }
+
+    @MessagePattern('DeleteCommentCommand')
+    async deleteComment(payload: {commentId: string; userId: string}): Promise<Comment> {
+        return this.feedService.deleteComment(payload.commentId, payload.userId);
+    }
+
+    // Reaction endpoints
+    @MessagePattern('AddReactionCommand')
+    async addReaction(payload: {userId: string; postId: string; reactionType: ReactionType}): Promise<UserReactPost> {
+        return this.feedService.addReaction(payload.userId, payload.postId, payload.reactionType);
+    }
+
+    @MessagePattern('GetReactionsByPostIdCommand')
+    async getReactionsByPostId(payload: {postId: string}): Promise<UserReactPost[]> {
+        return this.feedService.getReactionsByPostId(payload.postId);
+    }
+
+    @MessagePattern('RemoveReactionCommand')
+    async removeReaction(payload: {postId: string; userId: string}): Promise<boolean> {
+        return this.feedService.removeReaction(payload.postId, payload.userId);
+    }
+
+    @MessagePattern('GetReactionCountByTypeCommand')
+    async getReactionCountByType(payload: {postId: string}): Promise<Record<ReactionType, number>> {
+        return this.feedService.getReactionCountByType(payload.postId);
+    }
 }

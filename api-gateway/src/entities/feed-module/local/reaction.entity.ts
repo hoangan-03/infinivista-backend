@@ -3,7 +3,6 @@ import {ApiProperty} from '@nestjs/swagger';
 import {ReactionType} from '@/enums/feed-module/reaction-type';
 
 import {BaseEntity} from '../../base/base-class';
-import {NewsFeed} from './newsfeed.entity';
 
 export class Reaction extends BaseEntity {
     @ApiProperty({
@@ -25,10 +24,4 @@ export class Reaction extends BaseEntity {
         type: String,
     })
     reaction_image_url: string;
-
-    @ApiProperty({
-        description: 'The news feed this reaction belongs to',
-        type: () => NewsFeed,
-    })
-    newsFeed: NewsFeed;
 }

@@ -5,6 +5,8 @@ import {NewsFeed} from '@/entities/local/newsfeed.entity';
 
 import {Comment} from './comment.entity';
 import {PostAttachment} from './post-attachment';
+import {UserReactPost} from './user-react-post.entity';
+
 @Entity()
 export class Post extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
@@ -21,4 +23,10 @@ export class Post extends BaseEntity {
 
     @OneToMany(() => PostAttachment, (postAttachment) => postAttachment.post)
     postAttachments: PostAttachment[];
+
+    @OneToMany(() => UserReactPost, (userReaction) => userReaction.post)
+    UserReactPosts: UserReactPost[];
+
+    @OneToMany(() => UserReactPost, (userReaction) => userReaction.post)
+    userReactions: UserReactPost[];
 }

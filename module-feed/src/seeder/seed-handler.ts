@@ -107,7 +107,7 @@ export class SeedHandlerController {
 
             for (const newsFeed of newsFeeds) {
                 await this.createPostsForNewsFeed(newsFeed, userRefs);
-                await this.createReactionsForNewsFeed(newsFeed);
+                // await this.createReactionsForNewsFeed(newsFeed);
                 await this.createStoryForNewsFeed(newsFeed);
 
                 // Add either a reel or a livestream history (50/50 chance)
@@ -262,20 +262,20 @@ export class SeedHandlerController {
         }
     }
 
-    private async createReactionsForNewsFeed(newsFeed: NewsFeed): Promise<void> {
-        // Add 0-10 reactions to the news feed
-        const reactionCount = faker.number.int({min: 0, max: 10});
-        const reactionTypes = ['LIKE', 'HEART', 'CARE', 'SAD', 'WOW', 'ANGRY'];
+    // private async createReactionsForNewsFeed(newsFeed: NewsFeed): Promise<void> {
+    //     // Add 0-10 reactions to the news feed
+    //     const reactionCount = faker.number.int({min: 0, max: 10});
+    //     const reactionTypes = ['LIKE', 'HEART', 'CARE', 'SAD', 'WOW', 'ANGRY'];
 
-        for (let i = 0; i < reactionCount; i++) {
-            const reaction = this.reactionRepository.create({
-                reaction_type: faker.helpers.arrayElement(reactionTypes) as ReactionType,
-                reaction_image_url: faker.image.url(),
-                newsFeed,
-            });
-            await this.reactionRepository.save(reaction);
-        }
-    }
+    //     for (let i = 0; i < reactionCount; i++) {
+    //         const reaction = this.reactionRepository.create({
+    //             reaction_type: faker.helpers.arrayElement(reactionTypes) as ReactionType,
+    //             reaction_image_url: faker.image.url(),
+    //             newsFeed,
+    //         });
+    //         await this.reactionRepository.save(reaction);
+    //     }
+    // }
 
     private async createStoryForNewsFeed(newsFeed: NewsFeed): Promise<void> {
         // 50% chance to have a story

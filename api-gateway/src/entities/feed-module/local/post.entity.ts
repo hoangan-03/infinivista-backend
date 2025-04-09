@@ -4,6 +4,8 @@ import {BaseEntity} from '../../base/base-class';
 import {Comment} from './comment.entity';
 import {NewsFeed} from './newsfeed.entity';
 import {PostAttachment} from './post-attachment';
+import {Reaction} from './reaction.entity';
+import {UserReactPost} from './user-react-post.entity';
 
 export class Post extends BaseEntity {
     @ApiProperty({
@@ -39,4 +41,11 @@ export class Post extends BaseEntity {
         isArray: true,
     })
     postAttachments: PostAttachment[];
+
+    @ApiProperty({
+        description: 'Reactions to this post',
+        type: () => [UserReactPost],
+        isArray: true,
+    })
+    userReactPost: UserReactPost[];
 }

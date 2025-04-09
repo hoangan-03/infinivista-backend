@@ -70,13 +70,6 @@ export class NewsFeed extends BaseEntity {
     advertisements: Advertisement[];
 
     @ApiProperty({
-        description: 'Reactions to this news feed',
-        type: () => [Reaction],
-        isArray: true,
-    })
-    reactions: Reaction[];
-
-    @ApiProperty({
         description: 'Community that owns this news feed (if applicable)',
         type: () => CommunityReference,
         required: false,

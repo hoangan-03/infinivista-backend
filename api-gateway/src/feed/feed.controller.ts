@@ -1,15 +1,16 @@
-import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put, UseGuards} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {CurrentUser} from '@/decorators/user.decorator';
 import {CreatePostDto} from '@/dtos/feed-module/create-post.dto';
 import {CreateStoryDto} from '@/dtos/feed-module/create-story.dto';
-import {LiveStreamHistory} from '@/entities/feed-module/local/live-stream-history.entity';
+import {Comment} from '@/entities/feed-module/local/comment.entity';
 import {NewsFeed} from '@/entities/feed-module/local/newsfeed.entity';
 import {Post as PostEntity} from '@/entities/feed-module/local/post.entity';
 import {Story} from '@/entities/feed-module/local/story.entity';
+import {ReactionType} from '@/enums/feed-module/reaction-type';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 
@@ -116,29 +117,146 @@ export class FeedController {
         return await lastValueFrom(this.feedClient.send('GetStoriesByIdNewsFeedCommand', {newsFeedId}));
     }
 
-    // @Post('news-feed/:id/livestream')
-    // @ApiOperation({summary: 'Start a livestream in a news feed'})
-    // async createLiveStream(
-    //     @CurrentUser() user,
-    //     @Param('id') newsFeedId: string,
-    //     @Body() streamData: Partial<LiveStreamHistory>
-    // ): Promise<LiveStreamHistory> {
-    //     return await lastValueFrom(this.feedClient.send('CreateLiveStreamCommand', {newsFeedId, streamData}));
-    // }
+    // Comment endpoints
+    @Post('post/:postId/comment')
+    @ApiOperation({summary: 'Add a comment to a post'})
+    @ApiParam({name: 'postId', description: 'ID of the post'})
+    @ApiBody({
+        description: 'Comment data',
+        type: CreateStoryDto,
+    })
+    @ApiResponse({status: 201, description: 'Comment created successfully', type: Comment})
+    async createComment(
+        @CurrentUser() user,
+        @Param('postId') postId: string,
+        @Body('text') text: string,
+        @Body('attachmentUrl') attachmentUrl?: string
+    ): Promise<Comment> {
+        return await lastValueFrom(
+            this.feedClient.send('CreateCommentCommand', {
+                postId,
+                userId: user.id,
+                text,
+                attachmentUrl,
+            })
+        );
+    }
 
-    // @Put('livestream/:id/end')
-    // @ApiOperation({summary: 'End a livestream'})
-    // async endLiveStream(
-    //     @CurrentUser() user,
-    //     @Param('id') streamId: string,
-    //     @Body('endTime') endTime: Date
-    // ): Promise<LiveStreamHistory> {
-    //     return await lastValueFrom(this.feedClient.send('EndLiveStreamCommand', {streamId, endTime}));
-    // }
+    @Get('post/:postId/comments')
+    @ApiOperation({summary: 'Get all comments for a post'})
+    @ApiParam({name: 'postId', description: 'ID of the post'})
+    @ApiResponse({status: 200, description: 'List of comments', type: [Comment]})
+    async getCommentsByPostId(@Param('postId') postId: string): Promise<Comment[]> {
+        return await lastValueFrom(this.feedClient.send('GetCommentsByPostIdCommand', {postId}));
+    }
 
-    // @Get('news-feed/:id/stats')
-    // @ApiOperation({summary: 'Get engagement statistics for a news feed'})
-    // async getEngagementStats(@CurrentUser() user, @Param('id') newsFeedId: string): Promise<any> {
-    //     return await lastValueFrom(this.feedClient.send('GetEngagementStatsCommand', {newsFeedId}));
-    // }
+    @Patch('comment/:commentId')
+    @ApiOperation({summary: 'Update a comment'})
+    @ApiParam({name: 'commentId', description: 'ID of the comment'})
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                text: {
+                    type: 'string',
+                    example: 'Updated comment text',
+                },
+                attachmentUrl: {
+                    type: 'string',
+                    example: 'https://example.com/new-image.jpg',
+                },
+            },
+            required: ['text'],
+        },
+    })
+    @ApiResponse({status: 200, description: 'Comment updated successfully', type: Comment})
+    async updateComment(
+        @CurrentUser() user,
+        @Param('commentId') commentId: string,
+        @Body('text') text: string,
+        @Body('attachmentUrl') attachmentUrl?: string
+    ): Promise<Comment> {
+        return await lastValueFrom(
+            this.feedClient.send('UpdateCommentCommand', {
+                commentId,
+                userId: user.id,
+                text,
+                attachmentUrl,
+            })
+        );
+    }
+
+    @Delete('comment/:commentId')
+    @ApiOperation({summary: 'Delete a comment'})
+    @ApiParam({name: 'commentId', description: 'ID of the comment'})
+    @ApiResponse({status: 200, description: 'Comment deleted successfully'})
+    async deleteComment(@CurrentUser() user, @Param('commentId') commentId: string): Promise<Comment> {
+        return await lastValueFrom(
+            this.feedClient.send('DeleteCommentCommand', {
+                commentId,
+                userId: user.id,
+            })
+        );
+    }
+
+    // Reaction endpoints
+    @Post('post/:postId/reaction')
+    @ApiOperation({summary: 'Add a reaction to a post'})
+    @ApiParam({name: 'postId', description: 'ID of the post'})
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                reactionType: {
+                    type: 'string',
+                    enum: Object.values(ReactionType),
+                    example: ReactionType.LIKE,
+                },
+            },
+            required: ['reactionType'],
+        },
+    })
+    @ApiResponse({status: 201, description: 'Reaction added successfully'})
+    async addReaction(
+        @CurrentUser() user,
+        @Param('postId') postId: string,
+        @Body('reactionType') reactionType: ReactionType
+    ): Promise<any> {
+        return await lastValueFrom(
+            this.feedClient.send('AddReactionCommand', {
+                userId: user.id,
+                postId,
+                reactionType,
+            })
+        );
+    }
+
+    @Get('post/:postId/reactions')
+    @ApiOperation({summary: 'Get all reactions for a post'})
+    @ApiParam({name: 'postId', description: 'ID of the post'})
+    @ApiResponse({status: 200, description: 'List of reactions'})
+    async getReactionsByPostId(@Param('postId') postId: string): Promise<any[]> {
+        return await lastValueFrom(this.feedClient.send('GetReactionsByPostIdCommand', {postId}));
+    }
+
+    @Delete('post/:postId/reaction')
+    @ApiOperation({summary: 'Remove your reaction from a post'})
+    @ApiParam({name: 'postId', description: 'ID of the post'})
+    @ApiResponse({status: 200, description: 'Reaction removed successfully'})
+    async removeReaction(@CurrentUser() user, @Param('postId') postId: string): Promise<boolean> {
+        return await lastValueFrom(
+            this.feedClient.send('RemoveReactionCommand', {
+                postId,
+                userId: user.id,
+            })
+        );
+    }
+
+    @Get('post/:postId/reaction-counts')
+    @ApiOperation({summary: 'Get reaction counts by type for a post'})
+    @ApiParam({name: 'postId', description: 'ID of the post'})
+    @ApiResponse({status: 200, description: 'Reaction counts by type'})
+    async getReactionCountByType(@Param('postId') postId: string): Promise<Record<ReactionType, number>> {
+        return await lastValueFrom(this.feedClient.send('GetReactionCountByTypeCommand', {postId}));
+    }
 }

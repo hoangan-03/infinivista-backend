@@ -40,9 +40,6 @@ export class NewsFeed extends BaseEntity {
     @OneToMany(() => Advertisement, (ad) => ad.newsFeed)
     advertisements: Advertisement[];
 
-    @OneToMany(() => Reaction, (reaction) => reaction.newsFeed)
-    reactions: Reaction[];
-
     @ManyToOne(() => CommunityReference, (community) => community.newsFeeds, {nullable: true})
     community?: CommunityReference;
 

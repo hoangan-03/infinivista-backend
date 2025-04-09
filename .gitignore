@@ -3,6 +3,16 @@
 /node_modules
 /build
 
+# TypeScript generated files
+*.js
+*.js.map
+*.d.ts
+
+# Keep any intentional JS files
+!jest.config.js
+!.eslintrc.js
+!webpack.config.js
+
 # Logs
 logs
 *.log
