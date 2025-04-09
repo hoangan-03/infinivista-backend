@@ -12,6 +12,7 @@ import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reaction} from '@/entities/local/reaction.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
+import {UserReactPost} from '@/entities/local/user-react-post.entity';
 
 export const AppDataSource = new DataSource({
     type: 'postgres',
@@ -33,6 +34,7 @@ export const AppDataSource = new DataSource({
         Story,
         UserReference,
         CommunityReference,
+        UserReactPost,
     ],
     migrations: ['migrations/*.ts'],
     synchronize: false,
