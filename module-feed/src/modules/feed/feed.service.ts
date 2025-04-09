@@ -89,7 +89,7 @@ export class FeedService {
     async getNewsFeedById(userId: string): Promise<NewsFeed> {
         const newsFeed = await this.newsFeedRepository.findOne({
             where: {owner: {id: userId}},
-            relations: ['posts', 'stories', 'liveStreams', 'reactions', 'reel', 'owner'],
+            relations: ['posts', 'stories', 'liveStreams', 'reel', 'owner'],
         });
         if (!newsFeed) {
             throw new NotFoundException(`News feed of user ${userId} not found`);
@@ -303,10 +303,12 @@ export class FeedService {
             return existingReaction;
         }
 
-        const reaction = this.userReactPostRepository.create({
+        const reaction = this.userReactPostRepository.save({
             user_id: userId,
             post_id: postId,
-            reaction: {reaction_type: reactionType} as Reaction,
+            reaction_id: await this.reactionRepository.findOne({
+                where: {reaction_type: reactionType},
+            }),
         });
 
         return reaction;
