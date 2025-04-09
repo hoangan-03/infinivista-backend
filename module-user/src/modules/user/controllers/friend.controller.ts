@@ -1,3 +1,4 @@
+import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
 import {FriendRequest} from '@/entities/local/friend-request.entity';
@@ -5,37 +6,33 @@ import {User} from '@/entities/local/user.entity';
 
 import {FriendService} from '../services/friend.service';
 
+@Controller()
 export class FriendController {
     constructor(private readonly friendService: FriendService) {}
 
-    @MessagePattern('SendRequestFriendCommand')
-    async sendFriendRequest(payload: {userId: string; recipientId: string}): Promise<FriendRequest> {
-        return this.friendService.sendFriendRequest(payload.userId, payload.recipientId);
-    }
-
-    @MessagePattern('RespondToRequestFriendCommand')
-    async respondToRequest(payload: {userId: string; requestId: string; accept: boolean}): Promise<void> {
-        return this.friendService.respondToFriendRequest(payload.requestId, payload.userId, payload.accept);
-    }
-
-    @MessagePattern('RemoveFriendCommand')
-    async removeFriend(payload: {userId: string; friendId: string}): Promise<void> {
-        return this.friendService.removeFriend(payload.userId, payload.friendId);
-    }
-
-    @MessagePattern('BlockUserCommand')
-    async blockUser(payload: {userId: string; blockedUserId: string}): Promise<void> {
-        return this.friendService.blockUser(payload.userId, payload.blockedUserId);
-    }
-
-    @MessagePattern('GetAllFriendCommand')
+    @MessagePattern('GetFriendsUserCommand')
     async getFriends(payload: {userId: string}): Promise<User[]> {
         return this.friendService.getFriends(payload.userId);
     }
 
-    @MessagePattern('GetRequestsFriendCommand')
+    @MessagePattern('GetFriendRequestsUserCommand')
     async getFriendRequests(payload: {userId: string}): Promise<FriendRequest[]> {
         return this.friendService.getFriendRequests(payload.userId);
+    }
+
+    @MessagePattern('RemoveFriendUserCommand')
+    async removeFriend(payload: {userId: string; friendId: string}): Promise<{success: boolean}> {
+        return this.friendService.removeFriend(payload.userId, payload.friendId);
+    }
+
+    @MessagePattern('SendFriendRequestUserCommand')
+    async sendFriendRequest(payload: {senderId: string; recipientId: string}): Promise<FriendRequest> {
+        return this.friendService.sendFriendRequest(payload.senderId, payload.recipientId);
+    }
+
+    @MessagePattern('RespondToFriendRequestUserCommand')
+    async respondToFriendRequest(payload: {requestId: string; accept: boolean}): Promise<{success: boolean}> {
+        return this.friendService.respondToFriendRequest(payload.requestId, payload.accept);
     }
 
     // @Put(':friendId/group')

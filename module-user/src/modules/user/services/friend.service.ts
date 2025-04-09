@@ -1,8 +1,7 @@
-import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
+import {BadRequestException, Injectable, Logger, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
-import {BlockedUser} from '@/entities/local/blocked-user.entity';
 import {Friend} from '@/entities/local/friend.entity';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {User} from '@/entities/local/user.entity';
@@ -11,19 +10,21 @@ import {FriendStatus} from '../enums/friend-status.enum';
 
 @Injectable()
 export class FriendService {
+    private readonly logger = new Logger(FriendService.name);
     constructor(
         @InjectRepository(Friend)
         private readonly friendRepository: Repository<Friend>,
         @InjectRepository(FriendRequest)
         private readonly friendRequestRepository: Repository<FriendRequest>,
         @InjectRepository(User)
-        private readonly userRepository: Repository<User>,
-        @InjectRepository(BlockedUser)
-        private readonly blockedUserRepository: Repository<BlockedUser>
+        private readonly userRepository: Repository<User>
     ) {}
 
     async sendFriendRequest(senderId: string, recipientId: string): Promise<FriendRequest> {
         // Check if request already exists
+        if (senderId === recipientId) {
+            throw new BadRequestException('Cannot send friend request to yourself');
+        }
         const existingRequest = await this.friendRequestRepository.findOne({
             where: [
                 {sender_id: senderId, recipient_id: recipientId},
@@ -57,9 +58,9 @@ export class FriendService {
         return this.friendRequestRepository.save(request);
     }
 
-    async respondToFriendRequest(requestId: string, userId: string, accept: boolean): Promise<void> {
+    async respondToFriendRequest(requestId: string, accept: boolean): Promise<{success: boolean}> {
         const request = await this.friendRequestRepository.findOne({
-            where: {id: requestId, recipient_id: userId},
+            where: {id: requestId},
         });
 
         if (!request) {
@@ -67,7 +68,6 @@ export class FriendService {
         }
 
         if (accept) {
-            // Create both-way friend relationship
             const friendship1 = this.friendRepository.create({
                 user_id: request.sender_id,
                 friend_id: request.recipient_id,
@@ -85,10 +85,15 @@ export class FriendService {
         }
 
         await this.friendRequestRepository.save(request);
+        return {success: true};
     }
 
-    async removeFriend(userId: string, friendId: string): Promise<void> {
+    async removeFriend(userId: string, friendId: string): Promise<{success: boolean}> {
         // Find the friendship records first
+        if (userId === friendId) {
+            throw new BadRequestException('Cannot remove yourself as a friend');
+        }
+
         const friendships = await this.friendRepository.find({
             where: [
                 {user_id: userId, friend_id: friendId},
@@ -96,38 +101,39 @@ export class FriendService {
             ],
         });
 
-        // Then delete them by their IDs
-        if (friendships.length > 0) {
+        const friendRequestRemained = await this.friendRequestRepository.findOne({
+            where: [
+                {sender_id: userId, recipient_id: friendId},
+                {sender_id: friendId, recipient_id: userId},
+            ],
+        });
+        if (friendships.length > 0 && friendRequestRemained) {
             await this.friendRepository.remove(friendships);
+            await this.friendRequestRepository.remove(friendRequestRemained);
+            return {success: true};
+        } else {
+            throw new NotFoundException('Friendship not found');
         }
     }
 
-    async blockUser(userId: string, blockedUserId: string): Promise<void> {
-        // Remove friend relationship if exists
-        await this.removeFriend(userId, blockedUserId);
-
-        // Create blocked relationship
-        const blocked = this.blockedUserRepository.create({
-            user_id: userId,
-            blocked_user_id: blockedUserId,
-        });
-
-        await this.blockedUserRepository.save(blocked);
-    }
-
     async getFriends(userId: string): Promise<User[]> {
+        console.log('Fetching friends for user:', userId);
+        this.logger.debug('Fetching friends for user:', userId);
         const friendships = await this.friendRepository.find({
             where: {user_id: userId},
             relations: ['friend'],
         });
 
-        return friendships.map((f) => f.friend);
+        return friendships.map((f) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const {password, ...userWithoutPassword} = f.friend;
+            return userWithoutPassword as User;
+        });
     }
 
     async getFriendRequests(userId: string): Promise<FriendRequest[]> {
         return this.friendRequestRepository.find({
             where: {recipient_id: userId, status: FriendStatus.PENDING},
-            relations: ['sender'],
         });
     }
 

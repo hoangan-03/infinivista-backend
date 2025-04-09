@@ -1,10 +1,11 @@
-import {Body, Controller, Get, Inject, Param, Patch, Post, Put, UseGuards} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import {ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {UpdateUserDto} from '@/auth/dtos/update-user.dto';
 import {CurrentUser} from '@/decorators/user.decorator';
+import {FriendRequest} from '@/entities/user-module/local/friend-request.entity';
 import {SecurityAnswer} from '@/entities/user-module/local/security-answer.entity';
 import {Setting} from '@/entities/user-module/local/setting.entity';
 import {User} from '@/entities/user-module/local/user.entity';
@@ -52,27 +53,8 @@ export class UserController {
         status: 404,
         description: 'Not Found - User not found with the provided ID',
     })
-    async update(@CurrentUser() currentUser: User, @Body() user: UpdateUserDto): Promise<User> {
+    async update(@CurrentUser() currentUser, @Body() user: UpdateUserDto): Promise<User> {
         return await lastValueFrom(this.userClient.send<User>('UpdateUserCommand', {id: currentUser.id, user}));
-    }
-
-    @Get(':id')
-    @ApiOperation({summary: 'Get user by ID'})
-    @ApiResponse({status: 200, description: 'Return user by ID', type: User})
-    @ApiResponse({
-        status: 400,
-        description: 'Bad Request - Invalid input data',
-    })
-    @ApiResponse({
-        status: 401,
-        description: 'Unauthorized - Invalid or missing token',
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Not Found - User not found with the provided ID',
-    })
-    async getById(@Param('id') id: string): Promise<User> {
-        return await lastValueFrom(this.userClient.send<User>('GetByIdUserCommand', {id}));
     }
 
     @Put('/profile-picture')
@@ -209,6 +191,120 @@ export class UserController {
         return await lastValueFrom(
             this.userClient.send<User>('UpdateProfilePrivacyUserCommand', {id: user.id, privacy})
         );
+    }
+
+    @Get('friend')
+    @ApiOperation({summary: 'Get list of friends for current user'})
+    async getFriends(@CurrentUser() user): Promise<User[]> {
+        console.log('Fetching friends for user:', user.id);
+        return await lastValueFrom(this.userClient.send('GetFriendsUserCommand', {userId: user.id}));
+    }
+
+    @Get(':id')
+    @ApiOperation({summary: 'Get user by ID'})
+    @ApiResponse({status: 200, description: 'Return user by ID', type: User})
+    @ApiResponse({
+        status: 400,
+        description: 'Bad Request - Invalid input data',
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - User not found with the provided ID',
+    })
+    async getById(@Param('id') id: string): Promise<User> {
+        return await lastValueFrom(this.userClient.send<User>('GetByIdUserCommand', {id}));
+    }
+
+    @Get('friend/requests')
+    @ApiResponse({
+        status: 200,
+        description: 'Return all friend requests',
+        type: [FriendRequest],
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiOperation({summary: 'Get all friend requests of current user'})
+    async getFriendRequests(@CurrentUser() user): Promise<FriendRequest[]> {
+        return await lastValueFrom(this.userClient.send('GetFriendRequestsUserCommand', {userId: user.id}));
+    }
+
+    @Delete('friend/:friendId')
+    @ApiResponse({
+        status: 200,
+        description: 'Friend removed successfully',
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - Friend not found with the provided ID',
+    })
+    @ApiOperation({summary: 'Remove friend'})
+    async removeFriend(@CurrentUser() user, @Param('friendId') friendId: string): Promise<{success: boolean}> {
+        return await lastValueFrom(this.userClient.send('RemoveFriendUserCommand', {userId: user.id, friendId}));
+    }
+
+    @Post('friend/request/:recipientId')
+    @ApiResponse({
+        status: 201,
+        description: 'Friend request sent',
+        type: FriendRequest,
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiOperation({summary: 'Send friend request'})
+    async sendFriendRequest(@CurrentUser() user, @Param('recipientId') recipientId: string): Promise<FriendRequest> {
+        return await lastValueFrom(
+            this.userClient.send('SendFriendRequestUserCommand', {senderId: user.id, recipientId})
+        );
+    }
+
+    @Put('friend/request/:requestId')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                accept: {
+                    type: 'boolean',
+                    description: 'Whether to accept the friend request',
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Friend request response',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad Request - Invalid input data',
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiOperation({summary: 'Accept or decline friend request'})
+    async respondToRequest(
+        @Param('requestId') requestId: string,
+        @Body('accept') accept: boolean
+    ): Promise<{success: boolean}> {
+        await lastValueFrom(
+            this.userClient.send('RespondToFriendRequestUserCommand', {
+                requestId,
+                accept,
+            })
+        );
+        return {success: true};
     }
 
     // @Put(':id/online-status')

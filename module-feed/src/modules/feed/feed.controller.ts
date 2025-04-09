@@ -17,16 +17,6 @@ export class FeedController {
         return this.feedService.createNewsFeed(payload.id, payload.data);
     }
 
-    @MessagePattern('GetAllNewsFeedCommand')
-    async getAllNewsFeeds(): Promise<NewsFeed[]> {
-        return this.feedService.getAllNewsFeeds();
-    }
-
-    @MessagePattern('GetAllPostOfUserCommand')
-    async getAllNewsFeedsOfUser(payload: {id: string}): Promise<PostEntity[]> {
-        return this.feedService.getAllPostofUser(payload.id);
-    }
-
     @MessagePattern('GetRandomNewsFeedCommand')
     async getRandomNewsFeed(): Promise<PostEntity[]> {
         return this.feedService.getRandomNewsFeed();
@@ -57,14 +47,24 @@ export class FeedController {
         return this.feedService.getPostsByNewsFeedId(payload.newsFeedId);
     }
 
-    @MessagePattern('CreateStoryNewsFeedCommand')
-    async createStory(payload: {newsFeedId: string; storyData: Partial<Story>}): Promise<Story> {
-        return this.feedService.createStory(payload.newsFeedId, payload.storyData);
-    }
-
     @MessagePattern('GetStoriesByIdNewsFeedCommand')
     async getStoriesByNewsFeedId(payload: {newsFeedId: string}): Promise<Story[]> {
         return this.feedService.getStoriesByNewsFeedId(payload.newsFeedId);
+    }
+
+    @MessagePattern('GetAPostByIdCommand')
+    async getAPostById(payload: {postId: string}): Promise<PostEntity> {
+        return this.feedService.getPostById(payload.postId);
+    }
+
+    @MessagePattern('GetAStoryByIdCommand')
+    async getAStoryById(payload: {storyId: string}): Promise<Story> {
+        return this.feedService.getStoryById(payload.storyId);
+    }
+
+    @MessagePattern('CreateStoryNewsFeedCommand')
+    async createStory(payload: {newsFeedId: string; storyData: Partial<Story>}): Promise<Story> {
+        return this.feedService.createStory(payload.newsFeedId, payload.storyData);
     }
 
     @MessagePattern('CreateLiveStreamCommand')

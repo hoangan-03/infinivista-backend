@@ -1,4 +1,4 @@
-import {Injectable, NotFoundException} from '@nestjs/common';
+import {ForbiddenException, Injectable, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
@@ -7,8 +7,10 @@ import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post} from '@/entities/local/post.entity';
 import {Reaction} from '@/entities/local/reaction.entity';
 import {Story} from '@/entities/local/story.entity';
+import {visibilityEnum} from '@/enum/visibility.enum';
 
 import {UserReferenceService} from '../user-reference/user-reference.service';
+import {get} from 'http';
 
 @Injectable()
 export class FeedService {
@@ -51,13 +53,8 @@ export class FeedService {
         });
     }
 
-    async getAllPostofUser(userId: string): Promise<Post[]> {
-        const userFeed = await this.newsFeedRepository.findOne({
-            where: {owner: {id: userId}},
-        });
-        if (!userFeed) {
-            throw new NotFoundException(`News feed for user ${userId} not found`);
-        }
+    async getPostsByNewsFeedId(newsFeedId: string): Promise<Post[]> {
+        const userFeed = await this.getNewsFeedById(newsFeedId);
         const userPosts = await this.postRepository.find({
             where: {newsFeed: {id: userFeed.id}},
         });
@@ -72,7 +69,8 @@ export class FeedService {
     async getRandomNewsFeed(limit: number = 100): Promise<Post[]> {
         // Get posts from all newsfeeds
         const posts = await this.postRepository.find({
-            relations: ['newsFeed', 'newsFeed.owner'],
+            where: {newsFeed: {visibility: visibilityEnum.PUBLIC}},
+            relations: ['newsFeed.owner'],
         });
 
         // Shuffle the array using Fisher-Yates algorithm
@@ -84,35 +82,19 @@ export class FeedService {
         // Return limited number of randomly mixed posts
         return posts.slice(0, limit);
     }
-
-    async getNewsFeedById(id: string): Promise<NewsFeed> {
+    async getNewsFeedById(userId: string): Promise<NewsFeed> {
         const newsFeed = await this.newsFeedRepository.findOne({
-            where: {id},
+            where: {owner: {id: userId}},
             relations: ['posts', 'stories', 'liveStreams', 'reactions', 'reel', 'owner'],
         });
-
         if (!newsFeed) {
-            throw new NotFoundException(`News feed with ID ${id} not found`);
+            throw new NotFoundException(`News feed of user ${userId} not found`);
         }
-
         return newsFeed;
     }
 
-    async updateNewsFeed(id: string, data: Partial<NewsFeed>): Promise<NewsFeed> {
-        const newsFeed = await this.getNewsFeedById(id);
-        this.newsFeedRepository.merge(newsFeed, data);
-        return this.newsFeedRepository.save(newsFeed);
-    }
-
-    async deleteNewsFeed(id: string): Promise<void> {
-        const result = await this.newsFeedRepository.delete(id);
-        if (result.affected === 0) {
-            throw new NotFoundException(`News feed with ID ${id} not found`);
-        }
-    }
     async createPost(newsFeedId: string, postData: Partial<Post>): Promise<Post> {
         const newsFeed = await this.getNewsFeedById(newsFeedId);
-
         const post = this.postRepository.create({
             ...postData,
             newsFeed,
@@ -123,39 +105,70 @@ export class FeedService {
 
     async updatePost(postId: string, postData: Partial<Post>): Promise<Post> {
         const post = await this.getPostById(postId);
+        if (!post) {
+            throw new NotFoundException(`Post with ID ${postId} not found`);
+        }
+        // Check if the post belongs to the user's news feed
+        const newsFeed = await this.newsFeedRepository.findOne({
+            where: {posts: {id: postId}},
+        });
+        if (!newsFeed) {
+            throw new NotFoundException(`News feed for post ${postId} not found`);
+        }
+        // Check if the user is the owner of the news feed
+        if (newsFeed.owner.id !== post.newsFeed.owner.id) {
+            throw new ForbiddenException(`User is not the owner of the news feed`);
+        }
         this.postRepository.merge(post, postData);
         return this.postRepository.save(post);
     }
 
     async deletePost(postId: string): Promise<Post> {
         const post = await this.getPostById(postId);
+        if (!post) {
+            throw new NotFoundException(`Post with ID ${postId} not found`);
+        }
+        // Check if the post belongs to the user's news feed
+        const newsFeed = await this.newsFeedRepository.findOne({
+            where: {posts: {id: postId}},
+        });
+        if (!newsFeed) {
+            throw new NotFoundException(`News feed for post ${postId} not found`);
+        }
+        // Check if the user is the owner of the news feed
+        if (newsFeed.owner.id !== post.newsFeed.owner.id) {
+            throw new ForbiddenException(`User is not the owner of the news feed`);
+        }
         const result = await this.postRepository.delete(postId);
 
         if (result.affected === 0) {
+            throw new NotFoundException(`Post with ID ${postId} not found`);
+        }
+        return post;
+    }
+
+    async getPostById(postId: string): Promise<Post> {
+        const post = await this.postRepository.findOne({
+            where: {id: postId},
+            relations: ['newsFeed', 'newsFeed.owner'],
+        });
+
+        if (!post) {
             throw new NotFoundException(`Post with ID ${postId} not found`);
         }
 
         return post;
     }
 
-    async getPostById(id: string): Promise<Post> {
-        const post = await this.postRepository.findOne({
-            where: {id},
+    async getStoryById(storyId: string): Promise<Story> {
+        const story = await this.storyRepository.findOne({
+            where: {id: storyId},
             relations: ['newsFeed', 'newsFeed.owner'],
         });
-
-        if (!post) {
-            throw new NotFoundException(`Post with ID ${id} not found`);
+        if (!story) {
+            throw new NotFoundException(`Story with ID ${storyId} not found`);
         }
-
-        return post;
-    }
-
-    async getPostsByNewsFeedId(newsFeedId: string): Promise<Post[]> {
-        return this.postRepository.find({
-            where: {newsFeed: {id: newsFeedId}},
-            relations: ['newsFeed', 'newsFeed.owner'],
-        });
+        return story;
     }
 
     async createStory(newsFeedId: string, storyData: Partial<Story>): Promise<Story> {
@@ -172,7 +185,6 @@ export class FeedService {
     async getStoriesByNewsFeedId(newsFeedId: string): Promise<Story[]> {
         return this.storyRepository.find({
             where: {newsFeed: {id: newsFeedId}},
-            relations: ['newsFeed'],
         });
     }
 

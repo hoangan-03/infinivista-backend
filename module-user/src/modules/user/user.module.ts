@@ -13,6 +13,9 @@ import {UserStatus} from '@/entities/local/user-status.entity';
 import {UserController} from '@/modules/user/controllers/user.controller';
 import {UserService} from '@/modules/user/services/user.service';
 
+import {FriendController} from './controllers/friend.controller';
+import {FriendService} from './services/friend.service';
+
 @Module({
     imports: [
         TypeOrmModule.forFeature([
@@ -28,8 +31,8 @@ import {UserService} from '@/modules/user/services/user.service';
             NewsFeedReference,
         ]),
     ],
-    controllers: [UserController],
-    providers: [UserService],
-    exports: [UserService],
+    controllers: [UserController, FriendController],
+    providers: [UserService, FriendService],
+    exports: [UserService, FriendService],
 })
 export class UserModule {}

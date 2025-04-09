@@ -25,8 +25,8 @@ export class FriendRequest extends BaseEntity {
 
     @Column({
         type: 'enum',
-        enum: ['pending', 'accepted', 'declined'],
-        default: 'pending',
+        enum: FriendStatus,
+        default: FriendStatus.PENDING,
     })
     status: FriendStatus;
 }
