@@ -5,9 +5,10 @@ import {MessageStatus} from '@/modules/messaging/enums/message-status.enum';
 
 import {BaseEntity} from '../base/base-class';
 import {UserReference} from '../external/user-reference.entity';
+import {GroupChat} from './group-chat.entity';
 
 @Entity()
-export class Message extends BaseEntity {
+export class GroupChatAttachment extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
@@ -15,26 +16,23 @@ export class Message extends BaseEntity {
     sent_at?: Date;
 
     @Column({type: 'timestamp', nullable: true})
-    seen_at?: Date;
-
-    @Column({type: 'timestamp', nullable: true})
     delete_at?: Date;
-
-    @Column({type: 'timestamp', nullable: true})
-    last_modified_at?: Date;
 
     @Column({type: 'enum', enum: MessageStatus, nullable: false})
     status: MessageStatus;
 
-    @Column({type: 'enum', enum: EmoteIcon, nullable: true})
-    emotion?: EmoteIcon;
+    @Column({type: 'simple-array', nullable: true})
+    emotion?: EmoteIcon[];
 
-    @Column({nullable: false, default: 'Defaault message'})
-    messageText: string;
+    @Column()
+    attachment_url: string;
+
+    @Column({nullable: true})
+    attachment_name?: string;
 
     @ManyToOne(() => UserReference, (sender) => sender.sentMessages)
     sender: UserReference;
 
-    @ManyToOne(() => UserReference, (receiver) => receiver.receivedMessages)
-    receiver: UserReference;
+    @ManyToOne(() => GroupChat, (groupChat) => groupChat.messages)
+    groupChat: GroupChat;
 }

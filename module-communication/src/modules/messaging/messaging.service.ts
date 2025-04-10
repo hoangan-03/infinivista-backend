@@ -1,20 +1,27 @@
-import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
+import {Injectable, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
+import {UserReference} from '@/entities/external/user-reference.entity';
+import {GroupChat} from '@/entities/internal/group-chat.entity';
+import {GroupChatAttachment} from '@/entities/internal/group-chat-attachment.entity';
+import {GroupChatMessage} from '@/entities/internal/group-chat-message.entity';
 import {Message} from '@/entities/internal/message.entity';
-import {MessageText} from '@/entities/internal/message-text.entity';
+import {MessageAttachment} from '@/entities/internal/message-attachment.entity';
 
 import {CreateMessageDto} from './dto/create-message.dto';
 import {EmoteIcon} from './enums/emote-icon.enum';
 import {MessageStatus} from './enums/message-status.enum';
-import {MessageType} from './enums/message-type.enum';
 
 @Injectable()
 export class MessagingService {
     constructor(
         @InjectRepository(Message) private messageRepository: Repository<Message>,
-        @InjectRepository(MessageText) private messageTextRepository: Repository<MessageText>
+        @InjectRepository(UserReference) private UserReferenceRepository: Repository<UserReference>,
+        @InjectRepository(MessageAttachment) private messageAttachmentRepository: Repository<MessageAttachment>,
+        @InjectRepository(GroupChatMessage) private groupChatMessageRepository: Repository<GroupChatMessage>,
+        @InjectRepository(GroupChatAttachment) private groupChatAttachmentRepository: Repository<GroupChatAttachment>,
+        @InjectRepository(GroupChat) private groupChatRepository: Repository<GroupChat>
     ) {}
 
     async createMessage(message: Message): Promise<Message> {
@@ -61,51 +68,59 @@ export class MessagingService {
     async updateMessage(messageId: string, text: string): Promise<Message> {
         const message = await this.messageRepository.findOne({
             where: {id: messageId},
-            relations: ['textMessage'],
+            relations: ['messageText'],
         });
-
         if (!message) {
             throw new NotFoundException(`Message with ID ${messageId} not found`);
         }
-
-        if (message.type !== MessageType.TEXT) {
-            throw new BadRequestException(`Cannot update text for non-text message type: ${message.type}`);
-        }
-
-        if (message.textMessage) {
-            message.textMessage.text = text;
-            await this.messageTextRepository.save(message.textMessage);
-        } else {
-            const newTextMessage = this.messageTextRepository.create({
-                text: text,
-                message: message,
-            });
-
-            const savedTextMessage = await this.messageTextRepository.save(newTextMessage);
-            message.textMessage = savedTextMessage;
-        }
-
+        message.messageText = text;
         message.last_modified_at = new Date();
         return await this.messageRepository.save(message);
     }
 
-    async createMessageWithContent(createMessageDto: CreateMessageDto): Promise<Message> {
-        // Create a new message entity
-        const message = new Message();
-        message.type = createMessageDto.type;
-        message.status = createMessageDto.status || MessageStatus.SENT;
-        message.sent_at = new Date();
+    async createTextMessage(senderId: string, createMessageDto: CreateMessageDto): Promise<Message> {
+        const sender = await this.UserReferenceRepository.findOne({where: {id: senderId}});
+        const recipient = await this.UserReferenceRepository.findOne({where: {id: createMessageDto.recipientId}});
+        if (!sender) {
+            throw new NotFoundException(`Sender with ID ${senderId} not found`);
+        }
+        if (!recipient) {
+            throw new NotFoundException(`Recipient with ID ${createMessageDto.recipientId} not found`);
+        }
+        const message = this.messageRepository.create({
+            sender: sender,
+            receiver: recipient,
+            status: MessageStatus.SENT,
+            sent_at: new Date(),
+            messageText: createMessageDto.messageText || 'Default message',
+            last_modified_at: new Date(),
+        });
+        return this.messageRepository.save(message);
+    }
 
-        // Save the message first
-        const savedMessage = await this.createMessage(message);
-
-        // If it's a text message, create the text content
-        if (createMessageDto.type === MessageType.TEXT && createMessageDto.text) {
-            // This will handle saving the text and updating the message relation
-            await this.updateMessage(savedMessage.id.toString(), createMessageDto.text);
+    async createAttachmentMessage(
+        senderId: string,
+        recipientId: string,
+        attachmentUrl: string,
+        attachmentName?: string
+    ): Promise<MessageAttachment> {
+        const sender = await this.UserReferenceRepository.findOne({where: {id: senderId}});
+        const recipient = await this.UserReferenceRepository.findOne({where: {id: recipientId}});
+        if (!sender) {
+            throw new NotFoundException(`Sender with ID ${senderId} not found`);
+        }
+        if (!recipient) {
+            throw new NotFoundException(`Recipient with ID ${recipientId} not found`);
         }
 
-        // Return the created message with relations
-        return this.getMessageById(savedMessage.id.toString());
+        const message = this.messageAttachmentRepository.create({
+            attachment_url: attachmentUrl,
+            attachment_name: attachmentName || 'Default attachment name',
+            sender: sender,
+            receiver: recipient,
+            status: MessageStatus.SENT,
+            sent_at: new Date(),
+        });
+        return this.messageAttachmentRepository.save(message);
     }
 }

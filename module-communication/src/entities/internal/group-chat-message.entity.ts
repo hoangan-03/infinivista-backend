@@ -1,15 +1,14 @@
-import {Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {EmoteIcon} from '@/modules/messaging/enums/emote-icon.enum';
 import {MessageStatus} from '@/modules/messaging/enums/message-status.enum';
 
+import {BaseEntity} from '../base/base-class';
 import {UserReference} from '../external/user-reference.entity';
 import {GroupChat} from './group-chat.entity';
-import {MessageAttachment} from './message-attachment.entity';
-import {MessageText} from './message-text.entity';
 
 @Entity()
-export class GroupChatMessage {
+export class GroupChatMessage extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
@@ -28,15 +27,8 @@ export class GroupChatMessage {
     @Column({type: 'simple-array', nullable: true})
     emotion?: EmoteIcon[];
 
-    @OneToOne(() => MessageText, (messageText) => messageText.message, {nullable: true, onDelete: 'CASCADE'})
-    @JoinColumn()
-    textMessage?: MessageText;
-
-    @OneToMany(() => MessageAttachment, (messageAttachment) => messageAttachment.message, {
-        nullable: true,
-        cascade: true,
-    })
-    attachment?: MessageAttachment[];
+    @Column({nullable: false, default: 'Default message'})
+    textMessage?: string;
 
     @ManyToOne(() => UserReference, (sender) => sender.sentMessages)
     sender: UserReference;

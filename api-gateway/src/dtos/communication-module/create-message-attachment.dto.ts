@@ -1,7 +1,7 @@
 import {ApiProperty} from '@nestjs/swagger';
-import {IsNotEmpty, IsString} from 'class-validator';
+import {IsNotEmpty, IsOptional, IsString} from 'class-validator';
 
-export class CreateMessageDto {
+export class CreateMessageAttachmentDto {
     @ApiProperty({
         description: 'Attachment URL',
         example: 'https://example.com/image.jpg',
@@ -9,14 +9,14 @@ export class CreateMessageDto {
     })
     @IsNotEmpty()
     @IsString()
-    messageText: string;
+    attachment_url: string;
 
     @ApiProperty({
-        // recipientId
-        description: 'ID of the recipient',
-        example: '550e8400-e29b-41d4-a716-446655440000',
+        description: 'Attachment Name',
+        example: 'image.jpg',
         type: String,
     })
+    @IsOptional()
     @IsString()
-    recipientId: string;
+    attachment_name?: string;
 }

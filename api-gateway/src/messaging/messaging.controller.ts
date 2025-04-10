@@ -1,21 +1,9 @@
-import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    HttpCode,
-    HttpStatus,
-    Inject,
-    Param,
-    Post,
-    Put,
-    Render,
-    UseGuards,
-} from '@nestjs/common';
+import {Body, Controller, Delete, Get, HttpCode, HttpStatus, Inject, Param, Post, Put, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
+import {CurrentUser} from '@/decorators/user.decorator';
 import {CreateMessageDto} from '@/dtos/communication-module/create-message.dto';
 import {EmoteReactionDto} from '@/dtos/communication-module/emote-reaction.dto';
 import {UpdateMessageDto} from '@/dtos/communication-module/update-message.dto';
@@ -31,19 +19,9 @@ export class MessagingController {
     constructor(@Inject('COMMUNICATION_SERVICE') private communicationClient: ClientProxy) {}
 
     /**
-     * Render chat interface
-     */
-    @Get('/chat')
-    @Render('index')
-    @ApiOperation({summary: 'Render chat interface'})
-    Home() {
-        return;
-    }
-
-    /**
      * Get all messages
      */
-    @Get('/api/chat')
+    @Get('')
     @ApiOperation({summary: 'Get all messages'})
     @ApiResponse({
         status: 200,
@@ -57,22 +35,28 @@ export class MessagingController {
     /**
      * Create a new message
      */
-    @Post('/api/chat/messages')
+    @Post('')
     @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Create a new message'})
+    @ApiBody({
+        description: 'Message Text',
+        type: String,
+    })
     @ApiResponse({
         status: 201,
         description: 'Message created successfully',
         type: Message,
     })
-    async createMessage(@Body() createMessageDto: CreateMessageDto) {
-        return await lastValueFrom(this.communicationClient.send('CreateMessageCommand', {createMessageDto}));
+    async createMessage(@CurrentUser() user, createMessageDto: CreateMessageDto) {
+        return await lastValueFrom(
+            this.communicationClient.send('CreateMessageCommand', {senderId: user.id, createMessageDto})
+        );
     }
 
     /**
      * Get a specific message
      */
-    @Get('/api/chat/messages/:id')
+    @Get('/:id')
     @ApiOperation({summary: 'Get a message by ID'})
     @ApiParam({name: 'id', description: 'Message ID'})
     @ApiResponse({
@@ -91,7 +75,7 @@ export class MessagingController {
     /**
      * Update message text
      */
-    @Put('/api/chat/messages/:id')
+    @Put('/:id')
     @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Update message text'})
     @ApiParam({name: 'id', description: 'Message ID'})
@@ -107,7 +91,7 @@ export class MessagingController {
     /**
      * Add reaction/emotion to a message
      */
-    @Post('/api/chat/messages/:id/reaction')
+    @Post('/:id/reaction')
     @UseGuards(JWTAuthGuard)
     @ApiOperation({summary: 'Add a reaction to a message'})
     @ApiParam({name: 'id', description: 'Message ID'})
@@ -123,7 +107,7 @@ export class MessagingController {
     /**
      * Hide a message
      */
-    @Put('/api/chat/messages/:id/hide')
+    @Put('/:id/hide')
     @UseGuards(JWTAuthGuard)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({summary: 'Hide a message'})
@@ -139,7 +123,7 @@ export class MessagingController {
     /**
      * Delete a message
      */
-    @Delete('/api/chat/messages/:id')
+    @Delete('/:id')
     @UseGuards(JWTAuthGuard)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({summary: 'Delete a message'})

@@ -1,9 +1,10 @@
 import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
+import {BaseEntity} from '../base/base-class';
 import {UserReference} from '../external/user-reference.entity';
 
 @Entity()
-export class CallHistory {
+export class CallHistory extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     call_id: string;
 

@@ -36,7 +36,7 @@ import {MessagingModule} from './modules/messaging/messaging.module';
             provide: APP_FILTER,
             useClass: AllExceptionsFilter,
         },
-        MessagingGateway,
+        // MessagingGateway,
     ],
 })
 export class AppModule {}

@@ -1,9 +1,9 @@
 import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
-import {CreateMessageDto} from '@/modules/messaging/dto/create-message.dto';
 import {UpdateMessageDto} from '@/modules/messaging/dto/update-message.dto';
 
+import {CreateMessageDto} from './dto/create-message.dto';
 import {EmoteReactionDto} from './dto/emote-reaction.dto';
 import {MessagingService} from './messaging.service';
 
@@ -23,8 +23,8 @@ export class MessagingController {
      * Create a new message
      */
     @MessagePattern('CreateMessageCommand')
-    async createMessage(payload: {createMessageDto: CreateMessageDto}) {
-        return await this.messageService.createMessageWithContent(payload.createMessageDto);
+    async createMessage(payload: {senderId: string; createMessageDto: CreateMessageDto}) {
+        return await this.messageService.createTextMessage(payload.senderId, payload.createMessageDto);
     }
 
     /**
