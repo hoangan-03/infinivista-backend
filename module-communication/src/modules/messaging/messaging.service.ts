@@ -2,9 +2,10 @@ import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
-import {Message} from '@/entities/message.entity';
-import {MessageText} from '@/entities/message-text.entity';
+import {Message} from '@/entities/internal/message.entity';
+import {MessageText} from '@/entities/internal/message-text.entity';
 
+import {CreateMessageDto} from './dto/create-message.dto';
 import {EmoteIcon} from './enums/emote-icon.enum';
 import {MessageStatus} from './enums/message-status.enum';
 import {MessageType} from './enums/message-type.enum';
@@ -13,20 +14,23 @@ import {MessageType} from './enums/message-type.enum';
 export class MessagingService {
     constructor(
         @InjectRepository(Message) private messageRepository: Repository<Message>,
-        @InjectRepository(Message)
-        private messageTextRepository: Repository<MessageText>
+        @InjectRepository(MessageText) private messageTextRepository: Repository<MessageText>
     ) {}
+
     async createMessage(message: Message): Promise<Message> {
         return await this.messageRepository.save(message);
     }
 
     async getMessages(): Promise<Message[]> {
-        return await this.messageRepository.find();
+        return await this.messageRepository.find({
+            relations: ['textMessage'],
+        });
     }
 
     async getMessageById(messageId: string): Promise<Message> {
         const message = await this.messageRepository.findOne({
-            where: {id: parseInt(messageId)},
+            where: {id: messageId},
+            relations: ['textMessage'],
         });
 
         if (!message) {
@@ -36,44 +40,27 @@ export class MessagingService {
         return message;
     }
 
-    async dropEmote(emotion: EmoteIcon, messageId: string): Promise<void> {
-        const message = await this.messageRepository.findOne({
-            where: {id: parseInt(messageId)},
-        });
-        if (message) {
-            message.emotion = emotion;
-            await this.messageRepository.save(message);
-        }
+    async dropEmote(emotion: EmoteIcon, messageId: string): Promise<Message> {
+        const message = await this.getMessageById(messageId);
+        message.emotion = emotion;
+        return await this.messageRepository.save(message);
     }
 
     async hiddenMessage(messageId: string): Promise<void> {
-        const message = await this.messageRepository.findOne({
-            where: {id: parseInt(messageId)},
-        });
-        if (message) {
-            message.status = MessageStatus.HIDDEN;
-            await this.messageRepository.save(message);
-        } else {
-            throw new NotFoundException(`Message with ID ${messageId} not found`);
-        }
+        const message = await this.getMessageById(messageId);
+        message.status = MessageStatus.HIDDEN;
+        await this.messageRepository.save(message);
     }
 
     async deleteMessage(messageId: string): Promise<void> {
-        const message = await this.messageRepository.findOne({
-            where: {id: parseInt(messageId)},
-        });
-        if (message) {
-            message.status = MessageStatus.HIDDEN;
-            await this.messageRepository.save(message);
-        } else {
-            throw new NotFoundException(`Message with ID ${messageId} not found`);
-        }
+        const message = await this.getMessageById(messageId);
+        message.status = MessageStatus.DELETED;
+        await this.messageRepository.save(message);
     }
 
-    async updateMessage(messageId: string, text: string): Promise<void> {
-        // Find message with its text relation
+    async updateMessage(messageId: string, text: string): Promise<Message> {
         const message = await this.messageRepository.findOne({
-            where: {id: parseInt(messageId)},
+            where: {id: messageId},
             relations: ['textMessage'],
         });
 
@@ -95,12 +82,30 @@ export class MessagingService {
             });
 
             const savedTextMessage = await this.messageTextRepository.save(newTextMessage);
-
             message.textMessage = savedTextMessage;
-            await this.messageRepository.save(message);
         }
 
         message.last_modified_at = new Date();
-        await this.messageRepository.save(message);
+        return await this.messageRepository.save(message);
+    }
+
+    async createMessageWithContent(createMessageDto: CreateMessageDto): Promise<Message> {
+        // Create a new message entity
+        const message = new Message();
+        message.type = createMessageDto.type;
+        message.status = createMessageDto.status || MessageStatus.SENT;
+        message.sent_at = new Date();
+
+        // Save the message first
+        const savedMessage = await this.createMessage(message);
+
+        // If it's a text message, create the text content
+        if (createMessageDto.type === MessageType.TEXT && createMessageDto.text) {
+            // This will handle saving the text and updating the message relation
+            await this.updateMessage(savedMessage.id.toString(), createMessageDto.text);
+        }
+
+        // Return the created message with relations
+        return this.getMessageById(savedMessage.id.toString());
     }
 }

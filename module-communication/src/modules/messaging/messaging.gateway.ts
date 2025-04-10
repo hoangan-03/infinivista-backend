@@ -8,7 +8,7 @@ import {
 } from '@nestjs/websockets';
 import {Server, Socket} from 'socket.io';
 
-import {Message} from '@/entities/message.entity';
+import {Message} from '@/entities/internal/message.entity';
 import {MessagingService} from '@/modules/messaging/messaging.service';
 
 @WebSocketGateway({

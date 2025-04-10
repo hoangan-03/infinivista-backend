@@ -1,4 +1,4 @@
-import {ForbiddenException, Injectable, NotFoundException} from '@nestjs/common';
+import {BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 
@@ -6,16 +6,16 @@ import {Comment} from '@/entities/local/comment.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post} from '@/entities/local/post.entity';
-import {Reaction} from '@/entities/local/reaction.entity';
 import {Story} from '@/entities/local/story.entity';
+import {UserReactPost} from '@/entities/local/user-react-post.entity';
 import {ReactionType} from '@/enum/reaction-type';
 import {visibilityEnum} from '@/enum/visibility.enum';
 
 import {UserReferenceService} from '../user-reference/user-reference.service';
-import {UserReactPost} from '@/entities/local/user-react-post.entity';
 
 @Injectable()
 export class FeedService {
+    private readonly logger = new Logger(FeedService.name);
     constructor(
         private readonly userReferenceService: UserReferenceService,
         @InjectRepository(NewsFeed)
@@ -26,8 +26,6 @@ export class FeedService {
         private readonly storyRepository: Repository<Story>,
         @InjectRepository(LiveStreamHistory)
         private readonly liveStreamRepository: Repository<LiveStreamHistory>,
-        @InjectRepository(Reaction)
-        private readonly reactionRepository: Repository<Reaction>,
         @InjectRepository(Comment)
         private readonly commentRepository: Repository<Comment>,
         @InjectRepository(UserReactPost)
@@ -42,7 +40,7 @@ export class FeedService {
         });
 
         if (existingFeed) {
-            throw new Error('User already has a news feed');
+            throw new BadRequestException('User already has a news feed');
         }
 
         const newsFeed = this.newsFeedRepository.create({
@@ -227,6 +225,8 @@ export class FeedService {
             post,
         });
 
+        post.comments = [...(post.comments || []), comment];
+
         return this.commentRepository.save(comment);
     }
 
@@ -288,6 +288,10 @@ export class FeedService {
     // ---------- REACTION METHODS ----------
 
     async addReaction(userId: string, postId: string, reactionType: ReactionType): Promise<UserReactPost> {
+        const post = await this.getPostById(postId);
+        if (userId === post.newsFeed.owner.id) {
+            throw new ForbiddenException(`User cannot react to their own post`);
+        }
         const existingReaction = await this.userReactPostRepository.findOne({
             where: {
                 post_id: postId,
@@ -296,22 +300,18 @@ export class FeedService {
         });
 
         if (existingReaction) {
-            if (existingReaction.reaction.reaction_type !== reactionType) {
-                existingReaction.reaction.reaction_type = reactionType;
+            if (existingReaction.reactionType && existingReaction.reactionType !== reactionType) {
+                existingReaction.reactionType = reactionType;
                 return this.userReactPostRepository.save(existingReaction);
             }
             return existingReaction;
         }
 
-        const reaction = this.userReactPostRepository.save({
+        return await this.userReactPostRepository.save({
             user_id: userId,
             post_id: postId,
-            reaction_id: await this.reactionRepository.findOne({
-                where: {reaction_type: reactionType},
-            }),
+            reactionType: reactionType,
         });
-
-        return reaction;
     }
 
     async getReactionsByPostId(postId: string): Promise<UserReactPost[]> {
@@ -327,7 +327,7 @@ export class FeedService {
         });
     }
 
-    async removeReaction(postId: string, userId: string): Promise<boolean> {
+    async removeReaction(postId: string, userId: string): Promise<{success: boolean}> {
         const reaction = await this.userReactPostRepository.findOne({
             where: {
                 post_id: postId,
@@ -340,7 +340,7 @@ export class FeedService {
         }
 
         await this.userReactPostRepository.remove(reaction);
-        return true;
+        return {success: true};
     }
 
     async getReactionCountByType(postId: string): Promise<Record<ReactionType, number>> {
@@ -364,7 +364,7 @@ export class FeedService {
         };
 
         reactions.forEach((reaction) => {
-            counts[reaction.reaction.reaction_type]++;
+            counts[reaction.reactionType]++;
         });
 
         return counts;

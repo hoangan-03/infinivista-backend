@@ -4,12 +4,14 @@ import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags} fr
 import {lastValueFrom} from 'rxjs';
 
 import {CurrentUser} from '@/decorators/user.decorator';
+import {CommentPostDto} from '@/dtos/feed-module/comment-post.dto';
 import {CreatePostDto} from '@/dtos/feed-module/create-post.dto';
 import {CreateStoryDto} from '@/dtos/feed-module/create-story.dto';
 import {Comment} from '@/entities/feed-module/local/comment.entity';
 import {NewsFeed} from '@/entities/feed-module/local/newsfeed.entity';
 import {Post as PostEntity} from '@/entities/feed-module/local/post.entity';
 import {Story} from '@/entities/feed-module/local/story.entity';
+import {UserReactPost} from '@/entities/feed-module/local/user-react-post.entity';
 import {ReactionType} from '@/enums/feed-module/reaction-type';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
@@ -24,7 +26,8 @@ export class FeedController {
     @Post('news-feed')
     @ApiOperation({summary: 'Create a new news feed'})
     @ApiResponse({status: 201, description: 'The news feed has been successfully created.'})
-    @ApiResponse({status: 400, description: 'Bad Request'})
+    @ApiResponse({status: 400, description: 'User already has a news feed.'})
+    @ApiResponse({status: 401, description: 'Unauthorized'})
     async createNewsFeed(@CurrentUser() user, @Body() data: Partial<NewsFeed>): Promise<NewsFeed> {
         return await lastValueFrom(this.feedClient.send('CreateNewsFeedCommand', {id: user.id, data}));
     }
@@ -123,7 +126,7 @@ export class FeedController {
     @ApiParam({name: 'postId', description: 'ID of the post'})
     @ApiBody({
         description: 'Comment data',
-        type: CreateStoryDto,
+        type: CommentPostDto,
     })
     @ApiResponse({status: 201, description: 'Comment created successfully', type: Comment})
     async createComment(
@@ -146,6 +149,7 @@ export class FeedController {
     @ApiOperation({summary: 'Get all comments for a post'})
     @ApiParam({name: 'postId', description: 'ID of the post'})
     @ApiResponse({status: 200, description: 'List of comments', type: [Comment]})
+    @ApiResponse({status: 404, description: 'Post not found'})
     async getCommentsByPostId(@Param('postId') postId: string): Promise<Comment[]> {
         return await lastValueFrom(this.feedClient.send('GetCommentsByPostIdCommand', {postId}));
     }
@@ -170,6 +174,7 @@ export class FeedController {
         },
     })
     @ApiResponse({status: 200, description: 'Comment updated successfully', type: Comment})
+    @ApiResponse({status: 404, description: 'Comment not found'})
     async updateComment(
         @CurrentUser() user,
         @Param('commentId') commentId: string,
@@ -190,6 +195,7 @@ export class FeedController {
     @ApiOperation({summary: 'Delete a comment'})
     @ApiParam({name: 'commentId', description: 'ID of the comment'})
     @ApiResponse({status: 200, description: 'Comment deleted successfully'})
+    @ApiResponse({status: 404, description: 'Comment not found'})
     async deleteComment(@CurrentUser() user, @Param('commentId') commentId: string): Promise<Comment> {
         return await lastValueFrom(
             this.feedClient.send('DeleteCommentCommand', {
@@ -217,11 +223,13 @@ export class FeedController {
         },
     })
     @ApiResponse({status: 201, description: 'Reaction added successfully'})
+    @ApiResponse({status: 403, description: 'User cannot react to their own post'})
+    @ApiResponse({status: 404, description: 'Post not found'})
     async addReaction(
         @CurrentUser() user,
         @Param('postId') postId: string,
         @Body('reactionType') reactionType: ReactionType
-    ): Promise<any> {
+    ): Promise<UserReactPost> {
         return await lastValueFrom(
             this.feedClient.send('AddReactionCommand', {
                 userId: user.id,
@@ -234,8 +242,8 @@ export class FeedController {
     @Get('post/:postId/reactions')
     @ApiOperation({summary: 'Get all reactions for a post'})
     @ApiParam({name: 'postId', description: 'ID of the post'})
-    @ApiResponse({status: 200, description: 'List of reactions'})
-    async getReactionsByPostId(@Param('postId') postId: string): Promise<any[]> {
+    @ApiResponse({status: 200, description: 'List of reactions', type: [UserReactPost]})
+    async getReactionsByPostId(@Param('postId') postId: string): Promise<UserReactPost[]> {
         return await lastValueFrom(this.feedClient.send('GetReactionsByPostIdCommand', {postId}));
     }
 
@@ -243,7 +251,8 @@ export class FeedController {
     @ApiOperation({summary: 'Remove your reaction from a post'})
     @ApiParam({name: 'postId', description: 'ID of the post'})
     @ApiResponse({status: 200, description: 'Reaction removed successfully'})
-    async removeReaction(@CurrentUser() user, @Param('postId') postId: string): Promise<boolean> {
+    @ApiResponse({status: 404, description: 'Reaction not found'})
+    async removeReaction(@CurrentUser() user, @Param('postId') postId: string): Promise<{success: boolean}> {
         return await lastValueFrom(
             this.feedClient.send('RemoveReactionCommand', {
                 postId,
@@ -255,7 +264,8 @@ export class FeedController {
     @Get('post/:postId/reaction-counts')
     @ApiOperation({summary: 'Get reaction counts by type for a post'})
     @ApiParam({name: 'postId', description: 'ID of the post'})
-    @ApiResponse({status: 200, description: 'Reaction counts by type'})
+    @ApiResponse({status: 200, description: 'Reaction counts by type', type: Object})
+    @ApiResponse({status: 404, description: 'Post not found'})
     async getReactionCountByType(@Param('postId') postId: string): Promise<Record<ReactionType, number>> {
         return await lastValueFrom(this.feedClient.send('GetReactionCountByTypeCommand', {postId}));
     }

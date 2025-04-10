@@ -1,7 +1,6 @@
 import {DataSource} from 'typeorm';
 
 import {NewsFeedReference} from '@/entities/external/newsfeed-ref.entity';
-import {UserReactPost} from '@/entities/external/user-react-post.entity';
 import {Friend} from '@/entities/local/friend.entity';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {PaymentMethods} from '@/entities/local/payment-methods.entity';
@@ -28,7 +27,6 @@ export const AppDataSource = new DataSource({
         FriendRequest,
         Friend,
         NewsFeedReference,
-        UserReactPost,
     ],
     migrations: ['migrations/*.ts'],
     synchronize: false,

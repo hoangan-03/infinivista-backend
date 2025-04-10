@@ -8,7 +8,6 @@ import {Advertisement} from './advertisement.entity';
 import {HashTag} from './hashtag.entity';
 import {LiveStreamHistory} from './live-stream-history.entity';
 import {Post} from './post.entity';
-import {Reaction} from './reaction.entity';
 import {Reel} from './reel.entity';
 import {Story} from './story.entity';
 

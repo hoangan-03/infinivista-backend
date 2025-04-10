@@ -14,7 +14,6 @@ import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post} from '@/entities/local/post.entity';
 import {PostAttachment} from '@/entities/local/post-attachment';
-import {Reaction} from '@/entities/local/reaction.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {ReactionType} from '@/enum/reaction-type';
@@ -36,8 +35,6 @@ export class SeedHandlerController {
         private readonly commentRepository: Repository<Comment>,
         @InjectRepository(Story)
         private readonly storyRepository: Repository<Story>,
-        @InjectRepository(Reaction)
-        private readonly reactionRepository: Repository<Reaction>,
         @InjectRepository(PostAttachment)
         private readonly postAttachmentRepository: Repository<PostAttachment>,
         @InjectRepository(LiveStreamHistory)
@@ -62,7 +59,6 @@ export class SeedHandlerController {
             await this.commentRepository.clear();
             await this.postAttachmentRepository.clear();
             await this.postRepository.clear();
-            await this.reactionRepository.clear();
             await this.storyRepository.clear();
             await this.liveStreamRepository.clear();
             await this.advertisementRepository.clear();

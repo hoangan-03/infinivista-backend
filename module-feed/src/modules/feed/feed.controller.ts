@@ -1,13 +1,13 @@
 import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
+import {Comment} from '@/entities/local/comment.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post as PostEntity} from '@/entities/local/post.entity';
 import {Story} from '@/entities/local/story.entity';
-import {Comment} from '@/entities/local/comment.entity';
-import {ReactionType} from '@/enum/reaction-type';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
+import {ReactionType} from '@/enum/reaction-type';
 
 import {FeedService} from './feed.service';
 
@@ -126,7 +126,7 @@ export class FeedController {
     }
 
     @MessagePattern('RemoveReactionCommand')
-    async removeReaction(payload: {postId: string; userId: string}): Promise<boolean> {
+    async removeReaction(payload: {postId: string; userId: string}): Promise<{success: boolean}> {
         return this.feedService.removeReaction(payload.postId, payload.userId);
     }
 

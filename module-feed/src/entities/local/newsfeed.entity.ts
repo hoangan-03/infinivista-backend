@@ -11,7 +11,6 @@ import {visibilityEnum} from '@/enum/visibility.enum';
 import {CommunityReference} from '../external/community-ref.entity';
 import {UserReference} from '../external/user-ref.entity';
 import {HashTag} from './hashtag.entity';
-import {Reaction} from './reaction.entity';
 
 @Entity()
 export class NewsFeed extends BaseEntity {

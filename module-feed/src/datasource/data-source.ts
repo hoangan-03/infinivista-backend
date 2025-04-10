@@ -9,7 +9,6 @@ import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post} from '@/entities/local/post.entity';
 import {PostAttachment} from '@/entities/local/post-attachment';
-import {Reaction} from '@/entities/local/reaction.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
@@ -29,7 +28,6 @@ export const AppDataSource = new DataSource({
         NewsFeed,
         PostAttachment,
         Post,
-        Reaction,
         Reel,
         Story,
         UserReference,

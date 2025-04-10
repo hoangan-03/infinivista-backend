@@ -1,27 +1,15 @@
-import {NotFoundException} from '@nestjs/common';
+import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
-import {Message} from '@/entities/message.entity';
-import {MessageText} from '@/entities/message-text.entity';
 import {CreateMessageDto} from '@/modules/messaging/dto/create-message.dto';
 import {UpdateMessageDto} from '@/modules/messaging/dto/update-message.dto';
 
 import {EmoteReactionDto} from './dto/emote-reaction.dto';
-import {MessageStatus} from './enums/message-status.enum';
-import {MessageType} from './enums/message-type.enum';
 import {MessagingService} from './messaging.service';
 
+@Controller()
 export class MessagingController {
     constructor(private readonly messageService: MessagingService) {}
-
-    /**
-     * Render chat interface
-     */
-    // @MessagePattern()
-    // @Render('index')
-    // Home() {
-    //     return;
-    // }
 
     /**
      * Get all messages
@@ -36,28 +24,7 @@ export class MessagingController {
      */
     @MessagePattern('CreateMessageCommand')
     async createMessage(payload: {createMessageDto: CreateMessageDto}) {
-        // Create a new message entity
-        const message = new Message();
-        message.type = payload.createMessageDto.type;
-        message.status = payload.createMessageDto.status || MessageStatus.SENT;
-        message.sent_at = new Date();
-
-        // Save the message first
-        const savedMessage = await this.messageService.createMessage(message);
-
-        // If it's a text message, create the text content
-        if (payload.createMessageDto.type === MessageType.TEXT && payload.createMessageDto.text) {
-            // Create text content
-            const textMessage = new MessageText();
-            textMessage.text = payload.createMessageDto.text;
-            textMessage.message = savedMessage;
-
-            // This will handle saving the text and updating the message relation
-            await this.messageService.updateMessage(savedMessage.id.toString(), payload.createMessageDto.text);
-        }
-
-        // Return the created message
-        return savedMessage;
+        return await this.messageService.createMessageWithContent(payload.createMessageDto);
     }
 
     /**
@@ -65,11 +32,7 @@ export class MessagingController {
      */
     @MessagePattern('GetIdMessageCommand')
     async getMessage(payload: {id: string}) {
-        const message = await this.messageService.getMessageById(payload.id);
-        if (!message) {
-            throw new NotFoundException(`Message with ID ${payload.id} not found`);
-        }
-        return message;
+        return await this.messageService.getMessageById(payload.id);
     }
 
     /**

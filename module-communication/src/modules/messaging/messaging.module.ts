@@ -1,26 +1,26 @@
 import {Module} from '@nestjs/common';
 import {TypeOrmModule} from '@nestjs/typeorm';
 
-import {CallHistories} from '@/entities/call-history.entity';
-import {GroupChat} from '@/entities/group-chat.entity';
-import {Message} from '@/entities/message.entity';
-import {MessageAttachment} from '@/entities/message-attachment.entity';
-import {MessageText} from '@/entities/message-text.entity';
-import {UserMessagesGroupChat} from '@/entities/user-messages-group-chat.entity';
-import {UserMessagesUser} from '@/entities/user-messages-user.entity';
+import {UserReference} from '@/entities/external/user-reference.entity';
+import {CallHistory} from '@/entities/internal/call-history.entity';
+import {GroupChat} from '@/entities/internal/group-chat.entity';
+import {GroupChatMessage} from '@/entities/internal/group-chat-message.entity';
+import {Message} from '@/entities/internal/message.entity';
+import {MessageAttachment} from '@/entities/internal/message-attachment.entity';
+import {MessageText} from '@/entities/internal/message-text.entity';
 
 import {MessagingController} from './messaging.controller';
 import {MessagingService} from './messaging.service';
 @Module({
     imports: [
         TypeOrmModule.forFeature([
-            CallHistories,
+            CallHistory,
             GroupChat,
             MessageAttachment,
             MessageText,
             Message,
-            UserMessagesUser,
-            UserMessagesGroupChat,
+            GroupChatMessage,
+            UserReference,
         ]),
     ],
     controllers: [MessagingController],

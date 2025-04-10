@@ -1,6 +1,6 @@
 import {Column, Entity, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
 
-import {Message} from './message.entity';
+import {GroupChatMessage} from './group-chat-message.entity';
 
 @Entity()
 export class GroupChat {
@@ -13,6 +13,6 @@ export class GroupChat {
     @Column({nullable: true})
     group_image_url: string;
 
-    @OneToMany(() => Message, (message) => message.groupChat)
-    messages: Message[];
+    @OneToMany(() => GroupChatMessage, (message) => message.groupChat)
+    messages: GroupChatMessage[];
 }

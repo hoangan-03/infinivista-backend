@@ -7,7 +7,7 @@ import {AppService} from './app.service';
 import {AuthModule} from './auth/auth.module';
 import {RpcExceptionFilter} from './exception-filters/rpc-exception.filter';
 import {FeedModule} from './feed/feed.module';
-// import {MessagingModule} from './messaging/messaging.module';
+import {MessagingModule} from './messaging/messaging.module';
 import {UserModule} from './user/user.module';
 
 @Module({
@@ -18,7 +18,7 @@ import {UserModule} from './user/user.module';
         UserModule,
         AuthModule,
         FeedModule,
-        // MessagingModule,
+        MessagingModule,
     ],
     controllers: [AppController],
     providers: [

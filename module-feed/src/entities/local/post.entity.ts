@@ -25,8 +25,5 @@ export class Post extends BaseEntity {
     postAttachments: PostAttachment[];
 
     @OneToMany(() => UserReactPost, (userReaction) => userReaction.post)
-    UserReactPosts: UserReactPost[];
-
-    @OneToMany(() => UserReactPost, (userReaction) => userReaction.post)
     userReactions: UserReactPost[];
 }

@@ -1,7 +1,7 @@
 import {Entity, OneToMany, PrimaryColumn} from 'typeorm';
 
-import {CallHistory} from '../call-history.entity';
-import {Message} from '../message.entity';
+import {CallHistory} from '../internal/call-history.entity';
+import {Message} from '../internal/message.entity';
 
 @Entity()
 export class UserReference {

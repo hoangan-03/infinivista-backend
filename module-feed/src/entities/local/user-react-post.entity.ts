@@ -1,20 +1,18 @@
-import {Column, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn, Unique} from 'typeorm';
+import {Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
+import {ReactionType} from '@/enum/reaction-type';
 
 import {UserReference} from '../external/user-ref.entity';
 import {Post} from './post.entity';
-import {Reaction} from './reaction.entity';
 
 @Entity('user_react_post')
-@Unique(['user_id', 'post_id']) // Ensures a user can only have one reaction per post
 export class UserReactPost extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @OneToOne(() => Reaction, {nullable: true})
-    @JoinColumn({name: 'reaction_id'})
-    reaction: Reaction;
+    @Column({type: 'enum', enum: ReactionType})
+    reactionType: ReactionType;
 
     @ManyToOne(() => UserReference)
     @JoinColumn({name: 'user_id'})
