@@ -11,6 +11,7 @@ import {Post} from '@/entities/local/post.entity';
 import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
+import {Topic} from '@/entities/local/topic.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
 
 export const AppDataSource = new DataSource({
@@ -33,6 +34,7 @@ export const AppDataSource = new DataSource({
         UserReference,
         CommunityReference,
         UserReactPost,
+        Topic,
     ],
     migrations: ['migrations/*.ts'],
     synchronize: false,

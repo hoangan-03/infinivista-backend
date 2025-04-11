@@ -1,10 +1,11 @@
-import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put, UseGuards} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put, Query, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {ApiBearerAuth, ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {UpdateUserDto} from '@/auth/dtos/update-user.dto';
 import {CurrentUser} from '@/decorators/user.decorator';
+import {PaginationDto} from '@/dtos/common/pagination.dto';
 import {FriendRequest} from '@/entities/user-module/local/friend-request.entity';
 import {SecurityAnswer} from '@/entities/user-module/local/security-answer.entity';
 import {Setting} from '@/entities/user-module/local/setting.entity';
@@ -13,6 +14,7 @@ import {ProfilePrivacy} from '@/enums/user-module/profile-privacy.enum';
 import {SettingType} from '@/enums/user-module/setting.enum';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
+import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -194,10 +196,24 @@ export class UserController {
     }
 
     @Get('friend')
-    @ApiOperation({summary: 'Get list of friends for current user'})
-    async getFriends(@CurrentUser() user): Promise<User[]> {
+    @ApiOperation({summary: 'Get paginated list of friends for current user'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({
+        status: 200,
+        description: 'Returns paginated list of friends',
+    })
+    async getFriends(
+        @CurrentUser() user,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<User>> {
         console.log('Fetching friends for user:', user.id);
-        return await lastValueFrom(this.userClient.send('GetFriendsUserCommand', {userId: user.id}));
+        return await lastValueFrom(
+            this.userClient.send('GetFriendsUserCommand', {
+                userId: user.id,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
     }
 
     @Get(':id')
@@ -229,9 +245,19 @@ export class UserController {
         status: 401,
         description: 'Unauthorized - Invalid or missing token',
     })
-    @ApiOperation({summary: 'Get all friend requests of current user'})
-    async getFriendRequests(@CurrentUser() user): Promise<FriendRequest[]> {
-        return await lastValueFrom(this.userClient.send('GetFriendRequestsUserCommand', {userId: user.id}));
+    @ApiOperation({summary: 'Get paginated friend requests of current user'})
+    @ApiQuery({type: PaginationDto})
+    async getFriendRequests(
+        @CurrentUser() user,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<FriendRequest>> {
+        return await lastValueFrom(
+            this.userClient.send('GetFriendRequestsUserCommand', {
+                userId: user.id,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
     }
 
     @Delete('friend/:friendId')
@@ -295,6 +321,7 @@ export class UserController {
     })
     @ApiOperation({summary: 'Accept or decline friend request'})
     async respondToRequest(
+        @CurrentUser() user,
         @Param('requestId') requestId: string,
         @Body('accept') accept: boolean
     ): Promise<{success: boolean}> {

@@ -1,17 +1,22 @@
 import {BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
-import {Repository} from 'typeorm';
+import axios from 'axios';
+import {In, Repository} from 'typeorm';
 
 import {Comment} from '@/entities/local/comment.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post} from '@/entities/local/post.entity';
+import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
+import {Topic} from '@/entities/local/topic.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
 import {ReactionType} from '@/enum/reaction-type';
 import {visibilityEnum} from '@/enum/visibility.enum';
+import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 
 import {UserReferenceService} from '../user-reference/user-reference.service';
+import {CreatePostDto} from './dto/create-post.dto';
 
 @Injectable()
 export class FeedService {
@@ -29,7 +34,11 @@ export class FeedService {
         @InjectRepository(Comment)
         private readonly commentRepository: Repository<Comment>,
         @InjectRepository(UserReactPost)
-        private readonly userReactPostRepository: Repository<UserReactPost>
+        private readonly userReactPostRepository: Repository<UserReactPost>,
+        @InjectRepository(Topic)
+        private readonly topicRepository: Repository<Topic>,
+        @InjectRepository(Reel)
+        private readonly reelRepository: Repository<Reel>
     ) {}
 
     async createNewsFeed(userId: string, data: Partial<NewsFeed>): Promise<NewsFeed> {
@@ -57,31 +66,206 @@ export class FeedService {
         });
     }
 
-    async getPostsByNewsFeedId(newsFeedId: string): Promise<Post[]> {
+    async getPostsByNewsFeedId(newsFeedId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
         const userFeed = await this.getNewsFeedById(newsFeedId);
-        const userPosts = await this.postRepository.find({
+        const [userPosts, total] = await this.postRepository.findAndCount({
             where: {newsFeed: {id: userFeed.id}},
+            relations: ['topics', 'postAttachments'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {createdAt: 'DESC'},
         });
 
-        if (!userPosts) {
+        if (!userPosts.length && page === 1) {
             throw new NotFoundException('No posts found for this user');
         }
 
-        return userPosts;
+        // Map posts to include only topic name and description
+        const mappedPosts = userPosts.map((post) => ({
+            ...post,
+            topics: post.topics.map((topic) => ({
+                name: topic.topicName,
+                description: topic.topicDescription,
+            })),
+        }));
+
+        return {
+            data: mappedPosts,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     }
 
-    async getRandomNewsFeed(limit: number = 100): Promise<Post[]> {
-        const posts = await this.postRepository.find({
-            where: {newsFeed: {visibility: visibilityEnum.PUBLIC}},
-            relations: ['newsFeed.owner'],
+    async getRandomNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Post>> {
+        // Get all public posts with their topics
+        const publicPosts = await this.postRepository.find({
+            where: {newsFeed: {visibility: visibilityEnum.PUBLIC || visibilityEnum.FRIENDS_ONLY}},
+            relations: ['newsFeed.owner', 'topics'],
         });
 
-        for (let i = posts.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [posts[i], posts[j]] = [posts[j], posts[i]];
+        // Filter out posts that belong to the current user
+        const filteredPublicPosts = publicPosts.filter((post) => post.newsFeed.owner.id !== userId);
+
+        const postWithFriendVisibility = await this.postRepository.find({
+            where: {newsFeed: {visibility: visibilityEnum.FRIENDS_ONLY}},
+            relations: ['newsFeed.owner', 'topics'],
+        });
+
+        // CHECK OWNER ID OF THESE POST AND CHECK FRIENDSHIP WITH the owner
+        const friendIds = await this.userReferenceService.getFriends(userId || '');
+        const friendPost = postWithFriendVisibility.filter((post) => {
+            const ownerId = post.newsFeed.owner.id;
+            // Exclude user's own posts and only include friends' posts
+            return ownerId !== userId && friendIds.some((friend) => friend.id === ownerId);
+        });
+
+        try {
+            // Get user topic preferences based on reactions
+            const preferredTopics = await this.getUserTopicPreferences(userId);
+
+            // Combine filtered public posts and friend posts
+            const combinedPosts = [...filteredPublicPosts, ...friendPost];
+
+            if (preferredTopics.length === 0) {
+                // No preferences found, return random posts
+                for (let i = combinedPosts.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [combinedPosts[i], combinedPosts[j]] = [combinedPosts[j], combinedPosts[i]];
+                }
+
+                const startIndex = (page - 1) * limit;
+                const endIndex = Math.min(page * limit, combinedPosts.length);
+                const paginatedPosts = combinedPosts.slice(startIndex, endIndex);
+
+                return {
+                    data: paginatedPosts,
+                    metadata: {
+                        total: combinedPosts.length,
+                        page,
+                        limit,
+                        totalPages: Math.ceil(combinedPosts.length / limit),
+                    },
+                };
+            }
+
+            // Calculate relevance score for each post and sort by relevance
+            const postsWithScores = combinedPosts.map((post) => {
+                const score = this.calculatePostRelevance(post, preferredTopics);
+                return {post, score};
+            });
+
+            // Sort by score (highest first)
+            postsWithScores.sort((a, b) => b.score - a.score);
+
+            // Extract just the posts
+            const sortedPosts = postsWithScores.map((item) => item.post);
+
+            const startIndex = (page - 1) * limit;
+            const endIndex = Math.min(page * limit, sortedPosts.length);
+            const paginatedPosts = sortedPosts.slice(startIndex, endIndex);
+
+            return {
+                data: paginatedPosts,
+                metadata: {
+                    total: sortedPosts.length,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(sortedPosts.length / limit),
+                },
+            };
+        } catch (error: any) {
+            this.logger.error(`Error getting personalized feed: ${error.message}`);
+
+            // Fallback to random combined posts (still excluding user's own posts)
+            const combinedPosts = [...filteredPublicPosts, ...friendPost];
+            for (let i = combinedPosts.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [combinedPosts[i], combinedPosts[j]] = [combinedPosts[j], combinedPosts[i]];
+            }
+            return {
+                data: combinedPosts.slice(0, limit),
+                metadata: {
+                    total: combinedPosts.length,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(combinedPosts.length / limit),
+                },
+            };
+        }
+    }
+
+    /**
+     * Gets the user's topic preferences based on their post reactions
+     * @param userId The ID of the user
+     * @returns Array of topic IDs with their preference weights
+     */
+    private async getUserTopicPreferences(userId: string): Promise<{id: string; weight: number}[]> {
+        // Get posts that the user has reacted to
+        const userReactions = await this.userReactPostRepository.find({
+            where: {user_id: userId},
+        });
+
+        if (!userReactions || userReactions.length === 0) {
+            return [];
         }
 
-        return posts.slice(0, limit);
+        // Extract post IDs
+        const postIds = userReactions.map((reaction) => reaction.post_id);
+
+        // Get the posts with their topics
+        const posts = await this.postRepository.find({
+            where: {id: In(postIds)},
+            relations: ['topics'],
+        });
+
+        // Count topic occurrences
+        const topicCounts = new Map<string, number>();
+
+        posts.forEach((post) => {
+            if (post.topics && post.topics.length > 0) {
+                post.topics.forEach((topic) => {
+                    const count = topicCounts.get(topic.id) || 0;
+                    topicCounts.set(topic.id, count + 1);
+                });
+            }
+        });
+
+        // Convert to array and sort by count
+        const sortedTopics = Array.from(topicCounts.entries())
+            .map(([id, count]) => ({id, weight: count}))
+            .sort((a, b) => b.weight - a.weight);
+
+        return sortedTopics;
+    }
+
+    /**
+     * Calculates how relevant a post is to user's preferences
+     * @param post The post to evaluate
+     * @param preferredTopics The user's preferred topics with weights
+     * @returns A numerical score representing relevance
+     */
+    private calculatePostRelevance(post: Post, preferredTopics: {id: string; weight: number}[]): number {
+        if (!post.topics || post.topics.length === 0) {
+            return 0;
+        }
+
+        let score = 0;
+
+        // Check each topic in the post
+        post.topics.forEach((topic) => {
+            // Find if this topic is in the user's preferences
+            const preference = preferredTopics.find((pt) => pt.id === topic.id);
+            if (preference) {
+                // Add the preference weight to the score
+                score += preference.weight;
+            }
+        });
+
+        return score;
     }
 
     async getNewsFeedById(userId: string): Promise<NewsFeed> {
@@ -95,14 +279,117 @@ export class FeedService {
         return newsFeed;
     }
 
-    async createPost(newsFeedId: string, postData: Partial<Post>): Promise<Post> {
+    async createPost(newsFeedId: string, postData: CreatePostDto): Promise<Post> {
+        this.logger.debug('checking');
         const newsFeed = await this.getNewsFeedById(newsFeedId);
+
+        // Create the post first
         const post = this.postRepository.create({
             ...postData,
             newsFeed,
         });
 
+        try {
+            // Call Gemini API to analyze content and classify topics
+            const topicIds = await this.classifyPostContent(postData.content);
+
+            // Find the corresponding topic entities
+            if (topicIds && topicIds.length > 0) {
+                const topics = await this.topicRepository.findBy({
+                    id: In(topicIds),
+                });
+
+                // Associate topics with the post
+                if (topics && topics.length > 0) {
+                    post.topics = topics;
+                    this.logger.log(`Post classified into ${topics.length} topics`);
+                }
+            }
+        } catch (error: any) {
+            this.logger.error(`Error classifying post content: ${error.message}`);
+            // Continue with post creation even if classification fails
+        }
+
         return this.postRepository.save(post);
+    }
+
+    /**
+     * Calls Gemini API to analyze post content and classify it into topics
+     * @param content The post content to classify
+     * @returns Array of topic IDs that match the content
+     */
+    private async classifyPostContent(content: string): Promise<string[]> {
+        if (!content) return [];
+
+        try {
+            const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+            const GEMINI_API_URL = process.env.GEMINI_API_URL;
+
+            if (!GEMINI_API_KEY) {
+                this.logger.warn('GEMINI_API_KEY not set in environment variables');
+                return [];
+            }
+
+            // Get all available topics to choose from
+            const allTopics = await this.topicRepository.find();
+
+            if (!allTopics || allTopics.length === 0) {
+                this.logger.warn('No topics available for classification');
+                return [];
+            }
+
+            // Format topics for the prompt
+            const topicsForPrompt = allTopics
+                .map((topic) => `${topic.id}: ${topic.topicName} - ${topic.topicDescription || 'No description'}`)
+                .join('\n');
+
+            // Create the Gemini API request
+            const response = await axios.post(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: `I have a post with the following content:
+                                    
+"${content}"
+
+Based on this content, classify it into at most 5 of the most relevant topics from this list:
+
+${topicsForPrompt}
+
+Return only the topic IDs as a JSON array with no explanations. For example:
+["550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001"]`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            // Extract and parse the response text to get topic IDs
+            let responseText = response.data.candidates[0].content.parts[0].text.trim();
+
+            // Handle Markdown formatted responses
+            // If response contains code blocks (```json), extract just the JSON part
+            if (responseText.includes('```')) {
+                const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (codeBlockMatch && codeBlockMatch[1]) {
+                    responseText = codeBlockMatch[1].trim();
+                }
+            }
+
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                const topicIds = JSON.parse(responseText);
+                return Array.isArray(topicIds) ? topicIds : [];
+            } catch (jsonError: any) {
+                this.logger.error(`Error parsing JSON response: ${jsonError.message}`);
+                this.logger.debug(`Raw response received: ${responseText}`);
+                return [];
+            }
+        } catch (error: any) {
+            this.logger.error(`Error calling Gemini API: ${error.message}`);
+            return [];
+        }
     }
 
     async updatePost(postId: string, postData: Partial<Post>): Promise<Post> {
@@ -180,10 +467,27 @@ export class FeedService {
         return this.storyRepository.save(story);
     }
 
-    async getStoriesByNewsFeedId(newsFeedId: string): Promise<Story[]> {
-        return this.storyRepository.find({
+    async getStoriesByNewsFeedId(
+        newsFeedId: string,
+        page = 1,
+        limit = 10
+    ): Promise<PaginationResponseInterface<Story>> {
+        const [stories, total] = await this.storyRepository.findAndCount({
             where: {newsFeed: {id: newsFeedId}},
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {createdAt: 'DESC'},
         });
+
+        return {
+            data: stories,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     }
 
     async createLiveStream(newsFeedId: string, streamData: Partial<LiveStreamHistory>): Promise<LiveStreamHistory> {
@@ -208,6 +512,29 @@ export class FeedService {
         return this.liveStreamRepository.save(stream);
     }
 
+    async getLiveStreamsByNewsFeedId(
+        newsFeedId: string,
+        page = 1,
+        limit = 10
+    ): Promise<PaginationResponseInterface<LiveStreamHistory>> {
+        const [liveStreams, total] = await this.liveStreamRepository.findAndCount({
+            where: {newsFeed: {id: newsFeedId}},
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {start_time: 'DESC'},
+        });
+
+        return {
+            data: liveStreams,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
     // ---------- COMMENT METHODS ----------
 
     async createComment(postId: string, userId: string, text: string, attachmentUrl?: string): Promise<Comment> {
@@ -230,20 +557,31 @@ export class FeedService {
         return this.commentRepository.save(comment);
     }
 
-    async getCommentsByPostId(postId: string): Promise<Comment[]> {
+    async getCommentsByPostId(postId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Comment>> {
         const post = await this.getPostById(postId);
 
         if (!post) {
             throw new NotFoundException(`Post with ID ${postId} not found`);
         }
 
-        return this.commentRepository.find({
+        const [comments, total] = await this.commentRepository.findAndCount({
             where: {post: {id: postId}},
             relations: ['user'],
+            skip: (page - 1) * limit,
+            take: limit,
             order: {createdAt: 'DESC'},
         });
-    }
 
+        return {
+            data: comments,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
     async updateComment(commentId: string, userId: string, text: string, attachmentUrl?: string): Promise<Comment> {
         const comment = await this.commentRepository.findOne({
             where: {id: commentId},
@@ -259,9 +597,7 @@ export class FeedService {
         }
 
         comment.text = text;
-        if (attachmentUrl !== undefined) {
-            comment.attachment_url = attachmentUrl;
-        }
+        comment.attachment_url = attachmentUrl || '';
 
         return this.commentRepository.save(comment);
     }
@@ -288,10 +624,6 @@ export class FeedService {
     // ---------- REACTION METHODS ----------
 
     async addReaction(userId: string, postId: string, reactionType: ReactionType): Promise<UserReactPost> {
-        const post = await this.getPostById(postId);
-        if (userId === post.newsFeed.owner.id) {
-            throw new ForbiddenException(`User cannot react to their own post`);
-        }
         const existingReaction = await this.userReactPostRepository.findOne({
             where: {
                 post_id: postId,
@@ -368,5 +700,27 @@ export class FeedService {
         });
 
         return counts;
+    }
+
+    async getRandomReelsByUserId(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Reel>> {
+        // Get all reels for the user's news feeds
+        const userFeed = await this.getNewsFeedById(userId);
+
+        const [reels, total] = await this.reelRepository.findAndCount({
+            where: {newsFeed: {id: userFeed.id}},
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {createdAt: 'DESC'},
+        });
+
+        return {
+            data: reels,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     }
 }

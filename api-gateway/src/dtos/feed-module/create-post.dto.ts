@@ -16,7 +16,8 @@ export class PostAttachmentDto {
 export class CreatePostDto {
     @ApiProperty({
         description: 'Post content text',
-        example: 'This is my first post on InfiniVista!',
+        example:
+            'This is my first post on InfiniVista, and I’m thrilled to share an experience that blends so many passions of mine! Recently, I embarked on an incredible trip to a breathtaking destination, where I used my brand-new high-tech camera to capture stunning landscapes and vibrant city scenes. The technology behind this camera is mind-blowing—its advanced sensors and AI-assisted features made every shot a masterpiece. After returning home, I spent hours experimenting with photo editing software, applying creative techniques like color grading and digital overlays to transform my travel photos into unique pieces of art. I’ve always believed that modern tools can elevate both the way we explore the world and how we express our creativity, and this journey proved it. Can’t wait to hear your thoughts on how tech, travel, and art intersect in your lives!',
     })
     @IsString()
     @IsNotEmpty()

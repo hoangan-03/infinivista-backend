@@ -3,6 +3,7 @@ import {MessagePattern} from '@nestjs/microservices';
 
 import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {User} from '@/entities/local/user.entity';
+import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 
 import {FriendService} from '../services/friend.service';
 
@@ -11,13 +12,21 @@ export class FriendController {
     constructor(private readonly friendService: FriendService) {}
 
     @MessagePattern('GetFriendsUserCommand')
-    async getFriends(payload: {userId: string}): Promise<User[]> {
-        return this.friendService.getFriends(payload.userId);
+    async getFriends(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<User>> {
+        return this.friendService.getFriends(payload.userId, payload.page, payload.limit);
     }
 
     @MessagePattern('GetFriendRequestsUserCommand')
-    async getFriendRequests(payload: {userId: string}): Promise<FriendRequest[]> {
-        return this.friendService.getFriendRequests(payload.userId);
+    async getFriendRequests(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<FriendRequest>> {
+        return this.friendService.getFriendRequests(payload.userId, payload.page, payload.limit);
     }
 
     @MessagePattern('RemoveFriendUserCommand')
@@ -33,6 +42,12 @@ export class FriendController {
     @MessagePattern('RespondToFriendRequestUserCommand')
     async respondToFriendRequest(payload: {requestId: string; accept: boolean}): Promise<{success: boolean}> {
         return this.friendService.respondToFriendRequest(payload.requestId, payload.accept);
+    }
+
+    @MessagePattern('CheckFriendshipUserCommand')
+    async checkFriendship(payload: {userId: string; friendId: string}): Promise<{isFriend: boolean}> {
+        const result = await this.friendService.checkFriendship(payload.userId, payload.friendId);
+        return {isFriend: result};
     }
 
     // @Put(':friendId/group')

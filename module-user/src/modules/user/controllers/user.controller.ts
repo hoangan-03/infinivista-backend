@@ -1,18 +1,24 @@
 import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
+import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {SecurityAnswer} from '@/entities/local/security-answer.entity';
 import {Setting} from '@/entities/local/setting.entity';
 import {User} from '@/entities/local/user.entity';
+import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 import {UpdateUserDto} from '@/modules/user/dto/update-user.dto';
 import {SettingType} from '@/modules/user/enums/setting.enum';
 import {UserService} from '@/modules/user/services/user.service';
 
 import {ProfilePrivacy} from '../enums/profile-privacy.enum';
+import {FriendService} from '../services/friend.service';
 
 @Controller()
 export class UserController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        private readonly userService: UserService,
+        private readonly friendService: FriendService
+    ) {}
 
     @MessagePattern('GetAllUserCommand')
     async getList(): Promise<User[]> {
@@ -55,5 +61,23 @@ export class UserController {
     @MessagePattern('UpdateProfilePrivacyUserCommand')
     async updateProfilePrivacy(payload: {id: string; privacy: ProfilePrivacy}): Promise<User> {
         return this.userService.updateProfilePrivacy(payload.id, payload.privacy);
+    }
+
+    @MessagePattern('GetFriendsUserCommand')
+    async getFriends(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<User>> {
+        return this.friendService.getFriends(payload.userId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('GetFriendRequestsUserCommand')
+    async getFriendRequests(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<FriendRequest>> {
+        return this.friendService.getFriendRequests(payload.userId, payload.page, payload.limit);
     }
 }

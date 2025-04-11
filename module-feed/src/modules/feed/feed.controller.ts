@@ -5,10 +5,13 @@ import {Comment} from '@/entities/local/comment.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post as PostEntity} from '@/entities/local/post.entity';
+import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
 import {ReactionType} from '@/enum/reaction-type';
+import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 
+import {CreatePostDto} from './dto/create-post.dto';
 import {FeedService} from './feed.service';
 
 @Controller()
@@ -21,8 +24,12 @@ export class FeedController {
     }
 
     @MessagePattern('GetRandomNewsFeedCommand')
-    async getRandomNewsFeed(): Promise<PostEntity[]> {
-        return this.feedService.getRandomNewsFeed();
+    async getRandomNewsFeed(payload: {
+        id: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<PostEntity>> {
+        return this.feedService.getRandomNewsFeed(payload.id, payload.page, payload.limit);
     }
 
     @MessagePattern('GetByIdNewsFeedCommand')
@@ -31,7 +38,7 @@ export class FeedController {
     }
 
     @MessagePattern('CreatePostNewsFeedCommand')
-    async createPost(payload: {newsFeedId: string; postData: Partial<PostEntity>}): Promise<PostEntity> {
+    async createPost(payload: {newsFeedId: string; postData: CreatePostDto}): Promise<PostEntity> {
         return this.feedService.createPost(payload.newsFeedId, payload.postData);
     }
 
@@ -46,13 +53,21 @@ export class FeedController {
     }
 
     @MessagePattern('GetPostsByIdNewsFeedCommand')
-    async getPostsByNewsFeedId(payload: {newsFeedId: string}): Promise<PostEntity[]> {
-        return this.feedService.getPostsByNewsFeedId(payload.newsFeedId);
+    async getPostsByNewsFeedId(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<PostEntity>> {
+        return this.feedService.getPostsByNewsFeedId(payload.userId, payload.page, payload.limit);
     }
 
     @MessagePattern('GetStoriesByIdNewsFeedCommand')
-    async getStoriesByNewsFeedId(payload: {newsFeedId: string}): Promise<Story[]> {
-        return this.feedService.getStoriesByNewsFeedId(payload.newsFeedId);
+    async getStoriesByNewsFeedId(payload: {
+        newsFeedId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<Story>> {
+        return this.feedService.getStoriesByNewsFeedId(payload.newsFeedId, payload.page, payload.limit);
     }
 
     @MessagePattern('GetAPostByIdCommand')
@@ -95,8 +110,12 @@ export class FeedController {
     }
 
     @MessagePattern('GetCommentsByPostIdCommand')
-    async getCommentsByPostId(payload: {postId: string}): Promise<Comment[]> {
-        return this.feedService.getCommentsByPostId(payload.postId);
+    async getCommentsByPostId(payload: {
+        postId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<Comment>> {
+        return this.feedService.getCommentsByPostId(payload.postId, payload.page, payload.limit);
     }
 
     @MessagePattern('UpdateCommentCommand')
@@ -133,5 +152,23 @@ export class FeedController {
     @MessagePattern('GetReactionCountByTypeCommand')
     async getReactionCountByType(payload: {postId: string}): Promise<Record<ReactionType, number>> {
         return this.feedService.getReactionCountByType(payload.postId);
+    }
+
+    @MessagePattern('GetRandomReelsByUserIdCommand')
+    async getRandomReelsByUserId(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<Reel>> {
+        return this.feedService.getRandomReelsByUserId(payload.userId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('GetLiveStreamsByNewsFeedIdCommand')
+    async getLiveStreamsByNewsFeedId(payload: {
+        newsFeedId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<LiveStreamHistory>> {
+        return this.feedService.getLiveStreamsByNewsFeedId(payload.newsFeedId, payload.page, payload.limit);
     }
 }

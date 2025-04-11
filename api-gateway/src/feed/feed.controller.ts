@@ -1,20 +1,24 @@
-import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, UseGuards} from '@nestjs/common';
+import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Query, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {CurrentUser} from '@/decorators/user.decorator';
+import {PaginationDto} from '@/dtos/common/pagination.dto';
 import {CommentPostDto} from '@/dtos/feed-module/comment-post.dto';
 import {CreatePostDto} from '@/dtos/feed-module/create-post.dto';
 import {CreateStoryDto} from '@/dtos/feed-module/create-story.dto';
 import {Comment} from '@/entities/feed-module/local/comment.entity';
+import {LiveStreamHistory} from '@/entities/feed-module/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/feed-module/local/newsfeed.entity';
 import {Post as PostEntity} from '@/entities/feed-module/local/post.entity';
+import {Reel} from '@/entities/feed-module/local/reel.entity';
 import {Story} from '@/entities/feed-module/local/story.entity';
 import {UserReactPost} from '@/entities/feed-module/local/user-react-post.entity';
 import {ReactionType} from '@/enums/feed-module/reaction-type';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
+import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
 
 @ApiTags('Feed')
 @ApiBearerAuth()
@@ -40,8 +44,18 @@ export class FeedController {
 
     @Get('news-feed/random')
     @ApiOperation({summary: 'Get a random news feed'})
-    async getRandomNewsFeed(): Promise<NewsFeed> {
-        return await lastValueFrom(this.feedClient.send('GetRandomNewsFeedCommand', {}));
+    @ApiQuery({type: PaginationDto})
+    async getRandomNewsFeed(
+        @CurrentUser() user,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<PostEntity>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetRandomNewsFeedCommand', {
+                id: user.id,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
     }
 
     @Post('news-feed/post')
@@ -109,15 +123,52 @@ export class FeedController {
     }
 
     @Get('news-feed/:id/posts')
-    @ApiOperation({summary: 'Get all posts in a news feed of a user'})
-    async getPostsByNewsFeedId(@Param('id') userId: string): Promise<PostEntity[]> {
-        return await lastValueFrom(this.feedClient.send('GetPostsByIdNewsFeedCommand', {userId}));
+    @ApiOperation({summary: 'Get paginated posts in a news feed of a user'})
+    @ApiQuery({type: PaginationDto})
+    async getPostsByNewsFeedId(
+        @Param('id') userId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<PostEntity>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetPostsByIdNewsFeedCommand', {
+                userId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
     }
 
     @Get('news-feed/:id/stories')
-    @ApiOperation({summary: 'Get all stories in a news feed of a user'})
-    async getStoriesByNewsFeedId(@Param('id') newsFeedId: string): Promise<Story[]> {
-        return await lastValueFrom(this.feedClient.send('GetStoriesByIdNewsFeedCommand', {newsFeedId}));
+    @ApiOperation({summary: 'Get paginated stories in a news feed of a user'})
+    @ApiQuery({type: PaginationDto})
+    async getStoriesByNewsFeedId(
+        @Param('id') newsFeedId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<Story>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetStoriesByIdNewsFeedCommand', {
+                newsFeedId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
+    @Get('news-feed/:id/livestreams')
+    @ApiOperation({summary: 'Get paginated live streams in a feed of a user'})
+    @ApiParam({name: 'id', description: 'ID of the news feed'})
+    @ApiQuery({type: PaginationDto})
+    async getLiveStreamsByNewsFeedId(
+        @Param('id') newsFeedId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<LiveStreamHistory>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetLiveStreamsByNewsFeedIdCommand', {
+                newsFeedId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
     }
 
     // Comment endpoints
@@ -146,12 +197,22 @@ export class FeedController {
     }
 
     @Get('post/:postId/comments')
-    @ApiOperation({summary: 'Get all comments for a post'})
+    @ApiOperation({summary: 'Get paginated comments for a post'})
     @ApiParam({name: 'postId', description: 'ID of the post'})
+    @ApiQuery({type: PaginationDto})
     @ApiResponse({status: 200, description: 'List of comments', type: [Comment]})
     @ApiResponse({status: 404, description: 'Post not found'})
-    async getCommentsByPostId(@Param('postId') postId: string): Promise<Comment[]> {
-        return await lastValueFrom(this.feedClient.send('GetCommentsByPostIdCommand', {postId}));
+    async getCommentsByPostId(
+        @Param('postId') postId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<Comment>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetCommentsByPostIdCommand', {
+                postId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
     }
 
     @Patch('comment/:commentId')
@@ -223,7 +284,6 @@ export class FeedController {
         },
     })
     @ApiResponse({status: 201, description: 'Reaction added successfully'})
-    @ApiResponse({status: 403, description: 'User cannot react to their own post'})
     @ApiResponse({status: 404, description: 'Post not found'})
     async addReaction(
         @CurrentUser() user,
@@ -268,5 +328,22 @@ export class FeedController {
     @ApiResponse({status: 404, description: 'Post not found'})
     async getReactionCountByType(@Param('postId') postId: string): Promise<Record<ReactionType, number>> {
         return await lastValueFrom(this.feedClient.send('GetReactionCountByTypeCommand', {postId}));
+    }
+
+    @Get('user/:userId/reels')
+    @ApiOperation({summary: 'Get paginated random reels of a user'})
+    @ApiParam({name: 'userId', description: 'ID of the user'})
+    @ApiQuery({type: PaginationDto})
+    async getRandomReelsByUserId(
+        @Param('userId') userId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<Reel>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetRandomReelsByUserIdCommand', {
+                userId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
     }
 }

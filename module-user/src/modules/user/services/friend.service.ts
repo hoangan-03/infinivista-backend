@@ -5,6 +5,7 @@ import {Repository} from 'typeorm';
 import {Friend} from '@/entities/local/friend.entity';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {User} from '@/entities/local/user.entity';
+import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 
 import {FriendStatus} from '../enums/friend-status.enum';
 
@@ -116,25 +117,69 @@ export class FriendService {
         }
     }
 
-    async getFriends(userId: string): Promise<User[]> {
+    async getFriends(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<User>> {
         console.log('Fetching friends for user:', userId);
         this.logger.debug('Fetching friends for user:', userId);
-        const friendships = await this.friendRepository.find({
+
+        const [friendships, total] = await this.friendRepository.findAndCount({
             where: {user_id: userId},
             relations: ['friend'],
+            skip: (page - 1) * limit,
+            take: limit,
         });
 
-        return friendships.map((f) => {
+        const users = friendships.map((f) => {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const {password, ...userWithoutPassword} = f.friend;
             return userWithoutPassword as User;
         });
+
+        return {
+            data: users,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     }
 
-    async getFriendRequests(userId: string): Promise<FriendRequest[]> {
-        return this.friendRequestRepository.find({
+    async getFriendRequests(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<FriendRequest>> {
+        const [requests, total] = await this.friendRequestRepository.findAndCount({
             where: {recipient_id: userId, status: FriendStatus.PENDING},
+            skip: (page - 1) * limit,
+            take: limit,
         });
+
+        return {
+            data: requests,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    /**
+     * Check if two users are friends
+     * @param userId First user ID
+     * @param friendId Second user ID
+     * @returns True if the users are friends, false otherwise
+     */
+    async checkFriendship(userId: string, friendId: string): Promise<boolean> {
+        if (userId === friendId) return false;
+
+        const friendship = await this.friendRepository.findOne({
+            where: [
+                {user_id: userId, friend_id: friendId},
+                {user_id: friendId, friend_id: userId},
+            ],
+        });
+
+        return !!friendship;
     }
 
     // async updateFriendGroup(userId: string, friendId: string, group: string): Promise<Friend> {

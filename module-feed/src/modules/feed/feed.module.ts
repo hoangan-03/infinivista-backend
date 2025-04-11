@@ -12,6 +12,7 @@ import {Post} from '@/entities/local/post.entity';
 import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
+import {Topic} from '@/entities/local/topic.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
 
 import {UserReferenceModule} from '../user-reference/user-reference.module';
@@ -27,7 +28,7 @@ import {FeedService} from './feed.service';
             NewsFeed,
             PostAttachment,
             Post,
-
+            Topic,
             Reel,
             Story,
             CommunityReference,
