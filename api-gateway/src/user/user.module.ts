@@ -2,10 +2,12 @@ import {Module} from '@nestjs/common';
 import {ConfigModule, ConfigService} from '@nestjs/config';
 import {ClientsModule, Transport} from '@nestjs/microservices';
 
+import {FileUploadModule} from '../services/file-upload.module';
 import {UserController} from './user.controller';
 
 @Module({
     imports: [
+        FileUploadModule,
         ClientsModule.registerAsync([
             {
                 imports: [ConfigModule],

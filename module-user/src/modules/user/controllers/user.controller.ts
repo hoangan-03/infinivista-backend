@@ -9,7 +9,9 @@ import {PaginationResponseInterface} from '@/interfaces/pagination-response.inte
 import {UpdateUserDto} from '@/modules/user/dto/update-user.dto';
 import {SettingType} from '@/modules/user/enums/setting.enum';
 import {UserService} from '@/modules/user/services/user.service';
+import {FileUploadService} from '@/services/file-upload.service';
 
+import {FileUploadDto, FileUploadResponseDto} from '../dto/file-upload.dto';
 import {ProfilePrivacy} from '../enums/profile-privacy.enum';
 import {FriendService} from '../services/friend.service';
 
@@ -17,7 +19,8 @@ import {FriendService} from '../services/friend.service';
 export class UserController {
     constructor(
         private readonly userService: UserService,
-        private readonly friendService: FriendService
+        private readonly friendService: FriendService,
+        private readonly fileUploadService: FileUploadService
     ) {}
 
     @MessagePattern('GetAllUserCommand')
@@ -79,5 +82,23 @@ export class UserController {
         limit?: number;
     }): Promise<PaginationResponseInterface<FriendRequest>> {
         return this.friendService.getFriendRequests(payload.userId, payload.page, payload.limit);
+    }
+
+    /**
+     * Handle file uploads
+     */
+    @MessagePattern('UploadCoverPhotoCommand')
+    async uploadAttachmentFile(payload: FileUploadDto): Promise<FileUploadResponseDto> {
+        const url = await this.fileUploadService.uploadFile(
+            Buffer.from(payload.buffer),
+            payload.fileName,
+            payload.mimeType
+        );
+
+        return {
+            url,
+            fileName: payload.fileName,
+            mimeType: payload.mimeType,
+        };
     }
 }

@@ -2,10 +2,12 @@ import {Module} from '@nestjs/common';
 import {ConfigModule, ConfigService} from '@nestjs/config';
 import {ClientsModule, Transport} from '@nestjs/microservices';
 
+import {FileUploadModule} from '../services/file-upload.module';
 import {MessagingController} from './messaging.controller';
 
 @Module({
     imports: [
+        FileUploadModule,
         ClientsModule.registerAsync([
             {
                 imports: [ConfigModule],
@@ -24,7 +26,6 @@ import {MessagingController} from './messaging.controller';
                 }),
                 inject: [ConfigService],
             },
-
             {
                 imports: [ConfigModule],
                 name: 'USER_SERVICE',

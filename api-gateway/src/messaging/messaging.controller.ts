@@ -10,15 +10,28 @@ import {
     Post,
     Put,
     Query,
+    UploadedFile,
     UseGuards,
+    UseInterceptors,
 } from '@nestjs/common';
+import {ConfigService} from '@nestjs/config';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {FileInterceptor} from '@nestjs/platform-express';
+import {
+    ApiBearerAuth,
+    ApiBody,
+    ApiConsumes,
+    ApiOperation,
+    ApiParam,
+    ApiQuery,
+    ApiResponse,
+    ApiTags,
+} from '@nestjs/swagger';
+import {Express} from 'express';
 import {lastValueFrom} from 'rxjs';
 
 import {CurrentUser} from '@/decorators/user.decorator';
 import {PaginationDto} from '@/dtos/common/pagination.dto';
-import {AttachmentMessageDto} from '@/dtos/communication-module/attachment-message.dto';
 import {CreateMessageDto} from '@/dtos/communication-module/create-message.dto';
 import {EmoteReactionDto} from '@/dtos/communication-module/emote-reaction.dto';
 import {UpdateMessageDto} from '@/dtos/communication-module/update-message.dto';
@@ -27,13 +40,18 @@ import {MessageAttachment} from '@/entities/communication-module/internal/messag
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
+import {FileUploadService} from '@/services/file-upload.service';
 
 @ApiTags('Messaging')
 @ApiBearerAuth()
 @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
 @Controller('messaging')
 export class MessagingController {
-    constructor(@Inject('COMMUNICATION_SERVICE') private communicationClient: ClientProxy) {}
+    constructor(
+        @Inject('COMMUNICATION_SERVICE') private communicationClient: ClientProxy,
+        private configService: ConfigService,
+        private fileUploadService: FileUploadService
+    ) {}
 
     /**
      * Get all messages
@@ -160,7 +178,23 @@ export class MessagingController {
      */
     @Post('/attachment')
     @ApiOperation({summary: 'Create a new message attachment'})
-    @ApiBody({type: AttachmentMessageDto})
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+                recipientId: {
+                    type: 'string',
+                },
+            },
+            required: ['file', 'recipientId'],
+        },
+    })
+    @UseInterceptors(FileInterceptor('file'))
     @ApiResponse({
         status: 201,
         description: 'Attachment created successfully',
@@ -168,12 +202,26 @@ export class MessagingController {
     })
     async createAttachment(
         @CurrentUser() user,
-        @Body() attachmentMessageDto: AttachmentMessageDto
+        @UploadedFile() file: Express.Multer.File,
+        @Body('recipientId') recipientId: string
     ): Promise<MessageAttachment> {
+        // Send file data to the communication microservice for upload
+        const fileUrl = await this.fileUploadService.uploadFile(
+            file.buffer,
+            file.originalname,
+            file.mimetype,
+            'communication'
+        );
+
+        // Create the message attachment with the uploaded file URL
         return await lastValueFrom(
             this.communicationClient.send('CreateAttachmentMessageCommand', {
                 senderId: user.id,
-                attachmentMessageDto,
+                attachmentMessageDto: {
+                    recipientId,
+                    attachmentUrl: fileUrl,
+                    attachmentName: file.originalname,
+                },
             })
         );
     }

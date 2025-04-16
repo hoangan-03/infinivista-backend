@@ -56,9 +56,19 @@ async function bootstrap() {
         })
     );
 
+    // Configure Swagger to allow file uploads
     const config = new DocumentBuilder().setTitle('INFINIVISTA - Microservices API').addBearerAuth().build();
+
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/swagger-docs', app, document);
+
+    // Allow Swagger UI to send multipart/form-data
+    SwaggerModule.setup('api/swagger-docs', app, document, {
+        swaggerOptions: {
+            tagsSorter: 'alpha',
+            operationsSorter: 'alpha',
+            persistAuthorization: true,
+        },
+    });
 
     await app.listen(port);
 }

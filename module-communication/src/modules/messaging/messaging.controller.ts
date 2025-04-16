@@ -4,16 +4,21 @@ import {MessagePattern} from '@nestjs/microservices';
 import {Message} from '@/entities/internal/message.entity';
 import {MessageAttachment} from '@/entities/internal/message-attachment.entity';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
-import {UpdateMessageDto} from '@/modules/messaging/dto/update-message.dto';
+import {FileUploadService} from '@/services/file-upload.service';
 
 import {AttachmentMessageDto} from './dto/attachment-message.dto';
 import {CreateMessageDto} from './dto/create-message.dto';
 import {EmoteReactionDto} from './dto/emote-reaction.dto';
+import {FileUploadDto, FileUploadResponseDto} from './dto/file-upload.dto';
+import {UpdateMessageDto} from './dto/update-message.dto';
 import {MessagingService} from './messaging.service';
 
 @Controller()
 export class MessagingController {
-    constructor(private readonly messageService: MessagingService) {}
+    constructor(
+        private readonly messageService: MessagingService,
+        private readonly fileUploadService: FileUploadService
+    ) {}
 
     /**
      * Get all messages
@@ -204,5 +209,40 @@ export class MessagingController {
     @MessagePattern('DeleteMessageCommand')
     async deleteMessage(payload: {id: string; currentId: string}): Promise<{success: boolean}> {
         return await this.messageService.deleteMessage(payload.id, payload.currentId);
+    }
+
+    /**
+     * Handle file uploads
+     */
+    @MessagePattern('UploadAttachmentFileCommand')
+    async uploadAttachmentFile(payload: FileUploadDto): Promise<FileUploadResponseDto> {
+        const url = await this.fileUploadService.uploadFile(
+            Buffer.from(payload.buffer),
+            payload.fileName,
+            payload.mimeType
+        );
+
+        return {
+            url,
+            fileName: payload.fileName,
+            mimeType: payload.mimeType,
+        };
+    }
+
+    /**
+     * Create a message attachment after uploading file
+     */
+    @MessagePattern('CreateAttachmentAfterUploadCommand')
+    async createAttachmentAfterUpload(payload: {
+        senderId: string;
+        fileUploadResponse: FileUploadResponseDto;
+        recipientId: string;
+    }): Promise<MessageAttachment> {
+        return await this.messageService.createAttachmentMessage(
+            payload.senderId,
+            payload.recipientId,
+            payload.fileUploadResponse.url,
+            payload.fileUploadResponse.fileName
+        );
     }
 }

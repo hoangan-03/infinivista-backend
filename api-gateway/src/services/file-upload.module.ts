@@ -1,28 +1,16 @@
 import {Module} from '@nestjs/common';
 import {ConfigModule, ConfigService} from '@nestjs/config';
-import {APP_FILTER} from '@nestjs/core';
 import {ClientsModule, Transport} from '@nestjs/microservices';
-import {MulterModule} from '@nestjs/platform-express';
-import {memoryStorage} from 'multer';
 
-import {AppController} from './app.controller';
-import {AppService} from './app.service';
-import {AuthModule} from './auth/auth.module';
-import {RpcExceptionFilter} from './exception-filters/rpc-exception.filter';
-import {FeedModule} from './feed/feed.module';
-import {MessagingModule} from './messaging/messaging.module';
-import {FileUploadService} from './services/file-upload.service';
-import {UserModule} from './user/user.module';
+import {FileUploadService} from './file-upload.service';
 
 @Module({
     imports: [
-        ConfigModule.forRoot({
-            isGlobal: true,
-        }),
+        ConfigModule,
         ClientsModule.registerAsync([
             {
-                imports: [ConfigModule],
                 name: 'COMMUNICATION_SERVICE',
+                imports: [ConfigModule],
                 useFactory: async (configService: ConfigService) => ({
                     transport: Transport.RMQ,
                     options: {
@@ -38,8 +26,8 @@ import {UserModule} from './user/user.module';
                 inject: [ConfigService],
             },
             {
-                imports: [ConfigModule],
                 name: 'FEED_SERVICE',
+                imports: [ConfigModule],
                 useFactory: async (configService: ConfigService) => ({
                     transport: Transport.RMQ,
                     options: {
@@ -55,8 +43,8 @@ import {UserModule} from './user/user.module';
                 inject: [ConfigService],
             },
             {
-                imports: [ConfigModule],
                 name: 'USER_SERVICE',
+                imports: [ConfigModule],
                 useFactory: async (configService: ConfigService) => ({
                     transport: Transport.RMQ,
                     options: {
@@ -72,30 +60,8 @@ import {UserModule} from './user/user.module';
                 inject: [ConfigService],
             },
         ]),
-        UserModule,
-        AuthModule,
-        FeedModule,
-        MessagingModule,
-        MulterModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: async (configService: ConfigService) => ({
-                storage: memoryStorage(),
-                limits: {
-                    fileSize: configService.getOrThrow('MAX_FILE_SIZE') || 10 * 1024 * 1024,
-                },
-            }),
-            inject: [ConfigService],
-        }),
     ],
-    controllers: [AppController],
-    providers: [
-        AppService,
-        {
-            provide: APP_FILTER,
-            useClass: RpcExceptionFilter,
-        },
-        FileUploadService,
-    ],
+    providers: [FileUploadService],
     exports: [FileUploadService],
 })
-export class AppModule {}
+export class FileUploadModule {}

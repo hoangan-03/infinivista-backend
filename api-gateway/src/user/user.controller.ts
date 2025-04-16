@@ -1,10 +1,26 @@
-import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put, Query, UseGuards} from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Inject,
+    Param,
+    Patch,
+    Post,
+    Put,
+    Query,
+    UploadedFile,
+    UseGuards,
+    UseInterceptors,
+} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {FileInterceptor} from '@nestjs/platform-express';
+import {ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {UpdateUserDto} from '@/auth/dtos/update-user.dto';
 import {CurrentUser} from '@/decorators/user.decorator';
+import {FileUploadDto} from '@/dtos/common/file-upload.dto';
 import {PaginationDto} from '@/dtos/common/pagination.dto';
 import {FriendRequest} from '@/entities/user-module/local/friend-request.entity';
 import {SecurityAnswer} from '@/entities/user-module/local/security-answer.entity';
@@ -15,13 +31,17 @@ import {SettingType} from '@/enums/user-module/setting.enum';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
+import {FileUploadService} from '@/services/file-upload.service';
 
 @ApiTags('Users')
 @ApiBearerAuth()
 @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
 @Controller('users')
 export class UserController {
-    constructor(@Inject('USER_SERVICE') private userClient: ClientProxy) {}
+    constructor(
+        @Inject('USER_SERVICE') private userClient: ClientProxy,
+        private fileUploadService: FileUploadService
+    ) {}
     @Get('test')
     async test(): Promise<string> {
         return await lastValueFrom(this.userClient.send<string>('TestUserCommand', {}));
@@ -61,17 +81,11 @@ export class UserController {
 
     @Put('/profile-picture')
     @ApiOperation({summary: 'Update user profile picture'})
+    @ApiConsumes('multipart/form-data')
     @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                imageUrl: {
-                    type: 'string',
-                    example: 'https://example.com/image.jpg',
-                },
-            },
-        },
+        type: FileUploadDto,
     })
+    @UseInterceptors(FileInterceptor('file'))
     @ApiResponse({
         status: 200,
         description: 'Profile picture updated',
@@ -85,7 +99,13 @@ export class UserController {
         status: 404,
         description: 'Not Found - User not found with the provided ID',
     })
-    async updateProfilePicture(@CurrentUser() currentUser: User, @Body('imageUrl') imageUrl: string): Promise<User> {
+    async updateProfilePicture(
+        @CurrentUser() currentUser: User,
+        @UploadedFile() file: Express.Multer.File
+    ): Promise<User> {
+        // Upload file to Google Drive
+        const imageUrl = await this.fileUploadService.uploadFile(file.buffer, file.originalname, file.mimetype, 'user');
+
         return await lastValueFrom(
             this.userClient.send<User>('UpdateProfilePictureUserCommand', {id: currentUser.id, imageUrl})
         );
@@ -93,17 +113,11 @@ export class UserController {
 
     @Put('/cover-photo')
     @ApiOperation({summary: 'Update user cover photo'})
+    @ApiConsumes('multipart/form-data')
     @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                imageUrl: {
-                    type: 'string',
-                    example: 'https://example.com/cover.jpg',
-                },
-            },
-        },
+        type: FileUploadDto,
     })
+    @UseInterceptors(FileInterceptor('file'))
     @ApiResponse({status: 200, description: 'Cover photo updated', type: User})
     @ApiResponse({
         status: 401,
@@ -113,7 +127,10 @@ export class UserController {
         status: 404,
         description: 'Not Found - User not found with the provided ID',
     })
-    async updateCoverPhoto(@CurrentUser() currentUser: User, @Body('imageUrl') imageUrl: string): Promise<User> {
+    async updateCoverPhoto(@CurrentUser() currentUser: User, @UploadedFile() file: Express.Multer.File): Promise<User> {
+        // Upload file to Google Drive
+        const imageUrl = await this.fileUploadService.uploadFile(file.buffer, file.originalname, file.mimetype, 'user');
+
         return await lastValueFrom(
             this.userClient.send<User>('UpdateCoverPhotoUserCommand', {id: currentUser.id, imageUrl})
         );

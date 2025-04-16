@@ -1,11 +1,34 @@
-import {Body, Controller, Delete, Get, Inject, Param, Patch, Post, Query, UseGuards} from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Inject,
+    Param,
+    Patch,
+    Post,
+    Query,
+    UploadedFile,
+    UploadedFiles,
+    UseGuards,
+    UseInterceptors,
+} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {FileInterceptor, FilesInterceptor} from '@nestjs/platform-express';
+import {
+    ApiBearerAuth,
+    ApiBody,
+    ApiConsumes,
+    ApiOperation,
+    ApiParam,
+    ApiQuery,
+    ApiResponse,
+    ApiTags,
+} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {CurrentUser} from '@/decorators/user.decorator';
 import {PaginationDto} from '@/dtos/common/pagination.dto';
-import {CommentPostDto} from '@/dtos/feed-module/comment-post.dto';
 import {CreatePostDto} from '@/dtos/feed-module/create-post.dto';
 import {CreateStoryDto} from '@/dtos/feed-module/create-story.dto';
 import {Comment} from '@/entities/feed-module/local/comment.entity';
@@ -19,13 +42,22 @@ import {ReactionType} from '@/enums/feed-module/reaction-type';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
+import {FileUploadService} from '@/services/file-upload.service';
+
+interface AttachmentData {
+    attachment_url: string;
+    attachment_name: string;
+}
 
 @ApiTags('Feed')
 @ApiBearerAuth()
 @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
 @Controller('feed')
 export class FeedController {
-    constructor(@Inject('FEED_SERVICE') private feedClient: ClientProxy) {}
+    constructor(
+        @Inject('FEED_SERVICE') private feedClient: ClientProxy,
+        private fileUploadService: FileUploadService
+    ) {}
 
     @Post('news-feed')
     @ApiOperation({summary: 'Create a new news feed'})
@@ -60,12 +92,60 @@ export class FeedController {
 
     @Post('news-feed/post')
     @ApiOperation({summary: 'Create a post in a news feed'})
+    @ApiConsumes('multipart/form-data')
     @ApiBody({
-        description: 'Post data',
-        type: CreatePostDto,
+        schema: {
+            type: 'object',
+            properties: {
+                content: {type: 'string'},
+                files: {
+                    type: 'array',
+                    items: {
+                        type: 'string',
+                        format: 'binary',
+                    },
+                },
+            },
+        },
     })
-    async createPost(@Param('id') newsFeedId: string, @Body() postData: CreatePostDto): Promise<PostEntity> {
-        return await lastValueFrom(this.feedClient.send('CreatePostNewsFeedCommand', {newsFeedId, postData}));
+    @UseInterceptors(FilesInterceptor('files', 5)) // Allow up to 5 files per post
+    async createPost(
+        @CurrentUser() user,
+        @Param('id') newsFeedId: string,
+        @Body('content') content: string,
+        @UploadedFiles() files: Array<Express.Multer.File>
+    ): Promise<PostEntity> {
+        const attachments: AttachmentData[] = [];
+
+        // Upload each file to Google Drive if files exist
+        if (files && files.length > 0) {
+            for (const file of files) {
+                const fileUrl = await this.fileUploadService.uploadFile(
+                    file.buffer,
+                    file.originalname,
+                    file.mimetype,
+                    'feed'
+                );
+
+                attachments.push({
+                    attachment_url: fileUrl,
+                    attachment_name: file.originalname,
+                });
+            }
+        }
+
+        // Create post data with content and attachments
+        const postData: CreatePostDto = {
+            content,
+            postAttachments: attachments,
+        };
+
+        return await lastValueFrom(
+            this.feedClient.send('CreatePostNewsFeedCommand', {
+                newsFeedId: user.id, // Using user ID if no specific newsFeedId provided
+                postData,
+            })
+        );
     }
 
     @Patch('news-feed/posts')
@@ -85,13 +165,38 @@ export class FeedController {
     }
 
     @Post('news-feed/story')
+    @ApiConsumes('multipart/form-data')
     @ApiBody({
-        description: 'Story data',
-        type: CreateStoryDto,
+        schema: {
+            type: 'object',
+            properties: {
+                duration: {type: 'number'},
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
     })
+    @UseInterceptors(FileInterceptor('file'))
     @ApiOperation({summary: 'Create a story in a news feed'})
-    async createStory(@Param('id') newsFeedId: string, @Body() storyData: CreateStoryDto): Promise<Story> {
-        return await lastValueFrom(this.feedClient.send('CreateStoryNewsFeedCommand', {newsFeedId, storyData}));
+    async createStory(
+        @CurrentUser() user,
+        @Body('duration') duration: number,
+        @UploadedFile() file: Express.Multer.File
+    ): Promise<Story> {
+        // Upload file to Google Drive
+        const storyUrl = await this.fileUploadService.uploadFile(file.buffer, file.originalname, file.mimetype, 'feed');
+
+        // Create story DTO
+        const storyData: CreateStoryDto = {
+            story_url: storyUrl,
+            duration: duration || 15, // Default to 15 seconds if not specified
+        };
+
+        return await lastValueFrom(
+            this.feedClient.send('CreateStoryNewsFeedCommand', {newsFeedId: user.id, storyData})
+        );
     }
 
     @Get('news-feed/posts/:id')
@@ -175,17 +280,40 @@ export class FeedController {
     @Post('post/:postId/comment')
     @ApiOperation({summary: 'Add a comment to a post'})
     @ApiParam({name: 'postId', description: 'ID of the post'})
+    @ApiConsumes('multipart/form-data')
     @ApiBody({
-        description: 'Comment data',
-        type: CommentPostDto,
+        schema: {
+            type: 'object',
+            properties: {
+                text: {type: 'string'},
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+            required: ['text'],
+        },
     })
+    @UseInterceptors(FileInterceptor('file'))
     @ApiResponse({status: 201, description: 'Comment created successfully', type: Comment})
     async createComment(
         @CurrentUser() user,
         @Param('postId') postId: string,
         @Body('text') text: string,
-        @Body('attachmentUrl') attachmentUrl?: string
+        @UploadedFile() file?: Express.Multer.File
     ): Promise<Comment> {
+        let attachmentUrl;
+
+        // Only upload if a file was provided
+        if (file) {
+            attachmentUrl = await this.fileUploadService.uploadFile(
+                file.buffer,
+                file.originalname,
+                file.mimetype,
+                'feed'
+            );
+        }
+
         return await lastValueFrom(
             this.feedClient.send('CreateCommentCommand', {
                 postId,
@@ -218,30 +346,41 @@ export class FeedController {
     @Patch('comment/:commentId')
     @ApiOperation({summary: 'Update a comment'})
     @ApiParam({name: 'commentId', description: 'ID of the comment'})
+    @ApiConsumes('multipart/form-data')
     @ApiBody({
         schema: {
             type: 'object',
             properties: {
-                text: {
+                text: {type: 'string'},
+                file: {
                     type: 'string',
-                    example: 'Updated comment text',
-                },
-                attachmentUrl: {
-                    type: 'string',
-                    example: 'https://example.com/new-image.jpg',
+                    format: 'binary',
                 },
             },
             required: ['text'],
         },
     })
+    @UseInterceptors(FileInterceptor('file'))
     @ApiResponse({status: 200, description: 'Comment updated successfully', type: Comment})
     @ApiResponse({status: 404, description: 'Comment not found'})
     async updateComment(
         @CurrentUser() user,
         @Param('commentId') commentId: string,
         @Body('text') text: string,
-        @Body('attachmentUrl') attachmentUrl?: string
+        @UploadedFile() file?: Express.Multer.File
     ): Promise<Comment> {
+        let attachmentUrl;
+
+        // Only upload if a file was provided
+        if (file) {
+            attachmentUrl = await this.fileUploadService.uploadFile(
+                file.buffer,
+                file.originalname,
+                file.mimetype,
+                'feed'
+            );
+        }
+
         return await lastValueFrom(
             this.feedClient.send('UpdateCommentCommand', {
                 commentId,

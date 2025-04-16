@@ -14,6 +14,7 @@ import {User} from '@/entities/local/user.entity';
 import {UserStatus} from '@/entities/local/user-status.entity';
 import {UserController} from '@/modules/user/controllers/user.controller';
 import {UserService} from '@/modules/user/services/user.service';
+import {FileUploadService} from '@/services/file-upload.service';
 
 import {FriendController} from './controllers/friend.controller';
 import {FriendService} from './services/friend.service';
@@ -71,7 +72,7 @@ import {UserEventsService} from './services/user-events.service';
         ]),
     ],
     controllers: [UserController, FriendController],
-    providers: [UserService, FriendService, UserEventsService],
-    exports: [UserService, FriendService, UserEventsService],
+    providers: [UserService, FriendService, UserEventsService, FileUploadService],
+    exports: [UserService, FriendService, UserEventsService, FileUploadService],
 })
 export class UserModule {}
