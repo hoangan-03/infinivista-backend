@@ -6,9 +6,9 @@ import {TypeOrmModule} from '@nestjs/typeorm';
 import {AppController} from '@/app.controller';
 import {AppService} from '@/app.service';
 import {AllExceptionsFilter} from '@/exception-filters/all-exception.filter';
-import {MessagingGateway} from '@/modules/messaging/messaging.gateway';
 
 import {MessagingModule} from './modules/messaging/messaging.module';
+import {UserReferenceModule} from './modules/user-reference/user-reference.module';
 
 @Module({
     imports: [
@@ -28,6 +28,7 @@ import {MessagingModule} from './modules/messaging/messaging.module';
             inject: [ConfigService],
         }),
         MessagingModule,
+        UserReferenceModule,
     ],
     controllers: [AppController],
     providers: [

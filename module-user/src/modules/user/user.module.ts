@@ -1,4 +1,6 @@
 import {Module} from '@nestjs/common';
+import {ConfigModule, ConfigService} from '@nestjs/config';
+import {ClientsModule, Transport} from '@nestjs/microservices';
 import {TypeOrmModule} from '@nestjs/typeorm';
 
 import {NewsFeedReference} from '@/entities/external/newsfeed-ref.entity';
@@ -15,6 +17,7 @@ import {UserService} from '@/modules/user/services/user.service';
 
 import {FriendController} from './controllers/friend.controller';
 import {FriendService} from './services/friend.service';
+import {UserEventsService} from './services/user-events.service';
 
 @Module({
     imports: [
@@ -30,9 +33,45 @@ import {FriendService} from './services/friend.service';
 
             NewsFeedReference,
         ]),
+        ClientsModule.registerAsync([
+            {
+                name: 'COMMUNICATION_SERVICE',
+                imports: [ConfigModule],
+                useFactory: async (configService: ConfigService) => ({
+                    transport: Transport.RMQ,
+                    options: {
+                        urls: [
+                            `amqp://${configService.get('RABBITMQ_HOST_NAME')}:${configService.get('RABBITMQ_PORT')}`,
+                        ],
+                        queue: configService.get('COMMUNICATION_QUEUE_NAME'),
+                        queueOptions: {
+                            durable: false,
+                        },
+                    },
+                }),
+                inject: [ConfigService],
+            },
+            {
+                name: 'FEED_SERVICE',
+                imports: [ConfigModule],
+                useFactory: async (configService: ConfigService) => ({
+                    transport: Transport.RMQ,
+                    options: {
+                        urls: [
+                            `amqp://${configService.get('RABBITMQ_HOST_NAME')}:${configService.get('RABBITMQ_PORT')}`,
+                        ],
+                        queue: configService.get('FEED_QUEUE_NAME'),
+                        queueOptions: {
+                            durable: false,
+                        },
+                    },
+                }),
+                inject: [ConfigService],
+            },
+        ]),
     ],
     controllers: [UserController, FriendController],
-    providers: [UserService, FriendService],
-    exports: [UserService, FriendService],
+    providers: [UserService, FriendService, UserEventsService],
+    exports: [UserService, FriendService, UserEventsService],
 })
 export class UserModule {}

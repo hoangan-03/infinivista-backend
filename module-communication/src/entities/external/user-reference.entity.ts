@@ -2,7 +2,10 @@ import {Entity, OneToMany, PrimaryColumn} from 'typeorm';
 
 import {CallHistory} from '../internal/call-history.entity';
 import {GroupChat} from '../internal/group-chat.entity';
+import {GroupChatAttachment} from '../internal/group-chat-attachment.entity';
+import {GroupChatMessage} from '../internal/group-chat-message.entity';
 import {Message} from '../internal/message.entity';
+import {MessageAttachment} from '../internal/message-attachment.entity';
 
 @Entity()
 export class UserReference {
@@ -15,12 +18,24 @@ export class UserReference {
     @OneToMany(() => Message, (message) => message.receiver)
     receivedMessages: Message[];
 
-    @OneToMany(() => CallHistory, (call) => call.caller)
+    @OneToMany(() => MessageAttachment, (messageAttachment) => messageAttachment.sender)
+    sentAttachments: MessageAttachment[];
+
+    @OneToMany(() => MessageAttachment, (messageAttachment) => messageAttachment.receiver)
+    receivedAttachments: MessageAttachment[];
+
+    @OneToMany(() => CallHistory, (callHistory) => callHistory.caller)
+    incomingCallHistories: CallHistory[];
+
+    @OneToMany(() => CallHistory, (callHistory) => callHistory.receiver)
     outcomingCallHistories: CallHistory[];
+
+    @OneToMany(() => GroupChatMessage, (groupChatMessage) => groupChatMessage.sender)
+    sentGroupChatMessages: GroupChatMessage[];
+
+    @OneToMany(() => GroupChatAttachment, (groupChatAttachment) => groupChatAttachment.sender)
+    sentGroupChatAttachments: GroupChatAttachment[];
 
     @OneToMany(() => GroupChat, (groupChat) => groupChat.users)
     groupChat: GroupChat[];
-
-    @OneToMany(() => CallHistory, (call) => call.receiver)
-    incomingCallHistories: CallHistory[];
 }

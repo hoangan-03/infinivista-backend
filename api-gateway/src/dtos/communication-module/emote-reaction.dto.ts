@@ -12,11 +12,4 @@ export class EmoteReactionDto {
     @IsNotEmpty()
     @IsEnum(EmoteIcon)
     emotion: EmoteIcon;
-
-    @ApiProperty({
-        description: 'User ID of the person adding the reaction',
-        example: '1',
-    })
-    @IsNotEmpty()
-    userId: string;
 }

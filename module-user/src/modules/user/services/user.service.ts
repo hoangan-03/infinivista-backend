@@ -11,6 +11,8 @@ import {UpdateUserDto} from '@/modules/user/dto/update-user.dto';
 import {SettingType} from '@/modules/user/enums/setting.enum';
 
 import {ProfilePrivacy} from '../enums/profile-privacy.enum';
+import {UserEventsService} from './user-events.service';
+
 @Injectable()
 export class UserService {
     constructor(
@@ -21,14 +23,21 @@ export class UserService {
         @InjectRepository(SecurityAnswer)
         private readonly securityAnswerRepository: Repository<SecurityAnswer>,
         @InjectRepository(PaymentMethods)
-        private readonly paymentMethodRepository: Repository<PaymentMethods>
+        private readonly paymentMethodRepository: Repository<PaymentMethods>,
+        private readonly userEventsService: UserEventsService
     ) {}
 
     // User Management
     async create(data: Partial<User>): Promise<User> {
         const user = this.userRepository.create(data);
+        const savedUser = await this.userRepository.save(user);
 
-        return this.userRepository.save(user);
+        // Publish user created event
+        await this.userEventsService.publishUserCreated({
+            id: savedUser.id,
+        });
+
+        return savedUser;
     }
     async getAll(): Promise<User[]> {
         return this.userRepository.find();
@@ -61,7 +70,14 @@ export class UserService {
             throw new NotFoundException(`There isn't any user with id: ${id}`);
         }
         this.userRepository.merge(user, updates);
-        return this.userRepository.save(user);
+        const updatedUser = await this.userRepository.save(user);
+
+        // Publish user updated event
+        await this.userEventsService.publishUserUpdated({
+            id: updatedUser.id,
+        });
+
+        return updatedUser;
     }
 
     async updateProfilePicture(id: string, imageUrl: string): Promise<User> {
@@ -70,7 +86,9 @@ export class UserService {
             throw new NotFoundException(`There isn't any user with id: ${id}`);
         }
         user.profileImageUrl = imageUrl;
-        return this.userRepository.save(user);
+        const updatedUser = await this.userRepository.save(user);
+
+        return updatedUser;
     }
 
     async updateCoverPhoto(id: string, imageUrl: string): Promise<User> {
@@ -188,11 +206,34 @@ export class UserService {
         // Mark as deleted instead of actually deleting
         user.status.isDeleted = true;
         await this.userRepository.save(user);
+
+        // Publish user deleted event
+        await this.userEventsService.publishUserDeleted({
+            id: userId,
+        });
     }
 
     async updateProfilePrivacy(userId: string, privacy: ProfilePrivacy): Promise<User> {
         const user = await this.getOne({where: {id: userId}});
         user.profilePrivacy = privacy;
         return this.userRepository.save(user);
+    }
+
+    // New method to trigger a manual sync of all users
+    async syncAllUsers(): Promise<void> {
+        const users = await this.userRepository.find({
+            select: ['id', 'username', 'email', 'firstName', 'lastName', 'profileImageUrl'],
+        });
+
+        const userDataForSync = users.map((user) => ({
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profileImageUrl: user.profileImageUrl,
+        }));
+
+        await this.userEventsService.triggerUserSync(userDataForSync);
     }
 }

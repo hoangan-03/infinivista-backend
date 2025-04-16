@@ -3,8 +3,8 @@ import {IsNotEmpty, IsString} from 'class-validator';
 
 export class CreateMessageDto {
     @ApiProperty({
-        description: 'Attachment URL',
-        example: 'https://example.com/image.jpg',
+        description: 'Message Text',
+        example: 'This is a message from president',
         type: String,
     })
     @IsNotEmpty()
@@ -14,7 +14,7 @@ export class CreateMessageDto {
     @ApiProperty({
         // recipientId
         description: 'ID of the recipient',
-        example: '550e8400-e29b-41d4-a716-446655440000',
+        example: 'c88d5a3d-2f71-499c-b5be-bab40e6b75ad',
         type: String,
     })
     @IsString()

@@ -1,10 +1,4 @@
-import {
-    BadRequestException,
-    Injectable,
-    InternalServerErrorException,
-    Logger,
-    UnauthorizedException,
-} from '@nestjs/common';
+import {Injectable, Logger, UnauthorizedException} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
 
 import {User} from '@/entities/local/user.entity';
