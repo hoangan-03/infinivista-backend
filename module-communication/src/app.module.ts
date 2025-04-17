@@ -7,6 +7,7 @@ import {AppController} from '@/app.controller';
 import {AppService} from '@/app.service';
 import {AllExceptionsFilter} from '@/exception-filters/all-exception.filter';
 
+import {CallingModule} from './modules/calling/calling.module';
 import {MessagingModule} from './modules/messaging/messaging.module';
 import {UserReferenceModule} from './modules/user-reference/user-reference.module';
 
@@ -29,6 +30,7 @@ import {UserReferenceModule} from './modules/user-reference/user-reference.modul
         }),
         MessagingModule,
         UserReferenceModule,
+        CallingModule,
     ],
     controllers: [AppController],
     providers: [
@@ -37,7 +39,6 @@ import {UserReferenceModule} from './modules/user-reference/user-reference.modul
             provide: APP_FILTER,
             useClass: AllExceptionsFilter,
         },
-        // MessagingGateway,
     ],
 })
 export class AppModule {}

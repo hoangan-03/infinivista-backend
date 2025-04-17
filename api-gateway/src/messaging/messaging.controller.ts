@@ -189,6 +189,7 @@ export class MessagingController {
                 },
                 recipientId: {
                     type: 'string',
+                    example: 'c88d5a3d-2f71-499c-b5be-bab40e6b75ad',
                 },
             },
             required: ['file', 'recipientId'],

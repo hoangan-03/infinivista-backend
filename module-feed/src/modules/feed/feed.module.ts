@@ -14,6 +14,7 @@ import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {Topic} from '@/entities/local/topic.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
+import {FileUploadService} from '@/services/file-upload.service';
 
 import {UserReferenceModule} from '../user-reference/user-reference.module';
 import {FeedController} from './feed.controller';
@@ -38,7 +39,7 @@ import {FeedService} from './feed.service';
         UserReferenceModule,
     ],
     controllers: [FeedController],
-    providers: [FeedService],
+    providers: [FeedService, FileUploadService],
     exports: [FeedService],
 })
 export class FeedModule {}

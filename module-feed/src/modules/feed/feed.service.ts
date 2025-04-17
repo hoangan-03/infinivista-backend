@@ -7,6 +7,7 @@ import {Comment} from '@/entities/local/comment.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Post} from '@/entities/local/post.entity';
+import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {Topic} from '@/entities/local/topic.entity';
@@ -27,6 +28,8 @@ export class FeedService {
         private readonly newsFeedRepository: Repository<NewsFeed>,
         @InjectRepository(Post)
         private readonly postRepository: Repository<Post>,
+        @InjectRepository(PostAttachment)
+        private readonly postAttachmentRepository: Repository<PostAttachment>,
         @InjectRepository(Story)
         private readonly storyRepository: Repository<Story>,
         @InjectRepository(LiveStreamHistory)
@@ -96,6 +99,128 @@ export class FeedService {
                 page,
                 limit,
                 totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async getPopularPostNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
+        const userFeed = await this.getNewsFeedByUserId(userId);
+
+        // Get posts with their reactions and comments
+        const [posts, total] = await this.postRepository.findAndCount({
+            where: {newsFeed: {id: userFeed.id}},
+            relations: ['topics', 'postAttachments', 'comments'],
+            skip: 0, // Fetch all posts first to sort by popularity
+            take: undefined,
+            order: {createdAt: 'DESC'},
+        });
+
+        if (!posts.length && page === 1) {
+            throw new NotFoundException('No posts found for this user');
+        }
+
+        // Get all reactions for these posts
+        const postIds = posts.map((post) => post.id);
+        const reactions = await this.userReactPostRepository.find({
+            where: {post_id: In(postIds)},
+        });
+
+        // Group reactions by post ID
+        const reactionsByPostId = reactions.reduce(
+            (acc, reaction) => {
+                acc[reaction.post_id] = (acc[reaction.post_id] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>
+        );
+
+        // Calculate popularity score for each post (with weights)
+        const REACTION_WEIGHT = 1;
+        const COMMENT_WEIGHT = 2;
+
+        const postsWithScores = posts.map((post) => {
+            const reactionCount = reactionsByPostId[post.id] || 0;
+            const commentCount = post.comments?.length || 0;
+            const popularityScore = reactionCount * REACTION_WEIGHT + commentCount * COMMENT_WEIGHT;
+
+            return {
+                post,
+                popularityScore,
+            };
+        });
+
+        // Sort by popularity score (highest first)
+        postsWithScores.sort((a, b) => b.popularityScore - a.popularityScore);
+
+        // Apply pagination manually after sorting
+        const startIndex = (page - 1) * limit;
+        const endIndex = Math.min(startIndex + limit, postsWithScores.length);
+        const paginatedPosts = postsWithScores.slice(startIndex, endIndex).map((item) => item.post);
+
+        // Map posts to include only topic name and description
+        const mappedPosts = paginatedPosts.map((post) => ({
+            ...post,
+            topics: post.topics.map((topic) => ({
+                name: topic.topicName,
+                description: topic.topicDescription,
+            })),
+            // Include popularity metrics
+            popularity: {
+                reactionCount: reactionsByPostId[post.id] || 0,
+                commentCount: post.comments?.length || 0,
+            },
+        }));
+
+        return {
+            data: mappedPosts,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async getFriendsPostNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
+        const friendIds = await this.userReferenceService.getFriends(userId || '');
+        const friendPosts = await this.postRepository.find({
+            where: {newsFeed: {owner: {id: In(friendIds.map((friend) => friend.id))}}},
+            relations: ['newsFeed.owner', 'topics'],
+            // Removed the ordering to apply random sorting after fetching
+        });
+
+        if (!friendPosts.length && page === 1) {
+            throw new NotFoundException('Your friend has no posts yet');
+        }
+
+        // Randomly shuffle the posts
+        for (let i = friendPosts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [friendPosts[i], friendPosts[j]] = [friendPosts[j], friendPosts[i]];
+        }
+
+        // Apply pagination after random sorting
+        const startIndex = (page - 1) * limit;
+        const endIndex = Math.min(startIndex + limit, friendPosts.length);
+        const paginatedPosts = friendPosts.slice(startIndex, endIndex);
+
+        // Map posts to include only topic name and description
+        const mappedPosts = paginatedPosts.map((post) => ({
+            ...post,
+            topics: post.topics.map((topic) => ({
+                name: topic.topicName,
+                description: topic.topicDescription,
+            })),
+        }));
+
+        return {
+            data: mappedPosts,
+            metadata: {
+                total: friendPosts.length,
+                page,
+                limit,
+                totalPages: Math.ceil(friendPosts.length / limit),
             },
         };
     }
@@ -268,7 +393,7 @@ export class FeedService {
         return score;
     }
 
-    async getNewsFeedById(userId: string): Promise<NewsFeed> {
+    async getNewsFeedByUserId(userId: string): Promise<NewsFeed> {
         const newsFeed = await this.newsFeedRepository.findOne({
             where: {owner: {id: userId}},
             relations: ['posts', 'stories', 'liveStreams', 'reel', 'owner'],
@@ -279,39 +404,50 @@ export class FeedService {
         return newsFeed;
     }
 
-    async createPost(newsFeedId: string, postData: CreatePostDto): Promise<Post> {
-        this.logger.debug('checking');
-        const newsFeed = await this.getNewsFeedById(newsFeedId);
-
-        // Create the post first
-        const post = this.postRepository.create({
-            ...postData,
-            newsFeed,
+    async getNewsFeedById(newsFeedId: string): Promise<NewsFeed> {
+        const newsFeed = await this.newsFeedRepository.findOne({
+            where: {id: newsFeedId},
+            relations: ['posts', 'stories', 'liveStreams', 'reel', 'owner'],
         });
-
-        try {
-            // Call Gemini API to analyze content and classify topics
-            const topicIds = await this.classifyPostContent(postData.content);
-
-            // Find the corresponding topic entities
-            if (topicIds && topicIds.length > 0) {
-                const topics = await this.topicRepository.findBy({
-                    id: In(topicIds),
-                });
-
-                // Associate topics with the post
-                if (topics && topics.length > 0) {
-                    post.topics = topics;
-                    this.logger.log(`Post classified into ${topics.length} topics`);
-                }
-            }
-        } catch (error: any) {
-            this.logger.error(`Error classifying post content: ${error.message}`);
-            // Continue with post creation even if classification fails
+        if (!newsFeed) {
+            throw new NotFoundException(`News feed ${newsFeedId} not found`);
         }
-
-        return this.postRepository.save(post);
+        return newsFeed;
     }
+
+    // async createPost(newsFeedId: string, postData: CreatePostDto): Promise<Post> {
+    //     this.logger.debug('checking');
+    //     const newsFeed = await this.getNewsFeedById(newsFeedId);
+
+    //     // Create the post first
+    //     const post = this.postRepository.create({
+    //         ...postData,
+    //         newsFeed,
+    //     });
+
+    //     try {
+    //         // Call Gemini API to analyze content and classify topics
+    //         const topicIds = await this.classifyPostContent(postData.content);
+
+    //         // Find the corresponding topic entities
+    //         if (topicIds && topicIds.length > 0) {
+    //             const topics = await this.topicRepository.findBy({
+    //                 id: In(topicIds),
+    //             });
+
+    //             // Associate topics with the post
+    //             if (topics && topics.length > 0) {
+    //                 post.topics = topics;
+    //                 this.logger.log(`Post classified into ${topics.length} topics`);
+    //             }
+    //         }
+    //     } catch (error: any) {
+    //         this.logger.error(`Error classifying post content: ${error.message}`);
+    //         // Continue with post creation even if classification fails
+    //     }
+
+    //     return this.postRepository.save(post);
+    // }
 
     /**
      * Calls Gemini API to analyze post content and classify it into topics
@@ -704,7 +840,7 @@ Return only the topic IDs as a JSON array with no explanations. For example:
 
     async getRandomReelsByUserId(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Reel>> {
         // Get all reels for the user's news feeds
-        const userFeed = await this.getNewsFeedById(userId);
+        const userFeed = await this.getNewsFeedByUserId(userId);
 
         const [reels, total] = await this.reelRepository.findAndCount({
             where: {newsFeed: {id: userFeed.id}},
@@ -722,5 +858,77 @@ Return only the topic IDs as a JSON array with no explanations. For example:
                 totalPages: Math.ceil(total / limit),
             },
         };
+    }
+
+    async createPostAfterUploadingFiles(
+        newsFeedId: string,
+        postData: CreatePostDto,
+        files: Array<{url: string; fileName: string; mimeType: string}>
+    ): Promise<Post> {
+        this.logger.log(`Creating post with ${files?.length || 0} attachments for news feed ${newsFeedId}`);
+        const newsFeed = await this.getNewsFeedById(newsFeedId);
+
+        // Create the post first and associate it with the news feed
+        const post = this.postRepository.create({
+            content: postData.content,
+            newsFeed: newsFeed, // This is critical - associate with newsFeed
+        });
+
+        try {
+            // Call Gemini API to analyze content and classify topics
+            const topicIds = await this.classifyPostContent(postData.content);
+
+            // Find the corresponding topic entities
+            if (topicIds && topicIds.length > 0) {
+                const topics = await this.topicRepository.findBy({
+                    id: In(topicIds),
+                });
+
+                // Associate topics with the post
+                if (topics && topics.length > 0) {
+                    post.topics = topics;
+                    this.logger.log(`Post classified into ${topics.length} topics`);
+                }
+            }
+        } catch (error: any) {
+            this.logger.error(`Error classifying post content: ${error.message}`);
+            // Continue with post creation even if classification fails
+        }
+
+        // Save the post first to get an ID
+        const savedPost = await this.postRepository.save(post);
+
+        // Now create and link attachments if they exist
+        if (files && files.length > 0) {
+            // Initialize post.postAttachments if not already
+            if (!savedPost.postAttachments) {
+                savedPost.postAttachments = [];
+            }
+
+            // Create attachment entities for each file
+            for (const file of files) {
+                const attachment = new PostAttachment();
+                attachment.attachment_url = file.url;
+                attachment.post = savedPost; // Link to the post
+
+                const savedAttachment = await this.postAttachmentRepository.save(attachment);
+                savedPost.postAttachments.push(savedAttachment);
+            }
+
+            // Update the post with the attachments
+            await this.postRepository.save(savedPost);
+        }
+
+        // Load the post with attachments to return
+        const finalPost = await this.postRepository.findOne({
+            where: {id: savedPost.id},
+            relations: ['postAttachments', 'topics'],
+        });
+
+        if (!finalPost) {
+            throw new NotFoundException(`Post with ID ${savedPost.id} not found after saving`);
+        }
+
+        return finalPost;
     }
 }

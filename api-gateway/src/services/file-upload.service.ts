@@ -33,11 +33,11 @@ export class FileUploadService {
                     break;
                 case 'feed':
                     client = this.feedClient;
-                    commandPattern = 'UploadAttachmentFileCommand'; // Using the same command pattern that works for communication
+                    commandPattern = 'UploadAttachmentToPostCommand';
                     break;
                 case 'user':
                     client = this.userClient;
-                    commandPattern = 'UploadCoverPhotoCommand'; // Using the same command pattern that works for communication
+                    commandPattern = 'UploadPhotoCommand';
                     break;
                 default:
                     client = this.communicationClient;
@@ -48,8 +48,8 @@ export class FileUploadService {
             const result = await lastValueFrom(
                 client.send(commandPattern, {
                     buffer,
-                    fileName: filename, // Note: The microservice might expect 'fileName' instead of 'filename'
-                    mimeType: mimetype, // Note: The microservice might expect 'mimeType' instead of 'mimetype'
+                    fileName: filename,
+                    mimeType: mimetype,
                     folderId,
                 })
             );

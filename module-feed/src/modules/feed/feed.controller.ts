@@ -10,17 +10,40 @@ import {Story} from '@/entities/local/story.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
 import {ReactionType} from '@/enum/reaction-type';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
+import {FileUploadService} from '@/services/file-upload.service';
 
 import {CreatePostDto} from './dto/create-post.dto';
+import {FileUploadDto, FileUploadResponseDto} from './dto/file-upload.dto';
 import {FeedService} from './feed.service';
 
 @Controller()
 export class FeedController {
-    constructor(private readonly feedService: FeedService) {}
+    constructor(
+        private readonly feedService: FeedService,
+        private readonly fileUploadService: FileUploadService
+    ) {}
 
     @MessagePattern('CreateNewsFeedCommand')
     async createNewsFeed(payload: {id: string; data: Partial<NewsFeed>}): Promise<NewsFeed> {
         return this.feedService.createNewsFeed(payload.id, payload.data);
+    }
+
+    @MessagePattern('GetPopularNewsFeedCommand')
+    async getPopularNewsFeed(payload: {
+        id: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<PostEntity>> {
+        return this.feedService.getPopularPostNewsFeed(payload.id, payload.page, payload.limit);
+    }
+
+    @MessagePattern('GetFriendsNewsFeedCommand')
+    async getFriendsNewsFeed(payload: {
+        id: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<PostEntity>> {
+        return this.feedService.getFriendsPostNewsFeed(payload.id, payload.page, payload.limit);
     }
 
     @MessagePattern('GetRandomNewsFeedCommand')
@@ -34,13 +57,13 @@ export class FeedController {
 
     @MessagePattern('GetByIdNewsFeedCommand')
     async getNewsFeedById(payload: {id: string}): Promise<NewsFeed> {
-        return this.feedService.getNewsFeedById(payload.id);
+        return this.feedService.getNewsFeedByUserId(payload.id);
     }
 
-    @MessagePattern('CreatePostNewsFeedCommand')
-    async createPost(payload: {newsFeedId: string; postData: CreatePostDto}): Promise<PostEntity> {
-        return this.feedService.createPost(payload.newsFeedId, payload.postData);
-    }
+    // @MessagePattern('CreatePostNewsFeedCommand')
+    // async createPost(payload: {newsFeedId: string; postData: CreatePostDto}): Promise<PostEntity> {
+    //     return this.feedService.createPost(payload.newsFeedId, payload.postData);
+    // }
 
     @MessagePattern('UpdatePostNewsFeedCommand')
     async updatePost(payload: {postId: string; postData: Partial<PostEntity>}): Promise<PostEntity> {
@@ -54,11 +77,11 @@ export class FeedController {
 
     @MessagePattern('GetPostsByIdNewsFeedCommand')
     async getPostsByNewsFeedId(payload: {
-        userId: string;
+        newsfeedId: string;
         page?: number;
         limit?: number;
     }): Promise<PaginationResponseInterface<PostEntity>> {
-        return this.feedService.getPostsByNewsFeedId(payload.userId, payload.page, payload.limit);
+        return this.feedService.getPostsByNewsFeedId(payload.newsfeedId, payload.page, payload.limit);
     }
 
     @MessagePattern('GetStoriesByIdNewsFeedCommand')
@@ -170,5 +193,32 @@ export class FeedController {
         limit?: number;
     }): Promise<PaginationResponseInterface<LiveStreamHistory>> {
         return this.feedService.getLiveStreamsByNewsFeedId(payload.newsFeedId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('UploadAttachmentToPostCommand')
+    async uploadAttachmentFile(payload: FileUploadDto): Promise<FileUploadResponseDto> {
+        const url = await this.fileUploadService.uploadFile(
+            Buffer.from(payload.buffer),
+            payload.fileName,
+            payload.mimeType
+        );
+
+        return {
+            url,
+            fileName: payload.fileName,
+            mimeType: payload.mimeType,
+        };
+    }
+
+    /**
+     * Create a post with attachments after uploading files
+     */
+    @MessagePattern('CreatePostAfterUploadingFilesCommand')
+    async createPostAfterUploadingFiles(payload: {
+        newsFeedId: string;
+        postData: CreatePostDto;
+        files: Array<{url: string; fileName: string; mimeType: string}>;
+    }): Promise<PostEntity> {
+        return this.feedService.createPostAfterUploadingFiles(payload.newsFeedId, payload.postData, payload.files);
     }
 }

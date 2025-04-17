@@ -8,10 +8,10 @@ import {memoryStorage} from 'multer';
 import {AppController} from './app.controller';
 import {AppService} from './app.service';
 import {AuthModule} from './auth/auth.module';
+import {CallingModule} from './calling/calling.module';
 import {RpcExceptionFilter} from './exception-filters/rpc-exception.filter';
 import {FeedModule} from './feed/feed.module';
 import {MessagingModule} from './messaging/messaging.module';
-import {FileUploadService} from './services/file-upload.service';
 import {UserModule} from './user/user.module';
 
 @Module({
@@ -76,6 +76,7 @@ import {UserModule} from './user/user.module';
         AuthModule,
         FeedModule,
         MessagingModule,
+        CallingModule,
         MulterModule.registerAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
@@ -94,8 +95,6 @@ import {UserModule} from './user/user.module';
             provide: APP_FILTER,
             useClass: RpcExceptionFilter,
         },
-        FileUploadService,
     ],
-    exports: [FileUploadService],
 })
 export class AppModule {}

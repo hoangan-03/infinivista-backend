@@ -44,11 +44,6 @@ import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
 import {FileUploadService} from '@/services/file-upload.service';
 
-interface AttachmentData {
-    attachment_url: string;
-    attachment_name: string;
-}
-
 @ApiTags('Feed')
 @ApiBearerAuth()
 @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
@@ -74,6 +69,38 @@ export class FeedController {
         return await lastValueFrom(this.feedClient.send('GetByIdNewsFeedCommand', {id: user.id}));
     }
 
+    @Get('news-feed/popular')
+    @ApiOperation({summary: 'Get popular news feed'})
+    @ApiQuery({type: PaginationDto})
+    async getPopularNewsFeed(
+        @CurrentUser() user,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<PostEntity>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetPopularNewsFeedCommand', {
+                id: user.id,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
+    @Get('news-feed/friends')
+    @ApiOperation({summary: 'Get news feed of friends'})
+    @ApiQuery({type: PaginationDto})
+    async getFriendsNewsFeed(
+        @CurrentUser() user,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<PostEntity>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetFriendsNewsFeedCommand', {
+                id: user.id,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
     @Get('news-feed/random')
     @ApiOperation({summary: 'Get a random news feed'})
     @ApiQuery({type: PaginationDto})
@@ -97,7 +124,11 @@ export class FeedController {
         schema: {
             type: 'object',
             properties: {
-                content: {type: 'string'},
+                content: {
+                    type: 'string',
+                    description: 'Content of the post',
+                    example: 'This is a sample post content',
+                },
                 files: {
                     type: 'array',
                     items: {
@@ -105,17 +136,22 @@ export class FeedController {
                         format: 'binary',
                     },
                 },
+                newsFeedId: {
+                    type: 'string',
+                    description: 'ID of the news feed',
+                    example: '3420f7a1-07eb-413f-aeba-75434cc99d6f',
+                },
             },
+            required: ['content', 'newsFeedId'],
         },
     })
-    @UseInterceptors(FilesInterceptor('files', 5)) // Allow up to 5 files per post
+    @UseInterceptors(FilesInterceptor('files', 10)) // Allow up to 10 files per post
     async createPost(
-        @CurrentUser() user,
-        @Param('id') newsFeedId: string,
         @Body('content') content: string,
+        @Body('newsFeedId') newsFeedId: string,
         @UploadedFiles() files: Array<Express.Multer.File>
     ): Promise<PostEntity> {
-        const attachments: AttachmentData[] = [];
+        const fileUploadResponses: Array<{url: string; fileName: string; mimeType: string}> = [];
 
         // Upload each file to Google Drive if files exist
         if (files && files.length > 0) {
@@ -127,23 +163,25 @@ export class FeedController {
                     'feed'
                 );
 
-                attachments.push({
-                    attachment_url: fileUrl,
-                    attachment_name: file.originalname,
+                fileUploadResponses.push({
+                    url: fileUrl,
+                    fileName: file.originalname,
+                    mimeType: file.mimetype,
                 });
             }
         }
 
-        // Create post data with content and attachments
+        // Create post data with content only - don't include attachments here
         const postData: CreatePostDto = {
             content,
-            postAttachments: attachments,
+            // Remove the postAttachments property from here
         };
 
         return await lastValueFrom(
-            this.feedClient.send('CreatePostNewsFeedCommand', {
-                newsFeedId: user.id, // Using user ID if no specific newsFeedId provided
+            this.feedClient.send('CreatePostAfterUploadingFilesCommand', {
+                newsFeedId,
                 postData,
+                files: fileUploadResponses,
             })
         );
     }
@@ -231,12 +269,12 @@ export class FeedController {
     @ApiOperation({summary: 'Get paginated posts in a news feed of a user'})
     @ApiQuery({type: PaginationDto})
     async getPostsByNewsFeedId(
-        @Param('id') userId: string,
+        @Param('id') newsfeedId: string,
         @Query() paginationDto: PaginationDto
     ): Promise<PaginationResponseInterface<PostEntity>> {
         return await lastValueFrom(
             this.feedClient.send('GetPostsByIdNewsFeedCommand', {
-                userId,
+                newsfeedId,
                 page: paginationDto.page,
                 limit: paginationDto.limit,
             })
