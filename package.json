@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "main": "index.js",
     "scripts": {
-        "seed": "ts-node seed-coordinator.ts",
+        "seed": "ts-node seed.ts",
         "test": "echo \"Error: no test specified\" && exit 1",
         "down": "docker compose down",
         "clean": "node clean-generated-files.js",

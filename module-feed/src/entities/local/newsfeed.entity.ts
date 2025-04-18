@@ -43,7 +43,11 @@ export class NewsFeed extends BaseEntity {
     community?: CommunityReference;
 
     @OneToOne(() => UserReference, (userRef) => userRef.newsFeed)
+    @JoinColumn({name: 'owner_id'})
     owner: UserReference;
+
+    @Column({name: 'owner_id', nullable: true})
+    owner_id: string;
 
     @ManyToMany(() => HashTag, (tag) => tag.newsFeeds)
     @JoinColumn()

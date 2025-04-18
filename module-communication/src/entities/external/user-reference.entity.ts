@@ -38,4 +38,16 @@ export class UserReference {
 
     @OneToMany(() => GroupChat, (groupChat) => groupChat.users)
     groupChat: GroupChat[];
+
+    email: string;
+
+    username: string;
+
+    phoneNumber: string;
+
+    firstName: string;
+
+    lastName: string;
+
+    profileImageUrl: string;
 }

@@ -13,8 +13,8 @@ export class Comment extends BaseEntity {
     @Column({type: 'text', nullable: false})
     text: string;
 
-    @Column()
-    attachment_url: string;
+    @Column({nullable: true})
+    attachment_url?: string;
 
     @ManyToOne(() => UserReference, (user) => user.comments)
     user: UserReference;
