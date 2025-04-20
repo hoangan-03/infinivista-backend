@@ -6,7 +6,6 @@ import {DataSource} from 'typeorm';
 import {AppModule} from '../app.module';
 import {Friend} from '../entities/local/friend.entity';
 import {FriendRequest} from '../entities/local/friend-request.entity';
-import {PaymentMethods} from '../entities/local/payment-methods.entity';
 import {SecurityAnswer} from '../entities/local/security-answer.entity';
 import {SecurityQuestion} from '../entities/local/security-question.entity';
 import {Setting} from '../entities/local/setting.entity';
@@ -31,7 +30,6 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
         const settingRepo = dataSource.getRepository(Setting);
         const friendRepo = dataSource.getRepository(Friend);
         const friendRequestRepo = dataSource.getRepository(FriendRequest);
-        const paymentMethodsRepo = dataSource.getRepository(PaymentMethods);
         const securityQuestionRepo = dataSource.getRepository(SecurityQuestion);
         const securityAnswerRepo = dataSource.getRepository(SecurityAnswer);
 
@@ -42,7 +40,6 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
         await friendRequestRepo.query('TRUNCATE TABLE friend_requests CASCADE;');
         await friendRepo.query('TRUNCATE TABLE friends CASCADE;');
 
-        await paymentMethodsRepo.query('TRUNCATE TABLE payment_methods CASCADE;');
         await settingRepo.query('TRUNCATE TABLE settings CASCADE;');
         await userStatusRepo.query('TRUNCATE TABLE user_status CASCADE;');
         // Clear parent tables last

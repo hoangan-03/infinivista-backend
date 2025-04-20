@@ -6,7 +6,6 @@ import {TypeOrmModule} from '@nestjs/typeorm';
 import {NewsFeedReference} from '@/entities/external/newsfeed-ref.entity';
 import {Friend} from '@/entities/local/friend.entity';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
-import {PaymentMethods} from '@/entities/local/payment-methods.entity';
 import {SecurityAnswer} from '@/entities/local/security-answer.entity';
 import {SecurityQuestion} from '@/entities/local/security-question.entity';
 import {Setting} from '@/entities/local/setting.entity';
@@ -28,7 +27,6 @@ import {UserEventsService} from './services/user-events.service';
             UserStatus,
             SecurityAnswer,
             SecurityQuestion,
-            PaymentMethods,
             FriendRequest,
             Friend,
 
