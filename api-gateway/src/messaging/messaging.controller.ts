@@ -35,6 +35,7 @@ import {PaginationDto} from '@/dtos/common/pagination.dto';
 import {CreateMessageDto} from '@/dtos/communication-module/create-message.dto';
 import {EmoteReactionDto} from '@/dtos/communication-module/emote-reaction.dto';
 import {UpdateMessageDto} from '@/dtos/communication-module/update-message.dto';
+import {GroupChatAttachment} from '@/entities/communication-module/internal/group-chat-attachment.entity';
 import {Message} from '@/entities/communication-module/internal/message.entity';
 import {MessageAttachment} from '@/entities/communication-module/internal/message-attachment.entity';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
@@ -439,5 +440,57 @@ export class MessagingController {
     })
     async hideMessage(@Param('id') id: string): Promise<{success: boolean}> {
         return await lastValueFrom(this.communicationClient.send('HideMessageCommand', {id}));
+    }
+
+    /**
+     * Create a message attachment
+     */
+    @Post('/groupchat/attachment')
+    @ApiOperation({summary: 'Create a new groupchat attachment'})
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+                recipientId: {
+                    type: 'string',
+                    example: 'c88d5a3d-2f71-499c-b5be-bab40e6b75ad',
+                },
+            },
+            required: ['file', 'recipientId'],
+        },
+    })
+    @UseInterceptors(FileInterceptor('file'))
+    @ApiResponse({
+        status: 201,
+        description: 'Attachment created successfully',
+        type: GroupChatAttachment,
+    })
+    async createGroupChatAttachment(
+        @CurrentUser() user,
+        @UploadedFile() file: Express.Multer.File
+    ): Promise<GroupChatAttachment> {
+        // Send file data to the communication microservice for upload
+        const fileUrl = await this.fileUploadService.uploadFile(
+            file.buffer,
+            file.originalname,
+            file.mimetype,
+            'communication'
+        );
+
+        // Create the message attachment with the uploaded file URL
+        return await lastValueFrom(
+            this.communicationClient.send('CreateAttachmentMessageGroupChatCommand', {
+                senderId: user.id,
+                attachmentMessageDto: {
+                    attachmentUrl: fileUrl,
+                    attachmentName: file.originalname,
+                },
+            })
+        );
     }
 }

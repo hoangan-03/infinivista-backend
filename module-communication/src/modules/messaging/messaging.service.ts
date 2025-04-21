@@ -10,6 +10,7 @@ import {Message} from '@/entities/internal/message.entity';
 import {MessageAttachment} from '@/entities/internal/message-attachment.entity';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 
+import {AttachmentGroupChatDto} from './dto/attachment-groupchat.dto';
 import {AttachmentMessageDto} from './dto/attachment-message.dto';
 import {CreateMessageDto} from './dto/create-message.dto';
 import {EmoteReactionDto} from './dto/emote-reaction.dto';
@@ -495,5 +496,153 @@ export class MessagingService {
                 totalPages: Math.ceil(total / limit),
             },
         };
+    }
+    async createGroupChat(userId: string, groupName: string): Promise<GroupChat> {
+        const creator = await this.UserReferenceRepository.findOne({where: {id: userId}});
+        if (!creator) {
+            throw new NotFoundException(`Sender with ID ${userId} not found`);
+        }
+        const groupChat = this.groupChatRepository.create({
+            group_name: groupName,
+        });
+        return this.groupChatRepository.save(groupChat);
+    }
+
+    async getCurrentUserGroupChats(userId: string): Promise<GroupChat[]> {
+        const groupchat = await this.groupChatRepository.find({
+            where: {users: {id: userId}},
+            relations: ['users'],
+        });
+
+        if (!groupchat) {
+            throw new NotFoundException(`Group chat of user ${userId} not found`);
+        }
+        return groupchat;
+    }
+
+    async groupChatById(groupChatId: string): Promise<GroupChat> {
+        const groupChat = await this.groupChatRepository.findOne({
+            where: {group_chat_id: groupChatId},
+            relations: ['users'],
+        });
+
+        if (!groupChat) {
+            throw new NotFoundException(`Group chat with ID ${groupChatId} not found`);
+        }
+        return groupChat;
+    }
+
+    async addUserToGroupChat(userId: string, groupChatId: string): Promise<GroupChat> {
+        const user = await this.UserReferenceRepository.findOne({where: {id: userId}});
+        const groupChat = await this.groupChatRepository.findOne({
+            where: {group_chat_id: groupChatId},
+            relations: ['users'],
+        });
+
+        if (!user) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
+        }
+        if (!groupChat) {
+            throw new NotFoundException(`Group chat with ID ${groupChatId} not found`);
+        }
+
+        groupChat.users.push(user);
+        return this.groupChatRepository.save(groupChat);
+    }
+
+    async leaveGroupChat(userId: string, groupChatId: string): Promise<GroupChat> {
+        const user = await this.UserReferenceRepository.findOne({where: {id: userId}});
+        const groupChat = await this.groupChatRepository.findOne({
+            where: {group_chat_id: groupChatId},
+            relations: ['users'],
+        });
+
+        if (!user) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
+        }
+        if (!groupChat) {
+            throw new NotFoundException(`Group chat with ID ${groupChatId} not found`);
+        }
+
+        groupChat.users = groupChat.users.filter((u) => u.id !== user.id);
+        // if the group chat has no users, delete it
+        if (groupChat.users.length === 0) {
+            await this.groupChatRepository.remove(groupChat);
+            return groupChat;
+        }
+        return this.groupChatRepository.save(groupChat);
+    }
+
+    async sendMessageToGroupChat(
+        userId: string,
+        groupChatId: string,
+        createMessageDto: CreateMessageDto
+    ): Promise<GroupChatMessage> {
+        const user = await this.UserReferenceRepository.findOne({where: {id: userId}});
+        const groupChat = await this.groupChatRepository.findOne({
+            where: {group_chat_id: groupChatId},
+            relations: ['users'],
+        });
+
+        if (!user) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
+        }
+        if (!groupChat) {
+            throw new NotFoundException(`Group chat with ID ${groupChatId} not found`);
+        }
+        if (!groupChat.users.some((u) => u.id === user.id)) {
+            throw new BadRequestException('User is not a member of the group chat');
+        }
+
+        const message = this.groupChatMessageRepository.create({
+            sender: user,
+            groupChat: groupChat,
+            textMessage: createMessageDto.messageText || 'Default message',
+            sent_at: new Date(),
+            last_modified_at: new Date(),
+        });
+        return this.groupChatMessageRepository.save(message);
+    }
+
+    async createAttachemtMessageToGroupChatDto(
+        senderId: string,
+        attachmentGroupChatDto: AttachmentGroupChatDto
+    ): Promise<GroupChatAttachment> {
+        return this.createAttachmentMessageToGroupChat(
+            senderId,
+            attachmentGroupChatDto.attachmentUrl,
+            attachmentGroupChatDto.attachmentName || 'Default attachment name'
+        );
+    }
+
+    async createAttachmentMessageToGroupChat(
+        senderId: string,
+        groupChatId: string,
+        attachmentUrl: string,
+        attachmentName?: string
+    ): Promise<GroupChatAttachment> {
+        const sender = await this.UserReferenceRepository.findOne({where: {id: senderId}});
+        if (!sender) {
+            throw new NotFoundException(`Sender with ID ${senderId} not found`);
+        }
+        const groupChat = await this.groupChatRepository.findOne({
+            where: {group_chat_id: groupChatId},
+            relations: ['users'],
+        });
+        if (!groupChat) {
+            throw new NotFoundException(`Group chat with ID ${groupChatId} not found`);
+        }
+        if (!groupChat.users.some((u) => u.id === sender.id)) {
+            throw new BadRequestException('User is not a member of the group chat');
+        }
+        const message = this.groupChatAttachmentRepository.create({
+            attachment_url: attachmentUrl,
+            attachment_name: attachmentName || 'Default attachment name',
+            sender: sender,
+            groupChat: groupChat,
+            status: MessageStatus.SENT,
+            sent_at: new Date(),
+        });
+        return this.groupChatAttachmentRepository.save(message);
     }
 }

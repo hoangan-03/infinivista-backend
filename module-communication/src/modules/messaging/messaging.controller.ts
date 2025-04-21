@@ -1,11 +1,13 @@
 import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
+import {GroupChatAttachment} from '@/entities/internal/group-chat-attachment.entity';
 import {Message} from '@/entities/internal/message.entity';
 import {MessageAttachment} from '@/entities/internal/message-attachment.entity';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 import {FileUploadService} from '@/services/file-upload.service';
 
+import {AttachmentGroupChatDto} from './dto/attachment-groupchat.dto';
 import {AttachmentMessageDto} from './dto/attachment-message.dto';
 import {CreateMessageDto} from './dto/create-message.dto';
 import {EmoteReactionDto} from './dto/emote-reaction.dto';
@@ -120,6 +122,23 @@ export class MessagingController {
     }
 
     /**
+     * Create a message attachment after uploading file
+     */
+    @MessagePattern('CreateAttachmentAfterUploadCommand')
+    async createAttachmentAfterUpload(payload: {
+        senderId: string;
+        fileUploadResponse: FileUploadResponseDto;
+        recipientId: string;
+    }): Promise<MessageAttachment> {
+        return await this.messageService.createAttachmentMessage(
+            payload.senderId,
+            payload.recipientId,
+            payload.fileUploadResponse.url,
+            payload.fileUploadResponse.fileName
+        );
+    }
+
+    /**
      * Delete a message attachment
      */
     @MessagePattern('DeleteAttachmentCommand')
@@ -230,17 +249,30 @@ export class MessagingController {
     }
 
     /**
+     * Send attachment message to a group chat
+     */
+    @MessagePattern('CreateAttachmentGroupChatCommand')
+    async createAttachmentGroupChat(payload: {
+        senderId: string;
+        attachmentMessageDto: AttachmentGroupChatDto;
+    }): Promise<GroupChatAttachment> {
+        return await this.messageService.createAttachemtMessageToGroupChatDto(
+            payload.senderId,
+            payload.attachmentMessageDto
+        );
+    }
+    /**
      * Create a message attachment after uploading file
      */
-    @MessagePattern('CreateAttachmentAfterUploadCommand')
-    async createAttachmentAfterUpload(payload: {
+    @MessagePattern('CreateAttachmentMessageGroupChatCommand')
+    async createAttachmentMessageGroupChatAfterUpload(payload: {
         senderId: string;
         fileUploadResponse: FileUploadResponseDto;
-        recipientId: string;
-    }): Promise<MessageAttachment> {
-        return await this.messageService.createAttachmentMessage(
+        groupChatId: string;
+    }): Promise<GroupChatAttachment> {
+        return await this.messageService.createAttachmentMessageToGroupChat(
             payload.senderId,
-            payload.recipientId,
+            payload.groupChatId,
             payload.fileUploadResponse.url,
             payload.fileUploadResponse.fileName
         );
