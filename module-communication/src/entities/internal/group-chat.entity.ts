@@ -1,4 +1,4 @@
-import {Column, Entity, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '../base/base-class';
 import {UserReference} from '../external/user-reference.entity';
@@ -10,7 +10,7 @@ export class GroupChat extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     group_chat_id: string;
 
-    @Column()
+    @Column({type: 'varchar', length: 255})
     group_name: string;
 
     @Column({nullable: true})
@@ -22,6 +22,17 @@ export class GroupChat extends BaseEntity {
     @OneToMany(() => GroupChatAttachment, (attachment) => attachment.groupChat)
     attachments: GroupChatAttachment[];
 
-    @OneToMany(() => UserReference, (user) => user.groupChat)
+    @ManyToMany(() => UserReference, (user) => user.groupChats)
+    @JoinTable({
+        name: 'group_chat_users',
+        joinColumn: {
+            name: 'groupChatGroupChatId',
+            referencedColumnName: 'group_chat_id',
+        },
+        inverseJoinColumn: {
+            name: 'userReferenceId',
+            referencedColumnName: 'id',
+        },
+    })
     users: UserReference[];
 }

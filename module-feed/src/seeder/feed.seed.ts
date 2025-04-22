@@ -3,6 +3,10 @@ import {Logger} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {DataSource} from 'typeorm';
 
+import {AttachmentType} from '@/modules/feed/enum/attachment-type.enum';
+import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
+import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
+
 import {AppModule} from '../app.module';
 import {CommunityReference} from '../entities/external/community-ref.entity';
 import {UserReference} from '../entities/external/user-ref.entity';
@@ -17,8 +21,6 @@ import {Reel} from '../entities/local/reel.entity';
 import {Story} from '../entities/local/story.entity';
 import {Topic} from '../entities/local/topic.entity';
 import {UserReactPost} from '../entities/local/user-react-post.entity';
-import {ReactionType} from '../enum/reaction-type';
-import {visibilityEnum} from '../enum/visibility.enum';
 
 // Interface to match the user data structure from module-user
 interface UserData {
@@ -227,6 +229,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 for (let j = 0; j < attachmentCount; j++) {
                     const attachment = postAttachmentRepo.create({
                         attachment_url: faker.image.url(),
+                        attachementType: faker.helpers.arrayElement(Object.values(AttachmentType)),
                         post,
                     });
                     await postAttachmentRepo.save(attachment);
@@ -270,6 +273,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     const story = storyRepo.create({
                         story_url: faker.image.url(),
                         duration: faker.number.int({min: 5, max: 30}), // seconds
+                        attachementType: faker.helpers.arrayElement(Object.values(AttachmentType)),
                         newsFeed,
                     });
                     await storyRepo.save(story);

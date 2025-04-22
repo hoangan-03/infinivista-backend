@@ -1,4 +1,4 @@
-import {Column, Entity, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, ManyToMany, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '../../base/base-class';
 import {UserReference} from '../external/user-reference.entity';
@@ -22,6 +22,6 @@ export class GroupChat extends BaseEntity {
     @OneToMany(() => GroupChatAttachment, (attachment) => attachment.groupChat)
     attachments: GroupChatAttachment[];
 
-    @OneToMany(() => UserReference, (user) => user.groupChat)
+    @ManyToMany(() => UserReference, (user) => user.groupChats)
     users: UserReference[];
 }

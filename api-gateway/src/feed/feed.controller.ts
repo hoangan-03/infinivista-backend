@@ -38,7 +38,8 @@ import {Post as PostEntity} from '@/entities/feed-module/local/post.entity';
 import {Reel} from '@/entities/feed-module/local/reel.entity';
 import {Story} from '@/entities/feed-module/local/story.entity';
 import {UserReactPost} from '@/entities/feed-module/local/user-react-post.entity';
-import {ReactionType} from '@/enums/feed-module/reaction-type';
+import {AttachmentType} from '@/enums/feed-module/attachment-type.enum';
+import {ReactionType} from '@/enums/feed-module/reaction-type.enum';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
@@ -221,6 +222,7 @@ export class FeedController {
     async createStory(
         @CurrentUser() user,
         @Body('duration') duration: number,
+        @Body('attachmentType') attachementType: AttachmentType,
         @UploadedFile() file: Express.Multer.File
     ): Promise<Story> {
         // Upload file to Google Drive
@@ -230,6 +232,7 @@ export class FeedController {
         const storyData: CreateStoryDto = {
             story_url: storyUrl,
             duration: duration || 15, // Default to 15 seconds if not specified
+            attachmentType: attachementType,
         };
 
         return await lastValueFrom(

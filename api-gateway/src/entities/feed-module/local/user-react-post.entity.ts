@@ -1,5 +1,5 @@
 import {BaseEntity} from '@/entities/base/base-class';
-import {ReactionType} from '@/enums/feed-module/reaction-type';
+import {ReactionType} from '@/enums/feed-module/reaction-type.enum';
 
 import {UserReference} from '../external/user.entity';
 import {Post} from './post.entity';

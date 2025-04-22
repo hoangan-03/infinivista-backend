@@ -1,4 +1,4 @@
-import {Entity, OneToMany, PrimaryColumn} from 'typeorm';
+import {Entity, ManyToMany, OneToMany, PrimaryColumn} from 'typeorm';
 
 import {CallHistory} from '../internal/call-history.entity';
 import {GroupChat} from '../internal/group-chat.entity';
@@ -36,8 +36,8 @@ export class UserReference {
     @OneToMany(() => GroupChatAttachment, (groupChatAttachment) => groupChatAttachment.sender)
     sentGroupChatAttachments: GroupChatAttachment[];
 
-    @OneToMany(() => GroupChat, (groupChat) => groupChat.users)
-    groupChat: GroupChat[];
+    @ManyToMany(() => GroupChat, (groupChat) => groupChat.users)
+    groupChats: GroupChat[];
 
     email: string;
 

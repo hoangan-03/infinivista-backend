@@ -1,7 +1,10 @@
 import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
+import {UserReference} from '@/entities/external/user-reference.entity';
+import {GroupChat} from '@/entities/internal/group-chat.entity';
 import {GroupChatAttachment} from '@/entities/internal/group-chat-attachment.entity';
+import {GroupChatMessage} from '@/entities/internal/group-chat-message.entity';
 import {Message} from '@/entities/internal/message.entity';
 import {MessageAttachment} from '@/entities/internal/message-attachment.entity';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
@@ -13,6 +16,7 @@ import {CreateMessageDto} from './dto/create-message.dto';
 import {EmoteReactionDto} from './dto/emote-reaction.dto';
 import {FileUploadDto, FileUploadResponseDto} from './dto/file-upload.dto';
 import {UpdateMessageDto} from './dto/update-message.dto';
+import {AttachmentType} from './enums/attachment-type.enum';
 import {MessagingService} from './messaging.service';
 
 @Controller()
@@ -129,11 +133,13 @@ export class MessagingController {
         senderId: string;
         fileUploadResponse: FileUploadResponseDto;
         recipientId: string;
+        attachmentType: AttachmentType;
     }): Promise<MessageAttachment> {
         return await this.messageService.createAttachmentMessage(
             payload.senderId,
             payload.recipientId,
             payload.fileUploadResponse.url,
+            payload.attachmentType,
             payload.fileUploadResponse.fileName
         );
     }
@@ -251,12 +257,12 @@ export class MessagingController {
     /**
      * Send attachment message to a group chat
      */
-    @MessagePattern('CreateAttachmentGroupChatCommand')
+    @MessagePattern('CreateAttachmentMessageGroupChatCommand')
     async createAttachmentGroupChat(payload: {
         senderId: string;
         attachmentMessageDto: AttachmentGroupChatDto;
     }): Promise<GroupChatAttachment> {
-        return await this.messageService.createAttachemtMessageToGroupChatDto(
+        return await this.messageService.createAttachmentMessageToGroupChatDto(
             payload.senderId,
             payload.attachmentMessageDto
         );
@@ -264,17 +270,95 @@ export class MessagingController {
     /**
      * Create a message attachment after uploading file
      */
-    @MessagePattern('CreateAttachmentMessageGroupChatCommand')
+    @MessagePattern('CreateAttachmentMessageGroupChatCommandAfterUpload')
     async createAttachmentMessageGroupChatAfterUpload(payload: {
         senderId: string;
         fileUploadResponse: FileUploadResponseDto;
         groupChatId: string;
+        attachmentType: AttachmentType;
     }): Promise<GroupChatAttachment> {
         return await this.messageService.createAttachmentMessageToGroupChat(
             payload.senderId,
             payload.groupChatId,
             payload.fileUploadResponse.url,
+            payload.attachmentType,
             payload.fileUploadResponse.fileName
+        );
+    }
+
+    /**
+     * Create a new group chat
+     */
+    @MessagePattern('CreateGroupChatCommand')
+    async createGroupChat(payload: {userId: string; groupName: string}): Promise<GroupChat> {
+        return await this.messageService.createGroupChat(payload.userId, payload.groupName);
+    }
+
+    /**
+     * Get all group chats for the current user
+     */
+    @MessagePattern('GetCurrentUserGroupChatsCommand')
+    async getCurrentUserGroupChats(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<GroupChat>> {
+        return await this.messageService.getCurrentUserGroupChats(payload.userId, payload.page, payload.limit);
+    }
+
+    // Get all message from a group chat
+    @MessagePattern('GetAllMessageFromGroupChatCommand')
+    async getAllMessageFromGroupChat(payload: {
+        groupChatId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<GroupChatMessage>> {
+        return await this.messageService.getAllMessageFromGroupChat(payload.groupChatId, payload.page, payload.limit);
+    }
+
+    /**
+     * Get a group chat by ID
+     */
+    @MessagePattern('GetGroupChatByIdCommand')
+    async groupChatById(payload: {groupChatId: string}): Promise<GroupChat> {
+        return await this.messageService.groupChatById(payload.groupChatId);
+    }
+
+    // Get all users in a group chat
+    @MessagePattern('GetAllUsersInGroupChatCommand')
+    async getAllUsersInGroupChat(payload: {
+        groupChatId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<UserReference>> {
+        return await this.messageService.getUsersOfGroupChat(payload.groupChatId, payload.page, payload.limit);
+    }
+
+    /**
+     * Add a user to a group chat
+     */
+    @MessagePattern('AddUserToGroupChatCommand')
+    async addUserToGroupChat(payload: {userId: string; groupChatId: string}): Promise<GroupChat> {
+        return await this.messageService.addUserToGroupChat(payload.userId, payload.groupChatId);
+    }
+
+    /**
+     * Remove a user from a group chat
+     */
+    @MessagePattern('LeaveGroupChatCommand')
+    async leaveGroupChat(payload: {userId: string; groupChatId: string}): Promise<GroupChat> {
+        return await this.messageService.leaveGroupChat(payload.userId, payload.groupChatId);
+    }
+
+    /**
+     * Send a message to a group chat
+     */
+    @MessagePattern('SendMessageToGroupChatCommand')
+    async sendMessageToGroupChat(payload: {userId: string; groupChatId: string; createMessageDto: CreateMessageDto}) {
+        return await this.messageService.sendMessageToGroupChat(
+            payload.userId,
+            payload.groupChatId,
+            payload.createMessageDto
         );
     }
 }

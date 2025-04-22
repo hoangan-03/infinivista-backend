@@ -8,7 +8,7 @@ import {Post as PostEntity} from '@/entities/local/post.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
-import {ReactionType} from '@/enum/reaction-type';
+import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 import {FileUploadService} from '@/services/file-upload.service';
 

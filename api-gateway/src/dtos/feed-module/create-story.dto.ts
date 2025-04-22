@@ -1,6 +1,8 @@
 import {ApiProperty} from '@nestjs/swagger';
 import {IsNotEmpty, IsString} from 'class-validator';
 
+import {AttachmentType} from '@/enums/feed-module/attachment-type.enum';
+
 export class CreateStoryDto {
     @ApiProperty({
         description: 'Story Url Link',
@@ -16,4 +18,11 @@ export class CreateStoryDto {
     })
     @IsNotEmpty()
     duration: number;
+
+    @ApiProperty({
+        description: 'Story type',
+        example: AttachmentType.VIDEO,
+        enum: AttachmentType,
+    })
+    attachmentType: AttachmentType;
 }

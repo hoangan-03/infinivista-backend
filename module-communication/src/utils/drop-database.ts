@@ -27,13 +27,13 @@ const dropDatabase = async () => {
         console.log('Dropping communication database tables...');
 
         // Drop tables with foreign keys first
-        await queryRunner.query('DROP TABLE IF EXISTS user_messages_group_chat CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS user_messages_user CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS group_chat_users CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS message_attachment CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS message_text CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS group_chat_message CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS group_chat_attachment CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS "message" CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS group_chat CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS call_histories CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS call_history CASCADE');
 
         console.log(`Communication database ${configService.get<string>('POSTGRES_DB')} tables dropped successfully.`);
     } catch (error) {

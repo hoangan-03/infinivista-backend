@@ -2,6 +2,7 @@ import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {EmoteIcon} from '@/enums/communication-module/emote-icon.enum';
 import {MessageStatus} from '@/enums/communication-module/message-status.enum';
+import {AttachmentType} from '@/enums/feed-module/attachment-type.enum';
 
 import {BaseEntity} from '../../base/base-class';
 import {UserReference} from '../external/user-reference.entity';
@@ -29,6 +30,9 @@ export class GroupChatAttachment extends BaseEntity {
 
     @Column({nullable: true})
     attachment_name?: string;
+
+    @Column({type: 'enum', enum: AttachmentType, nullable: false})
+    attachmentType: AttachmentType;
 
     @ManyToOne(() => UserReference, (sender) => sender.sentMessages)
     sender: UserReference;

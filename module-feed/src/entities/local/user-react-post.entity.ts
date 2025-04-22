@@ -1,7 +1,7 @@
 import {Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
-import {ReactionType} from '@/enum/reaction-type';
+import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 
 import {UserReference} from '../external/user-ref.entity';
 import {Post} from './post.entity';

@@ -2,7 +2,7 @@ import {Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGene
 
 import {BaseEntity} from '@/entities/base/base-class';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
-import {visibilityEnum} from '@/enum/visibility.enum';
+import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
 import {Comment} from './comment.entity';
 import {PostAttachment} from './post-attachment';

@@ -67,11 +67,7 @@ const dropDatabase = async () => {
         console.log('Dropping feed database tables...');
 
         // First drop all join tables and tables with foreign keys
-        await queryRunner.query('DROP TABLE IF EXISTS user_comments_news_feed CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS user_shares_news_feed CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS user_views_news_feed CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS user_reacts_news_feed CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS user_has_news_feed CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS user_react_post CASCADE');
 
         // Rest of your drop queries...
         // Drop tables with relationships to news_feed
@@ -83,23 +79,20 @@ const dropDatabase = async () => {
         await queryRunner.query('DROP TABLE IF EXISTS reaction CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS reel CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS advertisement CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS hash_tag CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS news_feed CASCADE');
 
         // Drop many-to-many join tables
-        await queryRunner.query('DROP TABLE IF EXISTS news_feed_tags_hash_tag CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS news_feed_tagged_users_user_references CASCADE');
-
-        // Drop main entities
-        await queryRunner.query('DROP TABLE IF EXISTS news_feed CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS hash_tag CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS post_topics CASCADE');
 
         // Drop reference tables
         await queryRunner.query('DROP TABLE IF EXISTS user_references CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS community_references CASCADE');
 
         // Drop any enum types
+        await queryRunner.query('DROP TYPE IF EXISTS post_visibility_enum CASCADE');
         await queryRunner.query('DROP TYPE IF EXISTS news_feed_visibility_enum CASCADE');
-        await queryRunner.query('DROP TYPE IF EXISTS reaction_reaction_type_enum CASCADE');
-        await queryRunner.query('DROP TYPE IF EXISTS content_type_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS attachment_type_enum CASCADE');
 
         console.log(`Feed database ${dbName} tables dropped successfully.`);
 

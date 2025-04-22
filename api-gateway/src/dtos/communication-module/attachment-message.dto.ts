@@ -1,6 +1,8 @@
 import {ApiProperty, ApiPropertyOptional} from '@nestjs/swagger';
 import {IsNotEmpty, IsOptional, IsString, IsUUID} from 'class-validator';
 
+import {AttachmentType} from '@/enums/communication-module/attachment-type.enum';
+
 export class AttachmentMessageDto {
     @ApiProperty({
         description: 'The ID of the recipient user',
@@ -26,4 +28,11 @@ export class AttachmentMessageDto {
     @IsOptional()
     @IsString()
     attachmentName?: string;
+
+    @ApiProperty({
+        description: 'Attachment Type',
+        example: AttachmentType.IMAGE,
+        enum: AttachmentType,
+    })
+    attachmentType: AttachmentType;
 }

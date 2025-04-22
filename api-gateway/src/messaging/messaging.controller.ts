@@ -35,9 +35,12 @@ import {PaginationDto} from '@/dtos/common/pagination.dto';
 import {CreateMessageDto} from '@/dtos/communication-module/create-message.dto';
 import {EmoteReactionDto} from '@/dtos/communication-module/emote-reaction.dto';
 import {UpdateMessageDto} from '@/dtos/communication-module/update-message.dto';
+import {UserReference} from '@/entities/communication-module/external/user-reference.entity';
+import {GroupChat} from '@/entities/communication-module/internal/group-chat.entity';
 import {GroupChatAttachment} from '@/entities/communication-module/internal/group-chat-attachment.entity';
 import {Message} from '@/entities/communication-module/internal/message.entity';
 import {MessageAttachment} from '@/entities/communication-module/internal/message-attachment.entity';
+import {AttachmentType} from '@/enums/communication-module/attachment-type.enum';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
@@ -57,7 +60,7 @@ export class MessagingController {
     /**
      * Get all messages
      */
-    @Get('')
+    @Get('/messsage')
     @ApiOperation({summary: 'Get all messages'})
     @ApiQuery({type: PaginationDto})
     @ApiResponse({
@@ -77,7 +80,7 @@ export class MessagingController {
     /**
      * Create a new message
      */
-    @Post('')
+    @Post('/messsage')
     @ApiOperation({summary: 'Create a new message'})
     @ApiBody({
         description: 'Message Text',
@@ -177,7 +180,7 @@ export class MessagingController {
     /**
      * Create a message attachment
      */
-    @Post('/attachment')
+    @Post('/messsage/attachment')
     @ApiOperation({summary: 'Create a new message attachment'})
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -192,6 +195,11 @@ export class MessagingController {
                     type: 'string',
                     example: 'c88d5a3d-2f71-499c-b5be-bab40e6b75ad',
                 },
+                attachmentType: {
+                    type: 'string',
+                    enum: Object.values(AttachmentType),
+                    example: AttachmentType.IMAGE,
+                },
             },
             required: ['file', 'recipientId'],
         },
@@ -205,7 +213,8 @@ export class MessagingController {
     async createAttachment(
         @CurrentUser() user,
         @UploadedFile() file: Express.Multer.File,
-        @Body('recipientId') recipientId: string
+        @Body('recipientId') recipientId: string,
+        @Body('attachmentType') attachmentType: AttachmentType
     ): Promise<MessageAttachment> {
         // Send file data to the communication microservice for upload
         const fileUrl = await this.fileUploadService.uploadFile(
@@ -223,6 +232,7 @@ export class MessagingController {
                     recipientId,
                     attachmentUrl: fileUrl,
                     attachmentName: file.originalname,
+                    attachmentType,
                 },
             })
         );
@@ -231,7 +241,7 @@ export class MessagingController {
     /**
      * Delete a message attachment
      */
-    @Delete('/attachment/:id')
+    @Delete('/messsage/attachment/:id')
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({summary: 'Delete a message attachment'})
     @ApiParam({name: 'id', description: 'Attachment ID'})
@@ -246,7 +256,7 @@ export class MessagingController {
     /**
      * Mark an attachment as seen
      */
-    @Post('/attachment/:id/seen')
+    @Post('/messsage/attachment/:id/seen')
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({summary: 'Mark a message attachment as seen'})
     @ApiParam({name: 'id', description: 'Attachment ID'})
@@ -264,7 +274,7 @@ export class MessagingController {
     /**
      * Add reaction to an attachment
      */
-    @Post('/attachment/:id/reaction')
+    @Post('/messsage/attachment/:id/reaction')
     @ApiOperation({summary: 'Add a reaction to a message attachment'})
     @ApiParam({name: 'id', description: 'Attachment ID'})
     @ApiBody({type: EmoteReactionDto})
@@ -290,7 +300,7 @@ export class MessagingController {
     /**
      * Remove reaction from an attachment
      */
-    @Delete('/attachment/:id/reaction')
+    @Delete('/messsage/attachment/:id/reaction')
     @ApiOperation({summary: 'Remove a reaction from a message attachment'})
     @ApiParam({name: 'id', description: 'Attachment ID'})
     @ApiResponse({
@@ -307,7 +317,7 @@ export class MessagingController {
     /**
      * Get a specific message
      */
-    @Get('/:id')
+    @Get('/messsage/:id')
     @ApiOperation({summary: 'Get a message by ID'})
     @ApiParam({name: 'id', description: 'Message ID'})
     @ApiResponse({
@@ -326,7 +336,7 @@ export class MessagingController {
     /**
      * Update message text
      */
-    @Put('/:id')
+    @Put('/messsage/:id')
     @ApiOperation({summary: 'Update message text'})
     @ApiParam({name: 'id', description: 'Message ID'})
     @ApiResponse({
@@ -341,7 +351,7 @@ export class MessagingController {
     /**
      * Delete a message
      */
-    @Delete('/:id')
+    @Delete('/messsage/:id')
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({summary: 'Delete a message'})
     @ApiParam({name: 'id', description: 'Message ID'})
@@ -356,7 +366,7 @@ export class MessagingController {
     /**
      * Mark a message as seen
      */
-    @Post('/:id/seen')
+    @Post('/messsage/:id/seen')
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({summary: 'Mark a message as seen'})
     @ApiResponse({
@@ -372,7 +382,7 @@ export class MessagingController {
     /**
      * Add reaction/emotion to a message
      */
-    @Post('/:id/reaction')
+    @Post('/messsage/:id/reaction')
     @ApiOperation({summary: 'Add a reaction to a message'})
     @ApiParam({name: 'id', description: 'Message ID'})
     @ApiResponse({
@@ -393,7 +403,7 @@ export class MessagingController {
     /**
      * Change reaction emote on a message
      */
-    @Put('/:id/reaction')
+    @Put('/messsage/:id/reaction')
     @ApiOperation({summary: 'Change a reaction on a message'})
     @ApiParam({name: 'id', description: 'Message ID'})
     @ApiBody({type: EmoteReactionDto})
@@ -415,7 +425,7 @@ export class MessagingController {
     /**
      * Remove reaction from a message
      */
-    @Delete('/:id/reaction')
+    @Delete('/messsage/:id/reaction')
     @ApiOperation({summary: 'Remove a reaction from a message'})
     @ApiParam({name: 'id', description: 'Message ID'})
     @ApiResponse({
@@ -430,7 +440,7 @@ export class MessagingController {
     /**
      * Hide a message
      */
-    @Put('/:id/hide')
+    @Put('/messsage/:id/hide')
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({summary: 'Hide a message'})
     @ApiParam({name: 'id', description: 'Message ID'})
@@ -442,8 +452,141 @@ export class MessagingController {
         return await lastValueFrom(this.communicationClient.send('HideMessageCommand', {id}));
     }
 
+    @Get('/groupchat')
+    @ApiOperation({summary: 'Get all group chats of current user'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({
+        status: 200,
+        description: 'Returns paginated group chats',
+        type: [GroupChat],
+    })
+    async getAllGroupChats(
+        @CurrentUser() user,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<GroupChat>> {
+        return await lastValueFrom(
+            this.communicationClient.send('GetCurrentUserGroupChatsCommand', {
+                userId: user.id,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
+    @Post('/groupchat')
+    @ApiOperation({summary: 'Create a new group chat'})
+    @ApiBody({
+        description: 'Group chat name',
+        required: true,
+        type: String,
+    })
+    @ApiResponse({
+        status: 201,
+        description: 'Group chat created successfully',
+        type: GroupChat,
+    })
+    async createGroupChat(@CurrentUser() user, @Body() groupName: string): Promise<GroupChat> {
+        return await lastValueFrom(
+            this.communicationClient.send('CreateGroupChatCommand', {userId: user.id, groupName})
+        );
+    }
+
+    @Get('/groupchat/messages/:groupChatId')
+    @ApiOperation({summary: 'Get all messages from a group chat'})
+    @ApiParam({name: 'groupChatId', description: 'Group chat ID'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({
+        status: 200,
+        description: 'Returns paginated messages from the group chat',
+        type: [Message],
+    })
+    async getAllMessagesFromGroupChat(
+        @Param('groupChatId') groupChatId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<Message>> {
+        return await lastValueFrom(
+            this.communicationClient.send('GetAllMessageFromGroupChatCommand', {
+                groupChatId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
+    @Post('/groupchat/message/:groupChatId')
+    @ApiOperation({summary: 'Send a message to group chat'})
+    @ApiParam({name: 'groupChatId', description: 'Group chat ID'})
+    @ApiBody({
+        description: 'Message Text',
+        type: CreateMessageDto,
+    })
+    @ApiResponse({
+        status: 201,
+        description: 'Message sent to group chat successfully',
+    })
+    async sendMessageToGroupChat(
+        @CurrentUser() user,
+        @Param('groupChatId') groupChatId: string,
+        @Body() createMessageDto: CreateMessageDto
+    ) {
+        return await lastValueFrom(
+            this.communicationClient.send('SendMessageToGroupChatCommand', {
+                userId: user.id,
+                groupChatId,
+                createMessageDto,
+            })
+        );
+    }
+
+    // Get All users in a group chat
+    @Get('/groupchat/users/:groupChatId/')
+    @ApiOperation({summary: 'Get all users in a group chat'})
+    @ApiParam({name: 'groupChatId', description: 'Group chat ID'})
+    @ApiResponse({
+        status: 200,
+        description: 'Returns all users in the group chat',
+        type: [UserReference],
+    })
+    @ApiQuery({type: PaginationDto})
+    async getAllUsersInGroupChat(
+        @Param('groupChatId') groupChatId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<UserReference[]> {
+        return await lastValueFrom(
+            this.communicationClient.send('GetAllUsersInGroupChatCommand', {
+                groupChatId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
+    // Add a user to a group chat\
+    @Post('/groupchat/user/:groupChatId')
+    @ApiOperation({summary: 'Add a user to a group chat'})
+    @ApiParam({name: 'groupChatId', description: 'Group chat ID'})
+    @ApiBody({
+        description: 'User ID to add',
+        type: String,
+    })
+    @ApiResponse({
+        status: 201,
+        description: 'User added to group chat successfully',
+    })
+    async addUserToGroupChat(
+        @Body('userId') userId: string,
+        @Param('groupChatId') groupChatId: string
+    ): Promise<GroupChat> {
+        return await lastValueFrom(
+            this.communicationClient.send('AddUserToGroupChatCommand', {
+                userId,
+                groupChatId,
+            })
+        );
+    }
+
     /**
-     * Create a message attachment
+     * Create a groupchat attachment
      */
     @Post('/groupchat/attachment')
     @ApiOperation({summary: 'Create a new groupchat attachment'})
@@ -456,12 +599,17 @@ export class MessagingController {
                     type: 'string',
                     format: 'binary',
                 },
-                recipientId: {
+                groupChatId: {
                     type: 'string',
                     example: 'c88d5a3d-2f71-499c-b5be-bab40e6b75ad',
                 },
+                attachmentType: {
+                    type: 'string',
+                    enum: Object.values(AttachmentType),
+                    example: AttachmentType.IMAGE,
+                },
             },
-            required: ['file', 'recipientId'],
+            required: ['file', 'groupChatId'],
         },
     })
     @UseInterceptors(FileInterceptor('file'))
@@ -472,7 +620,9 @@ export class MessagingController {
     })
     async createGroupChatAttachment(
         @CurrentUser() user,
-        @UploadedFile() file: Express.Multer.File
+        @UploadedFile() file: Express.Multer.File,
+        @Body('groupChatId') groupChatId: string,
+        @Body('attachmentType') attachmentType: AttachmentType
     ): Promise<GroupChatAttachment> {
         // Send file data to the communication microservice for upload
         const fileUrl = await this.fileUploadService.uploadFile(
@@ -487,10 +637,44 @@ export class MessagingController {
             this.communicationClient.send('CreateAttachmentMessageGroupChatCommand', {
                 senderId: user.id,
                 attachmentMessageDto: {
+                    groupChatId,
                     attachmentUrl: fileUrl,
                     attachmentName: file.originalname,
+                    attachmentType,
                 },
             })
+        );
+    }
+
+    // Get GroupChat by ID
+    @Get('/groupchat/:groupChatId')
+    @ApiOperation({summary: 'Get a group chat by ID'})
+    @ApiParam({name: 'groupChatId', description: 'Group chat ID'})
+    @ApiResponse({
+        status: 200,
+        description: 'Group chat found',
+        type: GroupChat,
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Group chat not found',
+    })
+    async getGroupChat(@Param('groupChatId') groupChatId: string) {
+        return await lastValueFrom(this.communicationClient.send('GetGroupChatByIdCommand', {groupChatId}));
+    }
+
+    // Leave a group chat
+    @Post('/groupchat/leave/:groupChatId')
+    @ApiOperation({summary: 'Leave a group chat'})
+    @ApiParam({name: 'groupChatId', description: 'Group chat ID'})
+    @ApiResponse({
+        status: 200,
+        description: 'Left group chat successfully',
+        type: GroupChat,
+    })
+    async leaveGroupChat(@Param('groupChatId') groupChatId: string, @CurrentUser() user): Promise<GroupChat> {
+        return await lastValueFrom(
+            this.communicationClient.send('LeaveGroupChatCommand', {userId: user.id, groupChatId})
         );
     }
 }

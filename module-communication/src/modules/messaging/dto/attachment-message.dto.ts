@@ -1,5 +1,7 @@
 import {IsNotEmpty, IsOptional, IsString} from 'class-validator';
 
+import {AttachmentType} from '../enums/attachment-type.enum';
+
 export class AttachmentMessageDto {
     @IsNotEmpty()
     @IsString()
@@ -12,4 +14,7 @@ export class AttachmentMessageDto {
     @IsOptional()
     @IsString()
     attachmentName?: string;
+
+    @IsNotEmpty()
+    attachmentType: AttachmentType;
 }

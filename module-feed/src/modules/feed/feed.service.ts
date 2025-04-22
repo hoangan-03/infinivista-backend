@@ -12,12 +12,12 @@ import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {Topic} from '@/entities/local/topic.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
-import {ReactionType} from '@/enum/reaction-type';
-import {visibilityEnum} from '@/enum/visibility.enum';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
+import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 
 import {UserReferenceService} from '../user-reference/user-reference.service';
 import {CreatePostDto} from './dto/create-post.dto';
+import {visibilityEnum} from './enum/visibility.enum';
 
 @Injectable()
 export class FeedService {
@@ -826,6 +826,7 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             [ReactionType.LIKE]: 0,
             [ReactionType.HEART]: 0,
             [ReactionType.CARE]: 0,
+            [ReactionType.HAHA]: 0,
             [ReactionType.SAD]: 0,
             [ReactionType.WOW]: 0,
             [ReactionType.ANGRY]: 0,

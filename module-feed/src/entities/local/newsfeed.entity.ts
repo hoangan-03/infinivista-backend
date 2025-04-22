@@ -6,7 +6,7 @@ import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {Post} from '@/entities/local/post.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
-import {visibilityEnum} from '@/enum/visibility.enum';
+import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
 import {CommunityReference} from '../external/community-ref.entity';
 import {UserReference} from '../external/user-ref.entity';

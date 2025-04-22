@@ -1,5 +1,6 @@
 import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
+import {AttachmentType} from '@/modules/messaging/enums/attachment-type.enum';
 import {EmoteIcon} from '@/modules/messaging/enums/emote-icon.enum';
 import {MessageStatus} from '@/modules/messaging/enums/message-status.enum';
 
@@ -16,6 +17,9 @@ export class MessageAttachment extends BaseEntity {
 
     @Column({nullable: true})
     attachment_name?: string;
+
+    @Column({type: 'enum', enum: AttachmentType, nullable: false})
+    attachmentType: AttachmentType;
 
     @Column({type: 'timestamp', nullable: true})
     sent_at?: Date;

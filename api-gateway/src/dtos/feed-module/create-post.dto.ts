@@ -2,6 +2,8 @@ import {ApiProperty} from '@nestjs/swagger';
 import {Type} from 'class-transformer';
 import {IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested} from 'class-validator';
 
+import {AttachmentType} from '@/enums/feed-module/attachment-type.enum';
+
 export class PostAttachmentDto {
     @ApiProperty({
         required: false,
@@ -11,6 +13,13 @@ export class PostAttachmentDto {
     @IsString()
     @IsOptional()
     attachment_url?: string;
+
+    @ApiProperty({
+        description: 'Attachment type',
+        enum: AttachmentType,
+        example: AttachmentType.IMAGE,
+    })
+    attachementType: AttachmentType;
 }
 
 export class CreatePostDto {
