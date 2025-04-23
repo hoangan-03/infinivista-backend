@@ -12,11 +12,14 @@ import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {Topic} from '@/entities/local/topic.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
+import {UserReactStory} from '@/entities/local/user-react-story.entity';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 
 import {UserReferenceService} from '../user-reference/user-reference.service';
 import {CreatePostDto} from './dto/create-post.dto';
+import {CreateStoryDto} from './dto/create-story.dto';
+import {AttachmentType} from './enum/attachment-type.enum';
 import {visibilityEnum} from './enum/visibility.enum';
 
 @Injectable()
@@ -38,6 +41,8 @@ export class FeedService {
         private readonly commentRepository: Repository<Comment>,
         @InjectRepository(UserReactPost)
         private readonly userReactPostRepository: Repository<UserReactPost>,
+        @InjectRepository(UserReactStory)
+        private readonly userReactStoryRepository: Repository<UserReactStory>,
         @InjectRepository(Topic)
         private readonly topicRepository: Repository<Topic>,
         @InjectRepository(Reel)
@@ -415,40 +420,6 @@ export class FeedService {
         return newsFeed;
     }
 
-    // async createPost(newsFeedId: string, postData: CreatePostDto): Promise<Post> {
-    //     this.logger.debug('checking');
-    //     const newsFeed = await this.getNewsFeedById(newsFeedId);
-
-    //     // Create the post first
-    //     const post = this.postRepository.create({
-    //         ...postData,
-    //         newsFeed,
-    //     });
-
-    //     try {
-    //         // Call Gemini API to analyze content and classify topics
-    //         const topicIds = await this.classifyPostContent(postData.content);
-
-    //         // Find the corresponding topic entities
-    //         if (topicIds && topicIds.length > 0) {
-    //             const topics = await this.topicRepository.findBy({
-    //                 id: In(topicIds),
-    //             });
-
-    //             // Associate topics with the post
-    //             if (topics && topics.length > 0) {
-    //                 post.topics = topics;
-    //                 this.logger.log(`Post classified into ${topics.length} topics`);
-    //             }
-    //         }
-    //     } catch (error: any) {
-    //         this.logger.error(`Error classifying post content: ${error.message}`);
-    //         // Continue with post creation even if classification fails
-    //     }
-
-    //     return this.postRepository.save(post);
-    // }
-
     /**
      * Calls Gemini API to analyze post content and classify it into topics
      * @param content The post content to classify
@@ -592,8 +563,11 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         return story;
     }
 
-    async createStory(newsFeedId: string, storyData: Partial<Story>): Promise<Story> {
+    async createStory(newsFeedId: string, storyData: CreateStoryDto): Promise<Story> {
         const newsFeed = await this.getNewsFeedById(newsFeedId);
+        if (!newsFeed) {
+            throw new NotFoundException(`News feed with ID ${newsFeedId} not found`);
+        }
 
         const story = this.storyRepository.create({
             ...storyData,
@@ -757,6 +731,98 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         return deletedComment;
     }
 
+    // ---------- STORY COMMENT METHODS ----------
+
+    async createStoryComment(storyId: string, userId: string, text: string, attachmentUrl?: string): Promise<Comment> {
+        const story = await this.getStoryById(storyId);
+        const user = await this.userReferenceService.findById(userId);
+
+        if (!story || !user) {
+            throw new NotFoundException(`Story or user not found`);
+        }
+
+        const comment = this.commentRepository.create({
+            text,
+            attachment_url: attachmentUrl || '',
+            user,
+            story,
+        });
+
+        story.comments = [...(story.comments || []), comment];
+
+        return this.commentRepository.save(comment);
+    }
+
+    async getCommentsByStoryId(storyId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Comment>> {
+        const story = await this.getStoryById(storyId);
+
+        if (!story) {
+            throw new NotFoundException(`Story with ID ${storyId} not found`);
+        }
+
+        const [comments, total] = await this.commentRepository.findAndCount({
+            where: {story: {id: storyId}},
+            relations: ['user'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {createdAt: 'DESC'},
+        });
+
+        return {
+            data: comments,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async updateStoryComment(
+        commentId: string,
+        userId: string,
+        text: string,
+        attachmentUrl?: string
+    ): Promise<Comment> {
+        const comment = await this.commentRepository.findOne({
+            where: {id: commentId},
+            relations: ['user', 'story'],
+        });
+
+        if (!comment) {
+            throw new NotFoundException(`Comment with ID ${commentId} not found`);
+        }
+
+        if (comment.user.id !== userId) {
+            throw new ForbiddenException(`User is not authorized to update this comment`);
+        }
+
+        comment.text = text;
+        comment.attachment_url = attachmentUrl || '';
+
+        return this.commentRepository.save(comment);
+    }
+
+    async deleteStoryComment(commentId: string, userId: string): Promise<Comment> {
+        const comment = await this.commentRepository.findOne({
+            where: {id: commentId},
+            relations: ['user', 'story', 'story.newsFeed', 'story.newsFeed.owner'],
+        });
+
+        if (!comment) {
+            throw new NotFoundException(`Comment with ID ${commentId} not found`);
+        }
+
+        if (comment.user.id !== userId && comment.story.newsFeed.owner.id !== userId) {
+            throw new ForbiddenException(`User is not authorized to delete this comment`);
+        }
+
+        const deletedComment = {...comment};
+        await this.commentRepository.remove(comment);
+        return deletedComment;
+    }
+
     // ---------- REACTION METHODS ----------
 
     async addReaction(userId: string, postId: string, reactionType: ReactionType): Promise<UserReactPost> {
@@ -839,6 +905,93 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         return counts;
     }
 
+    // ---------- STORY REACTION METHODS ----------
+
+    async addStoryReaction(userId: string, storyId: string, reactionType: ReactionType): Promise<UserReactStory> {
+        const story = await this.getStoryById(storyId);
+        if (!story) {
+            throw new NotFoundException(`Story with ID ${storyId} not found`);
+        }
+
+        const existingReaction = await this.userReactStoryRepository.findOne({
+            where: {
+                story_id: storyId,
+                user_id: userId,
+            },
+        });
+
+        if (existingReaction) {
+            if (existingReaction.reactionType && existingReaction.reactionType !== reactionType) {
+                existingReaction.reactionType = reactionType;
+                return this.userReactStoryRepository.save(existingReaction);
+            }
+            return existingReaction;
+        }
+
+        return await this.userReactStoryRepository.save({
+            user_id: userId,
+            story_id: storyId,
+            reactionType: reactionType,
+        });
+    }
+
+    async getReactionsByStoryId(storyId: string): Promise<UserReactStory[]> {
+        const story = await this.getStoryById(storyId);
+
+        if (!story) {
+            throw new NotFoundException(`Story with ID ${storyId} not found`);
+        }
+
+        return this.userReactStoryRepository.find({
+            where: {story_id: storyId},
+            relations: ['user'],
+        });
+    }
+
+    async removeStoryReaction(storyId: string, userId: string): Promise<{success: boolean}> {
+        const reaction = await this.userReactStoryRepository.findOne({
+            where: {
+                story_id: storyId,
+                user_id: userId,
+            },
+        });
+
+        if (!reaction) {
+            throw new NotFoundException(`Reaction not found`);
+        }
+
+        await this.userReactStoryRepository.remove(reaction);
+        return {success: true};
+    }
+
+    async getStoryReactionCountByType(storyId: string): Promise<Record<ReactionType, number>> {
+        const story = await this.getStoryById(storyId);
+
+        if (!story) {
+            throw new NotFoundException(`Story with ID ${storyId} not found`);
+        }
+
+        const reactions = await this.userReactStoryRepository.find({
+            where: {story: {id: storyId}},
+        });
+
+        const counts: Record<ReactionType, number> = {
+            [ReactionType.LIKE]: 0,
+            [ReactionType.HEART]: 0,
+            [ReactionType.CARE]: 0,
+            [ReactionType.HAHA]: 0,
+            [ReactionType.SAD]: 0,
+            [ReactionType.WOW]: 0,
+            [ReactionType.ANGRY]: 0,
+        };
+
+        reactions.forEach((reaction) => {
+            counts[reaction.reactionType]++;
+        });
+
+        return counts;
+    }
+
     async getRandomReelsByUserId(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Reel>> {
         // Get all reels for the user's news feeds
         const userFeed = await this.getNewsFeedByUserId(userId);
@@ -864,7 +1017,8 @@ Return only the topic IDs as a JSON array with no explanations. For example:
     async createPostAfterUploadingFiles(
         newsFeedId: string,
         postData: CreatePostDto,
-        files: Array<{url: string; fileName: string; mimeType: string}>
+        files: Array<{url: string; fileName: string; mimeType: string}>,
+        attachmentType: AttachmentType[]
     ): Promise<Post> {
         this.logger.log(`Creating post with ${files?.length || 0} attachments for news feed ${newsFeedId}`);
         const newsFeed = await this.getNewsFeedById(newsFeedId);
@@ -907,14 +1061,32 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             }
 
             // Create attachment entities for each file
-            for (const file of files) {
+            files.forEach((file, index) => {
                 const attachment = new PostAttachment();
                 attachment.attachment_url = file.url;
                 attachment.post = savedPost; // Link to the post
+                attachment.attachmentType =
+                    index < attachmentType.length ? attachmentType[index] : AttachmentType.IMAGE;
 
-                const savedAttachment = await this.postAttachmentRepository.save(attachment);
-                savedPost.postAttachments.push(savedAttachment);
-            }
+                this.postAttachmentRepository.save(attachment).then((savedAttachment) => {
+                    savedPost.postAttachments.push(savedAttachment);
+                });
+            });
+
+            // Wait for all attachments to be saved
+            await Promise.all(
+                files.map((file, index) => {
+                    const attachment = new PostAttachment();
+                    attachment.attachment_url = file.url;
+                    attachment.post = savedPost;
+                    attachment.attachmentType =
+                        index < attachmentType.length ? attachmentType[index] : AttachmentType.IMAGE;
+
+                    return this.postAttachmentRepository.save(attachment);
+                })
+            ).then((savedAttachments) => {
+                savedPost.postAttachments = savedAttachments;
+            });
 
             // Update the post with the attachments
             await this.postRepository.save(savedPost);

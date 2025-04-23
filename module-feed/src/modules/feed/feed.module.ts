@@ -14,6 +14,7 @@ import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {Topic} from '@/entities/local/topic.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
+import {UserReactStory} from '@/entities/local/user-react-story.entity';
 import {FileUploadService} from '@/services/file-upload.service';
 
 import {UserReferenceModule} from '../user-reference/user-reference.module';
@@ -35,6 +36,7 @@ import {FeedService} from './feed.service';
             CommunityReference,
             UserReference,
             UserReactPost,
+            UserReactStory,
         ]),
         UserReferenceModule,
     ],

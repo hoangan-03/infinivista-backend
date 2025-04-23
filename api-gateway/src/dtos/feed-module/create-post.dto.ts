@@ -19,7 +19,7 @@ export class PostAttachmentDto {
         enum: AttachmentType,
         example: AttachmentType.IMAGE,
     })
-    attachementType: AttachmentType;
+    attachmentType: AttachmentType;
 }
 
 export class CreatePostDto {

@@ -9,7 +9,6 @@ export class FileUploadService {
     private readonly logger = new Logger(FileUploadService.name);
 
     constructor(private configService: ConfigService) {
-        // Initialize Google Drive API client
         this.initGoogleDriveClient();
     }
 
@@ -17,7 +16,6 @@ export class FileUploadService {
         try {
             const keyFile = this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS');
 
-            // Use service account auth or OAuth2, depending on your setup
             const auth = new google.auth.GoogleAuth({
                 keyFile,
                 scopes: ['https://www.googleapis.com/auth/drive.file'],
@@ -33,35 +31,29 @@ export class FileUploadService {
 
     async uploadFile(fileBuffer: Buffer, filename: string, mimetype: string, folderId?: string): Promise<string> {
         try {
-            // Create a readable stream from file buffer
             const bufferStream = new stream.PassThrough();
             bufferStream.end(fileBuffer);
 
-            // Prepare file metadata
             const fileMetadata = {
                 name: `${Date.now()}-${filename}`,
                 parents: folderId ? [folderId] : undefined,
             };
 
-            // Create media object
             const media = {
                 mimeType: mimetype,
                 body: bufferStream,
             };
 
-            // Upload to Drive
             const response = await this.drive.files.create({
                 requestBody: fileMetadata,
                 media: media,
-                fields: 'id,webViewLink',
+                fields: 'id',
             });
 
-            // Check if file ID exists
             if (!response.data.id) {
                 throw new Error('File upload failed: No file ID returned');
             }
 
-            // Make the file public and get a direct link
             await this.drive.permissions.create({
                 fileId: response.data.id,
                 requestBody: {
@@ -70,28 +62,40 @@ export class FileUploadService {
                 },
             });
 
-            // Get the direct link for the file
-            const fileData = await this.drive.files.get({
-                fileId: response.data.id,
-                fields: 'webContentLink',
-            });
+            // Check if the file is a video
+            if (mimetype.startsWith('video/')) {
+                return `https://www.googleapis.com/drive/v3/files/${response.data.id}?alt=media&key=${this.getApiKey()}`;
+            } else {
+                // For images and other files
+                const fileData = await this.drive.files.get({
+                    fileId: response.data.id,
+                    fields: 'webContentLink',
+                });
 
-            if (!fileData.data.webContentLink) {
-                throw new Error('Failed to get file download URL');
+                if (!fileData.data.webContentLink) {
+                    throw new Error('Failed to get file download URL');
+                }
+
+                // Removing the export=download parameter
+                return this.cleanGoogleDriveUrl(fileData.data.webContentLink);
             }
-
-            // Clean up the URL by removing the export=download parameter
-            const cleanUrl = this.cleanGoogleDriveUrl(fileData.data.webContentLink);
-            return cleanUrl;
         } catch (error: any) {
             this.logger.error(`Failed to upload file to Google Drive: ${error.message}`);
             throw new BadRequestException('Failed to upload file to Google Drive');
         }
     }
 
+    private getApiKey(): string {
+        const apiKey = this.configService.get<string>('GOOGLE_API_KEY');
+        if (!apiKey) {
+            this.logger.error('GOOGLE_API_KEY is not set in configuration');
+            throw new BadRequestException('Google API key not configured, your key is: ' + apiKey);
+        }
+        return apiKey;
+    }
+
     async deleteFile(fileUrl: string): Promise<boolean> {
         try {
-            // Extract file ID from URL
             const fileId = this.extractFileIdFromUrl(fileUrl);
 
             if (!fileId) {

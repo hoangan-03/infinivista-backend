@@ -1,9 +1,11 @@
 import {ApiProperty} from '@nestjs/swagger';
-import {Entity, ManyToOne, OneToOne} from 'typeorm';
+import {Entity} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
 
+import {Comment} from './comment.entity';
 import {NewsFeed} from './newsfeed.entity';
+import {UserReactStory} from './user-react-story.entity';
 
 @Entity()
 export class Story extends BaseEntity {
@@ -32,4 +34,18 @@ export class Story extends BaseEntity {
         type: () => NewsFeed,
     })
     newsFeed: NewsFeed;
+
+    @ApiProperty({
+        description: 'List of comments associated with this story',
+        type: () => Comment,
+        isArray: true,
+    })
+    comments: Comment[];
+
+    @ApiProperty({
+        description: 'List of user reactions to this story',
+        type: () => UserReactStory,
+        isArray: true,
+    })
+    userReactions: UserReactStory[];
 }

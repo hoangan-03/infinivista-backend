@@ -3,6 +3,7 @@ import {Logger} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {DataSource} from 'typeorm';
 
+import {UserReactStory} from '@/entities/local/user-react-story.entity';
 import {AttachmentType} from '@/modules/feed/enum/attachment-type.enum';
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
@@ -54,6 +55,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         const reelRepo = dataSource.getRepository(Reel);
         const topicRepo = dataSource.getRepository(Topic);
         const userReactPostRepo = dataSource.getRepository(UserReactPost);
+        const userReactStoryRepo = dataSource.getRepository(UserReactStory);
 
         logger.log('Clearing existing data...');
         await userReactPostRepo.query('TRUNCATE TABLE "user_react_post" CASCADE');
@@ -229,7 +231,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 for (let j = 0; j < attachmentCount; j++) {
                     const attachment = postAttachmentRepo.create({
                         attachment_url: faker.image.url(),
-                        attachementType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                        attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
                         post,
                     });
                     await postAttachmentRepo.save(attachment);
@@ -273,7 +275,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     const story = storyRepo.create({
                         story_url: faker.image.url(),
                         duration: faker.number.int({min: 5, max: 30}), // seconds
-                        attachementType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                        attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
                         newsFeed,
                     });
                     await storyRepo.save(story);

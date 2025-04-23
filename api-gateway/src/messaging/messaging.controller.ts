@@ -32,6 +32,8 @@ import {lastValueFrom} from 'rxjs';
 
 import {CurrentUser} from '@/decorators/user.decorator';
 import {PaginationDto} from '@/dtos/common/pagination.dto';
+import {AddUserGroupChatDto} from '@/dtos/communication-module/add-user-groupchat.dto';
+import {CreateGroupMessageDto} from '@/dtos/communication-module/create-group-message.dto';
 import {CreateMessageDto} from '@/dtos/communication-module/create-message.dto';
 import {EmoteReactionDto} from '@/dtos/communication-module/emote-reaction.dto';
 import {UpdateMessageDto} from '@/dtos/communication-module/update-message.dto';
@@ -513,27 +515,22 @@ export class MessagingController {
         );
     }
 
-    @Post('/groupchat/message/:groupChatId')
+    @Post('/groupchat/message/')
     @ApiOperation({summary: 'Send a message to group chat'})
-    @ApiParam({name: 'groupChatId', description: 'Group chat ID'})
     @ApiBody({
         description: 'Message Text',
-        type: CreateMessageDto,
+        type: CreateGroupMessageDto,
     })
     @ApiResponse({
         status: 201,
         description: 'Message sent to group chat successfully',
     })
-    async sendMessageToGroupChat(
-        @CurrentUser() user,
-        @Param('groupChatId') groupChatId: string,
-        @Body() createMessageDto: CreateMessageDto
-    ) {
+    async sendMessageToGroupChat(@CurrentUser() user, @Body() createGroupMessageDto: CreateGroupMessageDto) {
         return await lastValueFrom(
             this.communicationClient.send('SendMessageToGroupChatCommand', {
                 userId: user.id,
-                groupChatId,
-                createMessageDto,
+                groupChatId: createGroupMessageDto.groupChatId,
+                textMessage: createGroupMessageDto.messageText,
             })
         );
     }
@@ -566,20 +563,20 @@ export class MessagingController {
     @ApiOperation({summary: 'Add a user to a group chat'})
     @ApiParam({name: 'groupChatId', description: 'Group chat ID'})
     @ApiBody({
-        description: 'User ID to add',
-        type: String,
+        description: 'User ID',
+        type: AddUserGroupChatDto,
     })
     @ApiResponse({
         status: 201,
         description: 'User added to group chat successfully',
     })
     async addUserToGroupChat(
-        @Body('userId') userId: string,
+        @Body() addUserGroupChatDto: AddUserGroupChatDto,
         @Param('groupChatId') groupChatId: string
     ): Promise<GroupChat> {
         return await lastValueFrom(
             this.communicationClient.send('AddUserToGroupChatCommand', {
-                userId,
+                userId: addUserGroupChatDto.userId,
                 groupChatId,
             })
         );

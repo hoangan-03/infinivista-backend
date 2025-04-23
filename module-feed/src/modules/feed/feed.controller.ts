@@ -8,12 +8,15 @@ import {Post as PostEntity} from '@/entities/local/post.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
-import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
+import {UserReactStory} from '@/entities/local/user-react-story.entity';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
+import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 import {FileUploadService} from '@/services/file-upload.service';
 
 import {CreatePostDto} from './dto/create-post.dto';
+import {CreateStoryDto} from './dto/create-story.dto';
 import {FileUploadDto, FileUploadResponseDto} from './dto/file-upload.dto';
+import {AttachmentType} from './enum/attachment-type.enum';
 import {FeedService} from './feed.service';
 
 @Controller()
@@ -104,7 +107,7 @@ export class FeedController {
     }
 
     @MessagePattern('CreateStoryNewsFeedCommand')
-    async createStory(payload: {newsFeedId: string; storyData: Partial<Story>}): Promise<Story> {
+    async createStory(payload: {newsFeedId: string; storyData: CreateStoryDto}): Promise<Story> {
         return this.feedService.createStory(payload.newsFeedId, payload.storyData);
     }
 
@@ -218,7 +221,83 @@ export class FeedController {
         newsFeedId: string;
         postData: CreatePostDto;
         files: Array<{url: string; fileName: string; mimeType: string}>;
+        attachmentType: AttachmentType[];
     }): Promise<PostEntity> {
-        return this.feedService.createPostAfterUploadingFiles(payload.newsFeedId, payload.postData, payload.files);
+        return this.feedService.createPostAfterUploadingFiles(
+            payload.newsFeedId,
+            payload.postData,
+            payload.files,
+            payload.attachmentType
+        );
+    }
+
+    // Story Comment endpoints
+    @MessagePattern('CreateStoryCommentCommand')
+    async createStoryComment(payload: {
+        storyId: string;
+        userId: string;
+        text: string;
+        attachmentUrl?: string;
+    }): Promise<Comment> {
+        return this.feedService.createStoryComment(
+            payload.storyId,
+            payload.userId,
+            payload.text,
+            payload.attachmentUrl
+        );
+    }
+
+    @MessagePattern('GetCommentsByStoryIdCommand')
+    async getCommentsByStoryId(payload: {
+        storyId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<Comment>> {
+        return this.feedService.getCommentsByStoryId(payload.storyId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('UpdateStoryCommentCommand')
+    async updateStoryComment(payload: {
+        commentId: string;
+        userId: string;
+        text: string;
+        attachmentUrl?: string;
+    }): Promise<Comment> {
+        return this.feedService.updateStoryComment(
+            payload.commentId,
+            payload.userId,
+            payload.text,
+            payload.attachmentUrl
+        );
+    }
+
+    @MessagePattern('DeleteStoryCommentCommand')
+    async deleteStoryComment(payload: {commentId: string; userId: string}): Promise<Comment> {
+        return this.feedService.deleteStoryComment(payload.commentId, payload.userId);
+    }
+
+    // Story Reaction endpoints
+    @MessagePattern('AddStoryReactionCommand')
+    async addStoryReaction(payload: {
+        userId: string;
+        storyId: string;
+        reactionType: ReactionType;
+    }): Promise<UserReactStory> {
+        return this.feedService.addStoryReaction(payload.userId, payload.storyId, payload.reactionType);
+    }
+
+    @MessagePattern('GetReactionsByStoryIdCommand')
+    async getReactionsByStoryId(payload: {storyId: string}): Promise<UserReactStory[]> {
+        return this.feedService.getReactionsByStoryId(payload.storyId);
+    }
+
+    @MessagePattern('RemoveStoryReactionCommand')
+    async removeStoryReaction(payload: {storyId: string; userId: string}): Promise<{success: boolean}> {
+        return this.feedService.removeStoryReaction(payload.storyId, payload.userId);
+    }
+
+    @MessagePattern('GetStoryReactionCountByTypeCommand')
+    async getStoryReactionCountByType(payload: {storyId: string}): Promise<Record<ReactionType, number>> {
+        return this.feedService.getStoryReactionCountByType(payload.storyId);
     }
 }

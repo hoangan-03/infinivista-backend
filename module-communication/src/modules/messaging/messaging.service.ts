@@ -658,11 +658,7 @@ export class MessagingService {
         return this.groupChatRepository.save(groupChat);
     }
 
-    async sendMessageToGroupChat(
-        userId: string,
-        groupChatId: string,
-        createMessageDto: CreateMessageDto
-    ): Promise<GroupChatMessage> {
+    async sendMessageToGroupChat(userId: string, groupChatId: string, textMessage: string): Promise<GroupChatMessage> {
         const user = await this.UserReferenceRepository.findOne({where: {id: userId}});
         const groupChat = await this.groupChatRepository.findOne({
             where: {group_chat_id: groupChatId},
@@ -682,7 +678,8 @@ export class MessagingService {
         const message = this.groupChatMessageRepository.create({
             sender: user,
             groupChat: groupChat,
-            textMessage: createMessageDto.messageText || 'Default message',
+            textMessage,
+            status: MessageStatus.SENT,
             sent_at: new Date(),
             last_modified_at: new Date(),
         });

@@ -1,4 +1,4 @@
-import {ApiProperty} from '@nestjs/swagger';
+import {ApiProperty, ApiPropertyOptional} from '@nestjs/swagger';
 import {Exclude} from 'class-transformer';
 import {IsEnum, IsOptional} from 'class-validator';
 
@@ -31,6 +31,19 @@ export class User extends BaseEntity {
         description: 'User username',
     })
     username: string;
+
+    @ApiPropertyOptional({
+        example: 'This is a sample biography.',
+        description: 'User biography',
+        required: false,
+    })
+    biography: string;
+
+    @ApiProperty({
+        description: 'User events',
+        required: false,
+    })
+    userEvent?: string[];
 
     @Exclude()
     password?: string;

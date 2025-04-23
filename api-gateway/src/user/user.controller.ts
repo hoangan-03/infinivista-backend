@@ -15,7 +15,16 @@ import {
 } from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import {FileInterceptor} from '@nestjs/platform-express';
-import {ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {
+    ApiBearerAuth,
+    ApiBody,
+    ApiConsumes,
+    ApiOperation,
+    ApiParam,
+    ApiQuery,
+    ApiResponse,
+    ApiTags,
+} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {UpdateUserDto} from '@/auth/dtos/update-user.dto';
@@ -209,6 +218,88 @@ export class UserController {
     async updateProfilePrivacy(@CurrentUser() user: User, @Body('privacy') privacy: ProfilePrivacy): Promise<User> {
         return await lastValueFrom(
             this.userClient.send<User>('UpdateProfilePrivacyUserCommand', {id: user.id, privacy})
+        );
+    }
+
+    @Get('biography/:id')
+    @ApiOperation({summary: 'Get user biography'})
+    @ApiParam({name: 'id', type: 'string', description: 'User ID'})
+    @ApiResponse({status: 200, description: 'Return user biography', type: User})
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - User not found with the provided ID',
+    })
+    async getBiography(@Param('id') userId: string): Promise<User> {
+        return await lastValueFrom(this.userClient.send<User>('GetBiographyUserCommand', {userId}));
+    }
+
+    @Post('biography')
+    @ApiOperation({summary: 'Update user biography'})
+    @ApiBody({
+        type: String,
+        description: 'Biography text',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Biography updated',
+        type: User,
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - User not found with the provided ID',
+    })
+    async updateBiography(@CurrentUser() user: User, @Body('biography') biography: string): Promise<User> {
+        return await lastValueFrom(
+            this.userClient.send<User>('UpdateBiographyUserCommand', {userId: user.id, biography})
+        );
+    }
+
+    @Get('userevent/:id')
+    @ApiOperation({summary: 'Get user events'})
+    @ApiParam({name: 'id', type: 'string', description: 'User ID'})
+    @ApiResponse({status: 200, description: 'Return user events', type: User})
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - User not found with the provided ID',
+    })
+    async getUserEvents(@Param('id') userId: string): Promise<User> {
+        return await lastValueFrom(this.userClient.send<User>('GetUserEventsUserCommand', {userId}));
+    }
+
+    @Post('userevent')
+    @ApiOperation({summary: 'Update user events'})
+    @ApiBody({
+        type: Array,
+        description: 'User events',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'User events updated',
+        type: User,
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - User not found with the provided ID',
+    })
+    async updateUserEvents(@CurrentUser() user: User, @Body('userEvent') userEvent: string[]): Promise<User> {
+        return await lastValueFrom(
+            this.userClient.send<User>('UpdateUserEventsUserCommand', {userId: user.id, userEvent})
         );
     }
 

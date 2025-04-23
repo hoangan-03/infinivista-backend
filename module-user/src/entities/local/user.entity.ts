@@ -25,6 +25,12 @@ export class User extends BaseEntity {
     @Column({type: 'varchar', length: 255, unique: true})
     username: string;
 
+    @Column({type: 'varchar', length: 1020000, nullable: true})
+    biography?: string;
+
+    @Column({type: 'text', array: true, nullable: true})
+    userEvent?: string[];
+
     @Column({type: 'varchar', length: 255, nullable: true})
     @Exclude({toPlainOnly: true})
     password?: string;

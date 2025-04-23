@@ -66,6 +66,26 @@ export class UserController {
         return this.userService.updateProfilePrivacy(payload.id, payload.privacy);
     }
 
+    @MessagePattern('GetBiographyUserCommand')
+    async getBiography(payload: {userId: string}): Promise<string> {
+        return this.userService.getUserBiography(payload.userId);
+    }
+
+    @MessagePattern('UpdateBiographyUserCommand')
+    async updateBiography(payload: {userId: string; biography: string}): Promise<User> {
+        return this.userService.updateBiography(payload.userId, payload.biography);
+    }
+
+    @MessagePattern('GetUserEventsUserCommand')
+    async getUserEvents(payload: {userId: string}): Promise<string[]> {
+        return this.userService.getUserEvents(payload.userId);
+    }
+
+    @MessagePattern('UpdateUserEventsUserCommand')
+    async updateUserEvents(payload: {userId: string; events: string[]}): Promise<User> {
+        return this.userService.addUserEvent(payload.userId, payload.events);
+    }
+
     @MessagePattern('GetFriendsUserCommand')
     async getFriends(payload: {
         userId: string;

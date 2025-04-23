@@ -13,7 +13,7 @@ export class PostAttachment {
     attachment_url: string;
 
     @Column({type: 'enum', enum: AttachmentType, nullable: false})
-    attachementType: AttachmentType;
+    attachmentType: AttachmentType;
 
     @ManyToOne(() => Post, (post) => post.postAttachments)
     post: Post;

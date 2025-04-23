@@ -38,6 +38,7 @@ import {Post as PostEntity} from '@/entities/feed-module/local/post.entity';
 import {Reel} from '@/entities/feed-module/local/reel.entity';
 import {Story} from '@/entities/feed-module/local/story.entity';
 import {UserReactPost} from '@/entities/feed-module/local/user-react-post.entity';
+import {UserReactStory} from '@/entities/feed-module/local/user-react-story.entity';
 import {AttachmentType} from '@/enums/feed-module/attachment-type.enum';
 import {ReactionType} from '@/enums/feed-module/reaction-type.enum';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
@@ -140,7 +141,12 @@ export class FeedController {
                 newsFeedId: {
                     type: 'string',
                     description: 'ID of the news feed',
-                    example: '3420f7a1-07eb-413f-aeba-75434cc99d6f',
+                    example: '3dbbc955-92e7-4fef-acb6-206b27fd1d50',
+                },
+                attachmentTypes: {
+                    type: 'string',
+                    description: 'Comma-separated list of attachment types',
+                    example: AttachmentType.IMAGE + ',' + AttachmentType.VIDEO,
                 },
             },
             required: ['content', 'newsFeedId'],
@@ -150,8 +156,14 @@ export class FeedController {
     async createPost(
         @Body('content') content: string,
         @Body('newsFeedId') newsFeedId: string,
+        @Body('attachmentTypes') attachmentTypesStr: string,
         @UploadedFiles() files: Array<Express.Multer.File>
     ): Promise<PostEntity> {
+        // Parse the comma-separated attachment types
+        const attachmentTypes: AttachmentType[] = attachmentTypesStr
+            ? attachmentTypesStr.split(',').map((type) => type.trim() as AttachmentType)
+            : [];
+
         const fileUploadResponses: Array<{url: string; fileName: string; mimeType: string}> = [];
 
         // Upload each file to Google Drive if files exist
@@ -172,10 +184,9 @@ export class FeedController {
             }
         }
 
-        // Create post data with content only - don't include attachments here
+        // Create post data with content only
         const postData: CreatePostDto = {
             content,
-            // Remove the postAttachments property from here
         };
 
         return await lastValueFrom(
@@ -183,6 +194,7 @@ export class FeedController {
                 newsFeedId,
                 postData,
                 files: fileUploadResponses,
+                attachmentType: attachmentTypes,
             })
         );
     }
@@ -209,10 +221,20 @@ export class FeedController {
         schema: {
             type: 'object',
             properties: {
-                duration: {type: 'number'},
+                newsFeedId: {
+                    type: 'string',
+                    description: 'ID of the news feed',
+                    example: '3dbbc955-92e7-4fef-acb6-206b27fd1d50',
+                },
+                duration: {type: 'number', example: 15},
                 file: {
                     type: 'string',
                     format: 'binary',
+                },
+                attachmentType: {
+                    type: 'string',
+                    enum: Object.values(AttachmentType),
+                    example: AttachmentType.IMAGE,
                 },
             },
         },
@@ -220,9 +242,9 @@ export class FeedController {
     @UseInterceptors(FileInterceptor('file'))
     @ApiOperation({summary: 'Create a story in a news feed'})
     async createStory(
-        @CurrentUser() user,
+        @Body('newsFeedId') newsFeedId: string,
         @Body('duration') duration: number,
-        @Body('attachmentType') attachementType: AttachmentType,
+        @Body('attachmentType') attachmentType: AttachmentType,
         @UploadedFile() file: Express.Multer.File
     ): Promise<Story> {
         // Upload file to Google Drive
@@ -232,12 +254,10 @@ export class FeedController {
         const storyData: CreateStoryDto = {
             story_url: storyUrl,
             duration: duration || 15, // Default to 15 seconds if not specified
-            attachmentType: attachementType,
+            attachmentType,
         };
 
-        return await lastValueFrom(
-            this.feedClient.send('CreateStoryNewsFeedCommand', {newsFeedId: user.id, storyData})
-        );
+        return await lastValueFrom(this.feedClient.send('CreateStoryNewsFeedCommand', {newsFeedId, storyData}));
     }
 
     @Get('news-feed/posts/:id')
@@ -326,7 +346,7 @@ export class FeedController {
         schema: {
             type: 'object',
             properties: {
-                text: {type: 'string'},
+                text: {type: 'string', example: 'This is a comment'},
                 file: {
                     type: 'string',
                     format: 'binary',
@@ -525,5 +545,198 @@ export class FeedController {
                 limit: paginationDto.limit,
             })
         );
+    }
+
+    // Story Comment endpoints
+    @Post('story/:storyId/comment')
+    @ApiOperation({summary: 'Add a comment to a story'})
+    @ApiParam({name: 'storyId', description: 'ID of the story'})
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                text: {type: 'string', example: 'This is a story comment'},
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+            required: ['text'],
+        },
+    })
+    @UseInterceptors(FileInterceptor('file'))
+    @ApiResponse({status: 201, description: 'Comment created successfully', type: Comment})
+    async createStoryComment(
+        @CurrentUser() user,
+        @Param('storyId') storyId: string,
+        @Body('text') text: string,
+        @UploadedFile() file?: Express.Multer.File
+    ): Promise<Comment> {
+        let attachmentUrl;
+
+        // Only upload if a file was provided
+        if (file) {
+            attachmentUrl = await this.fileUploadService.uploadFile(
+                file.buffer,
+                file.originalname,
+                file.mimetype,
+                'feed'
+            );
+        }
+
+        return await lastValueFrom(
+            this.feedClient.send('CreateStoryCommentCommand', {
+                storyId,
+                userId: user.id,
+                text,
+                attachmentUrl,
+            })
+        );
+    }
+
+    @Get('story/:storyId/comments')
+    @ApiOperation({summary: 'Get paginated comments for a story'})
+    @ApiParam({name: 'storyId', description: 'ID of the story'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({status: 200, description: 'List of comments', type: [Comment]})
+    @ApiResponse({status: 404, description: 'Story not found'})
+    async getCommentsByStoryId(
+        @Param('storyId') storyId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<Comment>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetCommentsByStoryIdCommand', {
+                storyId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
+    @Patch('story/comment/:commentId')
+    @ApiOperation({summary: 'Update a comment on a story'})
+    @ApiParam({name: 'commentId', description: 'ID of the comment'})
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                text: {type: 'string'},
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+            required: ['text'],
+        },
+    })
+    @UseInterceptors(FileInterceptor('file'))
+    @ApiResponse({status: 200, description: 'Comment updated successfully', type: Comment})
+    @ApiResponse({status: 404, description: 'Comment not found'})
+    async updateStoryComment(
+        @CurrentUser() user,
+        @Param('commentId') commentId: string,
+        @Body('text') text: string,
+        @UploadedFile() file?: Express.Multer.File
+    ): Promise<Comment> {
+        let attachmentUrl;
+
+        // Only upload if a file was provided
+        if (file) {
+            attachmentUrl = await this.fileUploadService.uploadFile(
+                file.buffer,
+                file.originalname,
+                file.mimetype,
+                'feed'
+            );
+        }
+
+        return await lastValueFrom(
+            this.feedClient.send('UpdateStoryCommentCommand', {
+                commentId,
+                userId: user.id,
+                text,
+                attachmentUrl,
+            })
+        );
+    }
+
+    @Delete('story/comment/:commentId')
+    @ApiOperation({summary: 'Delete a comment on a story'})
+    @ApiParam({name: 'commentId', description: 'ID of the comment'})
+    @ApiResponse({status: 200, description: 'Comment deleted successfully'})
+    @ApiResponse({status: 404, description: 'Comment not found'})
+    async deleteStoryComment(@CurrentUser() user, @Param('commentId') commentId: string): Promise<Comment> {
+        return await lastValueFrom(
+            this.feedClient.send('DeleteStoryCommentCommand', {
+                commentId,
+                userId: user.id,
+            })
+        );
+    }
+
+    // Story Reaction endpoints
+    @Post('story/:storyId/reaction')
+    @ApiOperation({summary: 'Add a reaction to a story'})
+    @ApiParam({name: 'storyId', description: 'ID of the story'})
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                reactionType: {
+                    type: 'string',
+                    enum: Object.values(ReactionType),
+                    example: ReactionType.LIKE,
+                },
+            },
+            required: ['reactionType'],
+        },
+    })
+    @ApiResponse({status: 201, description: 'Reaction added successfully'})
+    @ApiResponse({status: 404, description: 'Story not found'})
+    async addStoryReaction(
+        @CurrentUser() user,
+        @Param('storyId') storyId: string,
+        @Body('reactionType') reactionType: ReactionType
+    ): Promise<UserReactStory> {
+        return await lastValueFrom(
+            this.feedClient.send('AddStoryReactionCommand', {
+                userId: user.id,
+                storyId,
+                reactionType,
+            })
+        );
+    }
+
+    @Get('story/:storyId/reactions')
+    @ApiOperation({summary: 'Get all reactions for a story'})
+    @ApiParam({name: 'storyId', description: 'ID of the story'})
+    @ApiResponse({status: 200, description: 'List of reactions', type: [UserReactStory]})
+    async getReactionsByStoryId(@Param('storyId') storyId: string): Promise<UserReactStory[]> {
+        return await lastValueFrom(this.feedClient.send('GetReactionsByStoryIdCommand', {storyId}));
+    }
+
+    @Delete('story/:storyId/reaction')
+    @ApiOperation({summary: 'Remove your reaction from a story'})
+    @ApiParam({name: 'storyId', description: 'ID of the story'})
+    @ApiResponse({status: 200, description: 'Reaction removed successfully'})
+    @ApiResponse({status: 404, description: 'Reaction not found'})
+    async removeStoryReaction(@CurrentUser() user, @Param('storyId') storyId: string): Promise<{success: boolean}> {
+        return await lastValueFrom(
+            this.feedClient.send('RemoveStoryReactionCommand', {
+                storyId,
+                userId: user.id,
+            })
+        );
+    }
+
+    @Get('story/:storyId/reaction-counts')
+    @ApiOperation({summary: 'Get reaction counts by type for a story'})
+    @ApiParam({name: 'storyId', description: 'ID of the story'})
+    @ApiResponse({status: 200, description: 'Reaction counts by type', type: Object})
+    @ApiResponse({status: 404, description: 'Story not found'})
+    async getStoryReactionCountByType(@Param('storyId') storyId: string): Promise<Record<ReactionType, number>> {
+        return await lastValueFrom(this.feedClient.send('GetStoryReactionCountByTypeCommand', {storyId}));
     }
 }

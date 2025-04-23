@@ -4,6 +4,7 @@ import {BaseEntity} from '@/entities/base/base-class';
 
 import {UserReference} from '../external/user-ref.entity';
 import {Post} from './post.entity';
+import {Story} from './story.entity';
 
 @Entity()
 export class Comment extends BaseEntity {
@@ -21,4 +22,7 @@ export class Comment extends BaseEntity {
 
     @ManyToOne(() => Post, (post) => post.comments)
     post: Post;
+
+    @ManyToOne(() => Story, (story) => story.comments)
+    story: Story;
 }

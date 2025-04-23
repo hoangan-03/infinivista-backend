@@ -233,4 +233,48 @@ export class UserService {
 
         await this.userEventsService.triggerUserSync(userDataForSync);
     }
+
+    async getUserBiography(userId: string): Promise<string> {
+        const user = await this.getOne({where: {id: userId}});
+        if (!user) {
+            throw new NotFoundException(`There isn't any user with id: ${userId}`);
+        }
+        return user.biography || 'No biography available';
+    }
+
+    async updateBiography(userId: string, biography: string): Promise<User> {
+        const user = await this.getOne({where: {id: userId}});
+        if (!user) {
+            throw new NotFoundException(`There isn't any user with id: ${userId}`);
+        }
+        user.biography = biography;
+        return this.userRepository.save(user);
+    }
+
+    async getUserEvents(userId: string): Promise<string[]> {
+        const user = await this.getOne({where: {id: userId}});
+        if (!user) {
+            throw new NotFoundException(`There isn't any user with id: ${userId}`);
+        }
+        return user.userEvent || [];
+    }
+
+    async addUserEvent(userId: string, event: string[]): Promise<User> {
+        const user = await this.getOne({where: {id: userId}});
+        if (!user) {
+            throw new NotFoundException(`There isn't any user with id: ${userId}`);
+        }
+        user.userEvent = [...(user.userEvent || []), ...event];
+        return this.userRepository.save(user);
+    }
+
+    async removeUserEvent(userId: string, event: string[]): Promise<User> {
+        const user = await this.getOne({where: {id: userId}});
+        if (!user) {
+            throw new NotFoundException(`There isn't any user with id: ${userId}`);
+        }
+        user.userEvent = (user.userEvent || []).filter((e) => !event.includes(e));
+
+        return this.userRepository.save(user);
+    }
 }

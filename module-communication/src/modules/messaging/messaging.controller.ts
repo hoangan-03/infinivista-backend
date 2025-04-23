@@ -354,11 +354,11 @@ export class MessagingController {
      * Send a message to a group chat
      */
     @MessagePattern('SendMessageToGroupChatCommand')
-    async sendMessageToGroupChat(payload: {userId: string; groupChatId: string; createMessageDto: CreateMessageDto}) {
+    async sendMessageToGroupChat(payload: {userId: string; groupChatId: string; textMessage: string}) {
         return await this.messageService.sendMessageToGroupChat(
             payload.userId,
             payload.groupChatId,
-            payload.createMessageDto
+            payload.textMessage
         );
     }
 }

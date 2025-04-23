@@ -4,7 +4,7 @@ import {AttachmentType} from '@/modules/feed/enum/attachment-type.enum';
 
 export class PostAttachmentDto {
     attachment_url?: string;
-    attachementType: AttachmentType;
+    attachmentType: AttachmentType;
 }
 
 export class CreatePostDto {
