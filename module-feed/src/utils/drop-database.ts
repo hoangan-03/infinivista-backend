@@ -13,7 +13,7 @@ const dropDatabase = async () => {
 
     // Use localhost if running outside Docker
     const host = isRunningLocally ? 'localhost' : configService.get<string>('POSTGRES_HOST');
-    const port = isRunningLocally ? 5432 : configService.get<number>('POSTGRES_PORT');
+    const port = isRunningLocally ? 5435 : configService.get<number>('POSTGRES_PORT');
     const dbName = configService.get<string>('POSTGRES_DB');
     const username = configService.get<string>('POSTGRES_USER');
     const password = configService.get<string>('POSTGRES_PASSWORD');
