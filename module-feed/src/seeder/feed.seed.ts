@@ -59,6 +59,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
         logger.log('Clearing existing data...');
         await userReactPostRepo.query('TRUNCATE TABLE "user_react_post" CASCADE');
+        await userReactStoryRepo.query('TRUNCATE TABLE "user_react_story" CASCADE');
         await commentRepo.query('TRUNCATE TABLE "comment" CASCADE');
         await postAttachmentRepo.query('TRUNCATE TABLE "post_attachment" CASCADE');
         await postRepo.query('TRUNCATE TABLE "post" CASCADE');
@@ -279,6 +280,38 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         newsFeed,
                     });
                     await storyRepo.save(story);
+
+                    // Add 0-5 comments to each story
+                    const storyCommentCount = faker.number.int({min: 0, max: 5});
+                    for (let c = 0; c < storyCommentCount; c++) {
+                        const randomUser = faker.helpers.arrayElement(userRefs);
+                        const comment = commentRepo.create({
+                            text: faker.lorem.sentence(),
+                            attachment_url: faker.datatype.boolean({probability: 0.2}) ? faker.image.url() : undefined,
+                            user: randomUser,
+                            story: story, // Associate with story instead of post
+                        });
+                        await commentRepo.save(comment);
+                    }
+
+                    // Add reactions to stories (0-8 reactions per story)
+                    const storyReactionCount = faker.number.int({min: 0, max: 8});
+                    const reactionTypes = Object.values(ReactionType);
+
+                    // Select random users to react to this story
+                    const reactingUsers = faker.helpers.arrayElements(
+                        userRefs,
+                        Math.min(storyReactionCount, userRefs.length)
+                    );
+
+                    for (const user of reactingUsers) {
+                        const reaction = userReactStoryRepo.create({
+                            user_id: user.id,
+                            story_id: story.id,
+                            reactionType: faker.helpers.arrayElement(reactionTypes),
+                        });
+                        await userReactStoryRepo.save(reaction);
+                    }
                 }
             }
 
@@ -331,7 +364,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         const postCount = await postRepo.count();
         const commentCount = await commentRepo.count();
         const attachmentCount = await postAttachmentRepo.count();
-        const reactionCount = await userReactPostRepo.count();
+        const postReactionCount = await userReactPostRepo.count();
+        const storyReactionCount = await userReactStoryRepo.count();
         const storyCount = await storyRepo.count();
         const reelCount = await reelRepo.count();
         const livestreamCount = await liveStreamRepo.count();
@@ -343,7 +377,8 @@ Feed module seeding summary:
 - ${postCount} posts
 - ${commentCount} comments
 - ${attachmentCount} post attachments
-- ${reactionCount} reactions
+- ${postReactionCount} post reactions
+- ${storyReactionCount} story reactions
 - ${storyCount} stories
 - ${reelCount} reels
 - ${livestreamCount} livestreams

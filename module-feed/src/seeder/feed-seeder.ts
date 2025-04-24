@@ -5,13 +5,13 @@ import {seedFeedDatabase} from './feed.seed';
 const runSeed = async () => {
     try {
         await AppDataSource.initialize();
-        console.log('Connected to module-user database');
+        console.log('Connected to module-feed database');
 
         try {
             await seedFeedDatabase(AppDataSource);
-            console.log('Seeds user-module planted successfully');
+            console.log('Seeds feed-module planted successfully');
         } catch (seedError) {
-            console.error('Error during seeding user-module process:');
+            console.error('Error during seeding feed-module process:');
             console.error(seedError);
             process.exit(1);
         }
