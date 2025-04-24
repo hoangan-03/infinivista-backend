@@ -107,7 +107,7 @@ if (require.main === module) {
     dropDatabase()
         .then(() => process.exit(0))
         .catch((error) => {
-            console.error('Failed to drop feed database tables:', error);
+            console.error('Failed to drop feed database:', error);
             process.exit(1);
         });
 }

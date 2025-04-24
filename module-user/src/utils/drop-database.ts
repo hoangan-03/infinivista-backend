@@ -107,7 +107,7 @@ if (require.main === module) {
     dropDatabase()
         .then(() => process.exit(0))
         .catch((error) => {
-            console.error('Failed to drop database:', error);
+            console.error('Failed to drop user database:', error);
             process.exit(1);
         });
 }
