@@ -102,7 +102,7 @@ export class MessagingController {
     /**
      * Get all messages from a conversation with a friend
      */
-    @Get('/conversation/:targetId')
+    @Get('/messages/:targetId')
     @ApiOperation({summary: 'Get all messages from a conversation with a friend'})
     @ApiParam({name: 'targetId', description: 'Target user ID'})
     @ApiQuery({type: PaginationDto})
@@ -129,7 +129,7 @@ export class MessagingController {
     /**
      * Get all attachments from a conversation
      */
-    @Get('/conversation/:targetId/attachments')
+    @Get('/messages/:targetId/attachments')
     @ApiOperation({summary: 'Get all attachments from a conversation with a friend'})
     @ApiParam({name: 'targetId', description: 'Target user ID'})
     @ApiQuery({type: PaginationDto})
@@ -156,7 +156,7 @@ export class MessagingController {
     /**
      * Get all mixed messages and attachments from a conversation
      */
-    @Get('/conversation/:targetId/mixed')
+    @Get('/messages/:targetId/mixed')
     @ApiOperation({summary: 'Get all mixed messages and attachments from a conversation'})
     @ApiParam({name: 'targetId', description: 'Target user ID'})
     @ApiQuery({type: PaginationDto})

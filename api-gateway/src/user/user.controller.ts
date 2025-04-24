@@ -51,19 +51,9 @@ export class UserController {
         @Inject('USER_SERVICE') private userClient: ClientProxy,
         private fileUploadService: FileUploadService
     ) {}
-    @Get('test')
-    async test(): Promise<string> {
-        return await lastValueFrom(this.userClient.send<string>('TestUserCommand', {}));
-    }
-
-    @Get('test/:amount')
-    async testAmount(@Param('amount') amount: number): Promise<string> {
-        return await lastValueFrom(this.userClient.send<string>('TestAmountUserCommand', {amount}));
-    }
-
     @Get()
-    @ApiOperation({summary: 'Get all users'})
-    @ApiResponse({status: 200, description: 'Return all users', type: [User]})
+    @ApiOperation({summary: 'Get all users - For testing only'})
+    @ApiResponse({status: 200, description: 'Return all users (For testing only)', type: [User]})
     @ApiResponse({
         status: 401,
         description: 'Unauthorized - Invalid or missing token',
@@ -72,10 +62,10 @@ export class UserController {
         return await lastValueFrom(this.userClient.send<User[]>('GetAllUserCommand', {}));
     }
 
-    @Patch()
-    @ApiOperation({summary: 'Update user'})
+    @Patch('/profile')
+    @ApiOperation({summary: 'Update user profile information'})
     @ApiBody({type: UpdateUserDto})
-    @ApiResponse({status: 200, description: 'Return updated user', type: User})
+    @ApiResponse({status: 200, description: 'Return user after updated', type: User})
     @ApiResponse({
         status: 401,
         description: 'Unauthorized - Invalid credentials',
@@ -88,7 +78,7 @@ export class UserController {
         return await lastValueFrom(this.userClient.send<User>('UpdateUserCommand', {id: currentUser.id, user}));
     }
 
-    @Put('/profile-picture')
+    @Put('/profile/profile-picture')
     @ApiOperation({summary: 'Update user profile picture'})
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -120,7 +110,7 @@ export class UserController {
         );
     }
 
-    @Put('/cover-photo')
+    @Put('/profile/cover-photo')
     @ApiOperation({summary: 'Update user cover photo'})
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -180,7 +170,7 @@ export class UserController {
         );
     }
 
-    @Post('/security-questions')
+    @Post('/profile/security-questions')
     @ApiOperation({summary: 'Set user security questions'})
     @ApiBody({
         schema: {
@@ -213,93 +203,11 @@ export class UserController {
         );
     }
 
-    @Put('/profile-privacy')
+    @Put('/profile/profile-privacy')
     @ApiOperation({summary: 'Update profile privacy settings'})
     async updateProfilePrivacy(@CurrentUser() user: User, @Body('privacy') privacy: ProfilePrivacy): Promise<User> {
         return await lastValueFrom(
             this.userClient.send<User>('UpdateProfilePrivacyUserCommand', {id: user.id, privacy})
-        );
-    }
-
-    @Get('biography/:id')
-    @ApiOperation({summary: 'Get user biography'})
-    @ApiParam({name: 'id', type: 'string', description: 'User ID'})
-    @ApiResponse({status: 200, description: 'Return user biography', type: User})
-    @ApiResponse({
-        status: 401,
-        description: 'Unauthorized - Invalid or missing token',
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Not Found - User not found with the provided ID',
-    })
-    async getBiography(@Param('id') userId: string): Promise<User> {
-        return await lastValueFrom(this.userClient.send<User>('GetBiographyUserCommand', {userId}));
-    }
-
-    @Post('biography')
-    @ApiOperation({summary: 'Update user biography'})
-    @ApiBody({
-        type: String,
-        description: 'Biography text',
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Biography updated',
-        type: User,
-    })
-    @ApiResponse({
-        status: 401,
-        description: 'Unauthorized - Invalid or missing token',
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Not Found - User not found with the provided ID',
-    })
-    async updateBiography(@CurrentUser() user: User, @Body('biography') biography: string): Promise<User> {
-        return await lastValueFrom(
-            this.userClient.send<User>('UpdateBiographyUserCommand', {userId: user.id, biography})
-        );
-    }
-
-    @Get('userevent/:id')
-    @ApiOperation({summary: 'Get user events'})
-    @ApiParam({name: 'id', type: 'string', description: 'User ID'})
-    @ApiResponse({status: 200, description: 'Return user events', type: User})
-    @ApiResponse({
-        status: 401,
-        description: 'Unauthorized - Invalid or missing token',
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Not Found - User not found with the provided ID',
-    })
-    async getUserEvents(@Param('id') userId: string): Promise<User> {
-        return await lastValueFrom(this.userClient.send<User>('GetUserEventsUserCommand', {userId}));
-    }
-
-    @Post('userevent')
-    @ApiOperation({summary: 'Update user events'})
-    @ApiBody({
-        type: Array,
-        description: 'User events',
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'User events updated',
-        type: User,
-    })
-    @ApiResponse({
-        status: 401,
-        description: 'Unauthorized - Invalid or missing token',
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Not Found - User not found with the provided ID',
-    })
-    async updateUserEvents(@CurrentUser() user: User, @Body('userEvent') userEvent: string[]): Promise<User> {
-        return await lastValueFrom(
-            this.userClient.send<User>('UpdateUserEventsUserCommand', {userId: user.id, userEvent})
         );
     }
 

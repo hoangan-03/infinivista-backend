@@ -71,8 +71,8 @@ export class FeedController {
         return await lastValueFrom(this.feedClient.send('GetByIdNewsFeedCommand', {id: user.id}));
     }
 
-    @Get('news-feed/popular')
-    @ApiOperation({summary: 'Get popular news feed'})
+    @Get('news-feed/disover')
+    @ApiOperation({summary: 'Get news feed "Discover" - popular posts'})
     @ApiQuery({type: PaginationDto})
     async getPopularNewsFeed(
         @CurrentUser() user,
@@ -88,7 +88,7 @@ export class FeedController {
     }
 
     @Get('news-feed/friends')
-    @ApiOperation({summary: 'Get news feed of friends'})
+    @ApiOperation({summary: 'Get news feed "Friends" - posts from friends'})
     @ApiQuery({type: PaginationDto})
     async getFriendsNewsFeed(
         @CurrentUser() user,
@@ -103,8 +103,8 @@ export class FeedController {
         );
     }
 
-    @Get('news-feed/random')
-    @ApiOperation({summary: 'Get a random news feed'})
+    @Get('news-feed/foryou')
+    @ApiOperation({summary: 'Get a news feed "For you" - random posts'})
     @ApiQuery({type: PaginationDto})
     async getRandomNewsFeed(
         @CurrentUser() user,

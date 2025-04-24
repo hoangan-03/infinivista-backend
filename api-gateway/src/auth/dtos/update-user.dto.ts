@@ -34,6 +34,15 @@ export class UpdateUserDto {
     gender?: Gender;
 
     @ApiProperty({
+        example: 'This is a sample biography.',
+        description: 'User biography',
+        required: false,
+    })
+    @IsOptional()
+    @IsString()
+    biography?: string;
+
+    @ApiProperty({
         example: 'John',
         description: 'User first name',
         required: false,

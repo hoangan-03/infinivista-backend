@@ -32,7 +32,11 @@ async function bootstrap() {
 
     app.use(cookieParser(sessionSecret));
     app.use(compression());
-    app.enableCors();
+    app.enableCors({
+        origin: 'http://infinivista.com:3000',
+        allowedHeaders: ['Content-Type', 'Authorization', 'withCredentials'],
+        credentials: true,
+    });
 
     app.setGlobalPrefix('api');
 
