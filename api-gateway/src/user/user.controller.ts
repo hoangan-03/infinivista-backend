@@ -15,16 +15,7 @@ import {
 } from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
 import {FileInterceptor} from '@nestjs/platform-express';
-import {
-    ApiBearerAuth,
-    ApiBody,
-    ApiConsumes,
-    ApiOperation,
-    ApiParam,
-    ApiQuery,
-    ApiResponse,
-    ApiTags,
-} from '@nestjs/swagger';
+import {ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {UpdateUserDto} from '@/auth/dtos/update-user.dto';
@@ -42,7 +33,7 @@ import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
 import {FileUploadService} from '@/services/file-upload.service';
 
-@ApiTags('Users')
+@ApiTags('Users-Redundant')
 @ApiBearerAuth()
 @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
 @Controller('users')
@@ -52,6 +43,7 @@ export class UserController {
         private fileUploadService: FileUploadService
     ) {}
     @Get()
+    @ApiTags('Users')
     @ApiOperation({summary: 'Get all users - For testing only'})
     @ApiResponse({status: 200, description: 'Return all users (For testing only)', type: [User]})
     @ApiResponse({
@@ -63,6 +55,7 @@ export class UserController {
     }
 
     @Patch('/profile')
+    @ApiTags('Profile')
     @ApiOperation({summary: 'Update user profile information'})
     @ApiBody({type: UpdateUserDto})
     @ApiResponse({status: 200, description: 'Return user after updated', type: User})
@@ -79,6 +72,7 @@ export class UserController {
     }
 
     @Put('/profile/profile-picture')
+    @ApiTags('Profile')
     @ApiOperation({summary: 'Update user profile picture'})
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -111,6 +105,7 @@ export class UserController {
     }
 
     @Put('/profile/cover-photo')
+    @ApiTags('Profile')
     @ApiOperation({summary: 'Update user cover photo'})
     @ApiConsumes('multipart/form-data')
     @ApiBody({
@@ -136,6 +131,7 @@ export class UserController {
     }
 
     @Put('/settings')
+    @ApiTags('Profile')
     @ApiOperation({summary: 'Update user settings'})
     @ApiBody({
         schema: {
@@ -171,6 +167,7 @@ export class UserController {
     }
 
     @Post('/profile/security-questions')
+    @ApiTags('Profile')
     @ApiOperation({summary: 'Set user security questions'})
     @ApiBody({
         schema: {
@@ -204,6 +201,7 @@ export class UserController {
     }
 
     @Put('/profile/profile-privacy')
+    @ApiTags('Profile')
     @ApiOperation({summary: 'Update profile privacy settings'})
     async updateProfilePrivacy(@CurrentUser() user: User, @Body('privacy') privacy: ProfilePrivacy): Promise<User> {
         return await lastValueFrom(
@@ -212,6 +210,7 @@ export class UserController {
     }
 
     @Get('friend')
+    @ApiTags('Friend')
     @ApiOperation({summary: 'Get paginated list of friends for current user'})
     @ApiQuery({type: PaginationDto})
     @ApiResponse({
@@ -233,6 +232,7 @@ export class UserController {
     }
 
     @Get(':id')
+    @ApiTags('Profile')
     @ApiOperation({summary: 'Get user by ID'})
     @ApiResponse({status: 200, description: 'Return user by ID', type: User})
     @ApiResponse({
@@ -252,6 +252,7 @@ export class UserController {
     }
 
     @Get('friend/requests')
+    @ApiTags('Friend')
     @ApiResponse({
         status: 200,
         description: 'Return all friend requests',
@@ -277,6 +278,7 @@ export class UserController {
     }
 
     @Delete('friend/:friendId')
+    @ApiTags('Friend')
     @ApiResponse({
         status: 200,
         description: 'Friend removed successfully',
@@ -295,6 +297,7 @@ export class UserController {
     }
 
     @Post('friend/request/:recipientId')
+    @ApiTags('Friend')
     @ApiResponse({
         status: 201,
         description: 'Friend request sent',
@@ -312,6 +315,7 @@ export class UserController {
     }
 
     @Put('friend/request/:requestId')
+    @ApiTags('Friend')
     @ApiBody({
         schema: {
             type: 'object',
