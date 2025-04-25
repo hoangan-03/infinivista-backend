@@ -256,21 +256,6 @@ export class FeedController {
         return this.feedService.getCommentsByStoryId(payload.storyId, payload.page, payload.limit);
     }
 
-    @MessagePattern('UpdateStoryCommentCommand')
-    async updateStoryComment(payload: {
-        commentId: string;
-        userId: string;
-        text: string;
-        attachmentUrl?: string;
-    }): Promise<Comment> {
-        return this.feedService.updateStoryComment(
-            payload.commentId,
-            payload.userId,
-            payload.text,
-            payload.attachmentUrl
-        );
-    }
-
     @MessagePattern('DeleteStoryCommentCommand')
     async deleteStoryComment(payload: {commentId: string; userId: string}): Promise<Comment> {
         return this.feedService.deleteStoryComment(payload.commentId, payload.userId);

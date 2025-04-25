@@ -34,7 +34,6 @@ import {CreateStoryDto} from '@/dtos/feed-module/create-story.dto';
 import {LiveStreamHistory} from '@/entities/feed-module/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/feed-module/local/newsfeed.entity';
 import {Post as PostEntity} from '@/entities/feed-module/local/post.entity';
-import {Reel} from '@/entities/feed-module/local/reel.entity';
 import {Story} from '@/entities/feed-module/local/story.entity';
 import {AttachmentType} from '@/enums/feed-module/attachment-type.enum';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
@@ -113,6 +112,51 @@ export class NewsFeedController {
                 limit: paginationDto.limit,
             })
         );
+    }
+
+    @Post('/story')
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                newsFeedId: {
+                    type: 'string',
+                    description: 'ID of the news feed',
+                    example: '3dbbc955-92e7-4fef-acb6-206b27fd1d50',
+                },
+                duration: {type: 'number', example: 15},
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+                attachmentType: {
+                    type: 'string',
+                    enum: Object.values(AttachmentType),
+                    example: AttachmentType.IMAGE,
+                },
+            },
+        },
+    })
+    @UseInterceptors(FileInterceptor('file'))
+    @ApiOperation({summary: 'Create a story in a news feed'})
+    async createStory(
+        @Body('newsFeedId') newsFeedId: string,
+        @Body('duration') duration: number,
+        @Body('attachmentType') attachmentType: AttachmentType,
+        @UploadedFile() file: Express.Multer.File
+    ): Promise<Story> {
+        // Upload file to Google Drive
+        const storyUrl = await this.fileUploadService.uploadFile(file.buffer, file.originalname, file.mimetype, 'feed');
+
+        // Create story DTO
+        const storyData: CreateStoryDto = {
+            story_url: storyUrl,
+            duration: duration || 15, // Default to 15 seconds if not specified
+            attachmentType,
+        };
+
+        return await lastValueFrom(this.feedClient.send('CreateStoryNewsFeedCommand', {newsFeedId, storyData}));
     }
 
     @Post('/post')
@@ -195,7 +239,8 @@ export class NewsFeedController {
         );
     }
 
-    @Patch('/posts')
+    @Patch('/posts/:id')
+    @ApiParam({name: 'id', description: 'ID of the post'})
     @ApiOperation({summary: 'Update a post in a news feed'})
     @ApiBody({
         description: 'Post data',
@@ -205,55 +250,11 @@ export class NewsFeedController {
         return await lastValueFrom(this.feedClient.send('UpdatePostNewsFeedCommand', {postId, postData}));
     }
 
-    @Delete('/posts')
+    @Delete('/posts/:id')
+    @ApiParam({name: 'id', description: 'ID of the post'})
     @ApiOperation({summary: 'Delete a post in a news feed'})
     async deletePost(@Param('id') postId: string): Promise<void> {
         return await lastValueFrom(this.feedClient.send('DeletePostNewsFeedCommand', {postId}));
-    }
-
-    @Post('/story')
-    @ApiConsumes('multipart/form-data')
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                newsFeedId: {
-                    type: 'string',
-                    description: 'ID of the news feed',
-                    example: '3dbbc955-92e7-4fef-acb6-206b27fd1d50',
-                },
-                duration: {type: 'number', example: 15},
-                file: {
-                    type: 'string',
-                    format: 'binary',
-                },
-                attachmentType: {
-                    type: 'string',
-                    enum: Object.values(AttachmentType),
-                    example: AttachmentType.IMAGE,
-                },
-            },
-        },
-    })
-    @UseInterceptors(FileInterceptor('file'))
-    @ApiOperation({summary: 'Create a story in a news feed'})
-    async createStory(
-        @Body('newsFeedId') newsFeedId: string,
-        @Body('duration') duration: number,
-        @Body('attachmentType') attachmentType: AttachmentType,
-        @UploadedFile() file: Express.Multer.File
-    ): Promise<Story> {
-        // Upload file to Google Drive
-        const storyUrl = await this.fileUploadService.uploadFile(file.buffer, file.originalname, file.mimetype, 'feed');
-
-        // Create story DTO
-        const storyData: CreateStoryDto = {
-            story_url: storyUrl,
-            duration: duration || 15, // Default to 15 seconds if not specified
-            attachmentType,
-        };
-
-        return await lastValueFrom(this.feedClient.send('CreateStoryNewsFeedCommand', {newsFeedId, storyData}));
     }
 
     @Get('/posts/:id')
@@ -276,6 +277,16 @@ export class NewsFeedController {
     })
     async getStoryById(@Param('id') storyId: string): Promise<Story> {
         return await lastValueFrom(this.feedClient.send('GetAStoryByIdCommand', {storyId}));
+    }
+
+    @Delete('/stories/:id')
+    @ApiOperation({summary: 'Delete a story by ID'})
+    @ApiResponse({
+        status: 200,
+        description: 'The story has been successfully deleted.',
+    })
+    async deleteStory(@Param('id') storyId: string): Promise<void> {
+        return await lastValueFrom(this.feedClient.send('DeleteStoryCommentCommand', {storyId}));
     }
 
     @Get('/:id')
@@ -327,23 +338,6 @@ export class NewsFeedController {
         return await lastValueFrom(
             this.feedClient.send('GetLiveStreamsByNewsFeedIdCommand', {
                 newsFeedId,
-                page: paginationDto.page,
-                limit: paginationDto.limit,
-            })
-        );
-    }
-
-    @Get('/:userId/reels')
-    @ApiOperation({summary: 'Get paginated random reels of a user'})
-    @ApiParam({name: 'userId', description: 'ID of the user'})
-    @ApiQuery({type: PaginationDto})
-    async getRandomReelsByUserId(
-        @Param('userId') userId: string,
-        @Query() paginationDto: PaginationDto
-    ): Promise<PaginationResponseInterface<Reel>> {
-        return await lastValueFrom(
-            this.feedClient.send('GetRandomReelsByUserIdCommand', {
-                userId,
                 page: paginationDto.page,
                 limit: paginationDto.limit,
             })
