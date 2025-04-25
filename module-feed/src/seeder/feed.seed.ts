@@ -237,7 +237,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
         // First create content for regular users
         for (const newsFeed of newsFeeds.filter((feed) => feed !== adminNewsFeed)) {
-            // 5-15 posts per regular news feed
+            // 1-3 posts per regular news feed
             const postCount = faker.number.int({min: 1, max: 3});
             // Add safety check for owner
             const ownerName = newsFeed.owner?.id || 'unknown user';
@@ -379,24 +379,24 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         if (adminNewsFeed && adminUserRef) {
             logger.log('Creating enhanced content for admin user feed...');
 
-            // Create 15-25 high-quality posts for admin
-            const adminPostCount = faker.number.int({min: 15, max: 25});
+            // Create 25-35 high-quality posts for admin
+            const adminPostCount = faker.number.int({min: 25, max: 35});
             logger.log(`Creating ${adminPostCount} posts for admin feed`);
 
             for (let i = 0; i < adminPostCount; i++) {
                 // Create post with more topics for better discoverability
                 const post = postRepo.create({
-                    content: faker.lorem.paragraphs(faker.number.int({min: 2, max: 5})), // Longer posts
+                    content: faker.lorem.paragraphs(faker.number.int({min: 4, max: 8})),
                     newsFeed: adminNewsFeed,
                     topics:
                         topics.length > 0
-                            ? faker.helpers.arrayElements(topics, faker.number.int({min: 2, max: 5})) // More topics
+                            ? faker.helpers.arrayElements(topics, faker.number.int({min: 4, max: 6}))
                             : [],
                 });
                 await postRepo.save(post);
 
-                // 2-7 attachments per admin post (more media rich)
-                const attachmentCount = faker.number.int({min: 2, max: 7});
+                // 6-12 attachments per admin post (more media rich)
+                const attachmentCount = faker.number.int({min: 6, max: 12});
                 for (let j = 0; j < attachmentCount; j++) {
                     const attachment = postAttachmentRepo.create({
                         attachment_url: faker.image.url(),
@@ -406,8 +406,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     await postAttachmentRepo.save(attachment);
                 }
 
-                // 8-15 comments per admin post (more engagement)
-                const commentCount = faker.number.int({min: 8, max: 15});
+                // 14-35 comments per admin post (more engagement)
+                const commentCount = faker.number.int({min: 14, max: 35});
                 for (let k = 0; k < commentCount; k++) {
                     // Random user comments on admin's post
                     const randomUser = faker.helpers.arrayElement(userRefs);
@@ -420,8 +420,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     await commentRepo.save(comment);
                 }
 
-                // Add reactions to admin posts (15-30 reactions per post - very popular)
-                const reactionCount = faker.number.int({min: 15, max: 30});
+                // Add reactions to admin posts (150-1330 reactions per post - very popular)
+                const reactionCount = faker.number.int({min: 150, max: 1330});
                 const reactionTypes = Object.values(ReactionType);
 
                 // Get a diverse set of users reacting to admin's posts
@@ -437,8 +437,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 }
             }
 
-            // Create more stories for admin (3-6 stories)
-            const adminStoryCount = faker.number.int({min: 3, max: 6});
+            // Create more stories for admin (13-26 stories)
+            const adminStoryCount = faker.number.int({min: 13, max: 26});
             logger.log(`Creating ${adminStoryCount} stories for admin feed`);
 
             for (let i = 0; i < adminStoryCount; i++) {
@@ -463,8 +463,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     await commentRepo.save(comment);
                 }
 
-                // Add more reactions to admin stories (10-20 reactions per story)
-                const storyReactionCount = faker.number.int({min: 10, max: 20});
+                // Add more reactions to admin stories (20-50 reactions per story)
+                const storyReactionCount = faker.number.int({min: 20, max: 50});
                 const reactionTypes = Object.values(ReactionType);
 
                 // Select random users to react to admin's story
@@ -484,20 +484,20 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             }
 
             // Create more reels for admin (4-8 reels)
-            const adminReelCount = faker.number.int({min: 4, max: 8});
+            const adminReelCount = faker.number.int({min: 1, max: 1});
             logger.log(`Creating ${adminReelCount} reels for admin feed`);
 
             for (let i = 0; i < adminReelCount; i++) {
                 const reel = reelRepo.create({
                     reel_url: faker.internet.url(),
-                    duration: faker.number.int({min: 20, max: 60}), // seconds (slightly longer)
+                    duration: faker.number.int({min: 20, max: 60}),
                     newsFeed: adminNewsFeed,
                 });
                 await reelRepo.save(reel);
             }
 
             // Create livestream history for admin (2-4 streams)
-            const adminLivestreamCount = faker.number.int({min: 2, max: 4});
+            const adminLivestreamCount = faker.number.int({min: 1, max: 1});
             logger.log(`Creating ${adminLivestreamCount} livestreams for admin feed`);
 
             for (let i = 0; i < adminLivestreamCount; i++) {
@@ -510,7 +510,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     stream_url: faker.internet.url(),
                     start_time: startDate,
                     end_time: endDate,
-                    view_count: faker.number.int({min: 500, max: 50000}), // Higher view counts
+                    view_count: faker.number.int({min: 50000, max: 5000000}), // Higher view counts
                     newsFeed: adminNewsFeed,
                 });
                 await liveStreamRepo.save(livestream);
