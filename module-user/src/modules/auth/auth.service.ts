@@ -67,7 +67,7 @@ export class AuthService {
         try {
             this.logger.debug(`Verifying JWT payload: ${JSON.stringify(payload)}`);
 
-            const user = await this.userService.getProfile({where: {id: userId}});
+            const user = await this.userService.getOne({where: {id: userId}});
 
             this.logger.log(`JWT verified for user: ${userId}, found: ${user.id} (${user.username})`);
 
@@ -81,19 +81,24 @@ export class AuthService {
     async validateUser(identifier: string, password: string): Promise<User> {
         let user: User;
 
+        this.logger.debug(`Validating user with identifieraea: ${identifier}`);
+
         try {
+            this.logger.debug(`Attempting to find user by email: ${identifier}`);
             try {
-                user = await this.userService.getProfile({where: {email: identifier}});
+                user = await this.userService.getOne({where: {email: identifier}});
+                this.logger.debug(`Attempting to find user by emaiel: ${identifier}`);
             } catch (error) {
-                user = await this.userService.getProfile({where: {username: identifier}});
+                user = await this.userService.getOne({where: {username: identifier}});
             }
 
             if (!(await checkPassword(password, user.password || ''))) {
-                throw new UnauthorizedException(`Invalid credentials`);
+                throw new UnauthorizedException(`Invalid credentials password`);
             }
             return user;
-        } catch (err) {
-            throw new UnauthorizedException(`Invalid credentials`);
+        } catch (err: any) {
+            Logger.error(`User validation failed for identifier: ${identifier}`, err);
+            throw new UnauthorizedException(`Invalid credentials unknown`, err.message);
         }
     }
     getUserProfile(user: User) {
@@ -116,7 +121,7 @@ export class AuthService {
         const {email, firstName, lastName} = userData;
 
         try {
-            const user = await this.userService.getProfile({
+            const user = await this.userService.getOne({
                 where: {username: email},
             });
             return user;
@@ -148,7 +153,7 @@ export class AuthService {
         const {email, firstName, lastName} = userData;
 
         try {
-            const user = await this.userService.getProfile({
+            const user = await this.userService.getOne({
                 where: {username: email},
             });
             return user;

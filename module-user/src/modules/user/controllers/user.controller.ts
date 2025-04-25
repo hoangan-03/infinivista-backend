@@ -31,7 +31,7 @@ export class UserController {
 
     @MessagePattern('GetByIdUserCommand')
     async getById(payload: {id: string}): Promise<User> {
-        return this.userService.getProfile({where: {id: payload.id}});
+        return this.userService.getUserProfile({where: {id: payload.id}});
     }
 
     @MessagePattern('GetSocialLinksUserCommand')
@@ -85,6 +85,11 @@ export class UserController {
     @MessagePattern('UpdateBiographyUserCommand')
     async updateBiography(payload: {userId: string; biography: string}): Promise<User> {
         return this.userService.updateBiography(payload.userId, payload.biography);
+    }
+
+    @MessagePattern('UpdateSocialLinksUserCommand')
+    async updateSocialLinks(payload: {userId: string; socialLinks: SocialLink[]}): Promise<SocialLink[]> {
+        return this.userService.updateSocialLinks(payload.userId, payload.socialLinks);
     }
 
     @MessagePattern('UpdateUserEventsUserCommand')

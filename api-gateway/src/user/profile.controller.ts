@@ -80,6 +80,69 @@ export class ProfileController {
         return await lastValueFrom(this.userClient.send<string>('GetBiographyUserCommand', {userId: currentUser.id}));
     }
 
+    @Put('social-links')
+    @ApiOperation({summary: 'Update user social links'})
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                socialLinks: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            id: {type: 'string'},
+                            type: {type: 'string', enum: Object.values(SocialLink)},
+                            link: {type: 'string'},
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({status: 200, description: 'Return user social links', type: [SocialLink]})
+    async updateSocialLinks(
+        @CurrentUser() currentUser: User,
+        @Body('socialLinks') socialLinks: {id: string; type: SocialLink; link: string}[]
+    ): Promise<SocialLink[]> {
+        return await lastValueFrom(
+            this.userClient.send<SocialLink[]>('UpdateSocialLinksUserCommand', {userId: currentUser.id, socialLinks})
+        );
+    }
+
+    @Put('biography')
+    @ApiOperation({summary: 'Update user biography'})
+    @ApiBody({schema: {type: 'object', properties: {biography: {type: 'string', example: 'New biography'}}}})
+    @ApiResponse({status: 200, description: 'Return user after updated', type: User})
+    @ApiResponse({status: 401, description: 'Unauthorized - Invalid credentials'})
+    async updateBiography(@CurrentUser() currentUser: User, @Body('biography') biography: string): Promise<User> {
+        return await lastValueFrom(
+            this.userClient.send<User>('UpdateBiographyUserCommand', {userId: currentUser.id, biography})
+        );
+    }
+
+    @Put('user-events')
+    @ApiOperation({summary: 'Update user events'})
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                events: {
+                    type: 'array',
+                    items: {type: 'string'},
+                },
+            },
+        },
+    })
+    @ApiResponse({status: 200, description: 'Return user after updated', type: User})
+    @ApiResponse({status: 401, description: 'Unauthorized - Invalid credentials'})
+    @ApiResponse({status: 404, description: 'Not Found - User not found with the provided ID'})
+    async updateUserEvents(@CurrentUser() currentUser: User, @Body('events') events: string[]): Promise<User> {
+        return await lastValueFrom(
+            this.userClient.send<User>('UpdateUserEventsUserCommand', {userId: currentUser.id, events})
+        );
+    }
+
     @Put('profile-picture')
     @ApiOperation({summary: 'Update user profile picture'})
     @ApiConsumes('multipart/form-data')
