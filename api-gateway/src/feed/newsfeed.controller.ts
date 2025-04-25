@@ -66,7 +66,7 @@ export class NewsFeedController {
         return await lastValueFrom(this.feedClient.send('GetByIdNewsFeedCommand', {id: user.id}));
     }
 
-    @Get('/disover')
+    @Get('/discover') // Fixed typo from 'disover' to 'discover'
     @ApiOperation({summary: 'Get news feed "Discover" - popular posts'})
     @ApiQuery({type: PaginationDto})
     async getPopularNewsFeed(

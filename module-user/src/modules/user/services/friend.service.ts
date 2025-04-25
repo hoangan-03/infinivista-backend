@@ -16,9 +16,7 @@ export class FriendService {
         @InjectRepository(Friend)
         private readonly friendRepository: Repository<Friend>,
         @InjectRepository(FriendRequest)
-        private readonly friendRequestRepository: Repository<FriendRequest>,
-        @InjectRepository(User)
-        private readonly userRepository: Repository<User>
+        private readonly friendRequestRepository: Repository<FriendRequest>
     ) {}
 
     async sendFriendRequest(senderId: string, recipientId: string): Promise<FriendRequest> {

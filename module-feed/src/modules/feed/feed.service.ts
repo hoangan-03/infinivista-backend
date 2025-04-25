@@ -49,23 +49,59 @@ export class FeedService {
         private readonly reelRepository: Repository<Reel>
     ) {}
 
-    async createNewsFeed(userId: string, data: Partial<NewsFeed>): Promise<NewsFeed> {
-        const userRef = await this.userReferenceService.findById(userId);
-
+    /**
+     * Ensures a user has a news feed, creating one if it doesn't exist
+     * @param userId The user ID to check
+     * @returns The user's news feed (either existing or newly created)
+     */
+    private async ensureUserHasNewsFeed(userId: string): Promise<NewsFeed> {
+        // Directly query the repository instead of calling getNewsFeedByUserId
         const existingFeed = await this.newsFeedRepository.findOne({
             where: {owner: {id: userId}},
+            relations: ['posts', 'stories', 'liveStreams', 'reel', 'owner'],
         });
 
+        // If feed exists, return it
         if (existingFeed) {
-            throw new BadRequestException('User already has a news feed');
+            return existingFeed;
+        }
+
+        // No feed found - create a new one
+        this.logger.log(`User ${userId} doesn't have a newsfeed yet. Creating one automatically.`);
+        const userRef = await this.userReferenceService.findById(userId);
+
+        if (!userRef) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
         }
 
         const newsFeed = this.newsFeedRepository.create({
-            ...data,
+            description: `${userRef.firstName || userRef.username}'s feed`,
+            visibility: visibilityEnum.PUBLIC,
             owner: userRef,
         });
 
         return this.newsFeedRepository.save(newsFeed);
+    }
+
+    async createNewsFeed(userId: string, data: Partial<NewsFeed>): Promise<NewsFeed> {
+        const userRef = await this.userReferenceService.findById(userId);
+
+        try {
+            // Attempt to get existing feed, this will throw if not found
+            await this.getNewsFeedByUserId(userId);
+            throw new BadRequestException('User already has a news feed');
+        } catch (error) {
+            // Only proceed if the error is that the newsfeed wasn't found
+            if (error instanceof NotFoundException) {
+                const newsFeed = this.newsFeedRepository.create({
+                    ...data,
+                    owner: userRef,
+                });
+
+                return this.newsFeedRepository.save(newsFeed);
+            }
+            throw error; // Re-throw if it's a different error
+        }
     }
 
     async getAllNewsFeeds(): Promise<NewsFeed[]> {
@@ -105,7 +141,8 @@ export class FeedService {
     }
 
     async getPopularPostNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
-        const userFeed = await this.getNewsFeedByUserId(userId);
+        // Ensure the user has a newsfeed before proceeding
+        const userFeed = await this.ensureUserHasNewsFeed(userId);
 
         // Get posts with their reactions and comments
         const [posts, total] = await this.postRepository.findAndCount({
@@ -180,6 +217,9 @@ export class FeedService {
     }
 
     async getFriendsPostNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
+        // Ensure the user has a newsfeed before proceeding
+        await this.ensureUserHasNewsFeed(userId);
+
         const friendIds = await this.userReferenceService.getFriends(userId || '');
         const friendPosts = await this.postRepository.find({
             where: {newsFeed: {owner: {id: In(friendIds.map((friend) => friend.id))}}},
@@ -219,6 +259,9 @@ export class FeedService {
     }
 
     async getRandomNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Post>> {
+        // Ensure the user has a newsfeed before proceeding
+        await this.ensureUserHasNewsFeed(userId);
+
         // Get all public posts with their topics
         const publicPosts = await this.postRepository.find({
             where: {newsFeed: {visibility: visibilityEnum.PUBLIC || visibilityEnum.FRIENDS_ONLY}},
@@ -387,14 +430,27 @@ export class FeedService {
     }
 
     async getNewsFeedByUserId(userId: string): Promise<NewsFeed> {
+        // Don't call ensureUserHasNewsFeed here to avoid recursion
+
         const newsFeed = await this.newsFeedRepository.findOne({
             where: {owner: {id: userId}},
             relations: ['posts', 'stories', 'liveStreams', 'reel', 'owner'],
         });
+
         if (!newsFeed) {
-            throw new NotFoundException(`News feed of user ${userId} not found`);
-        }
-        return newsFeed;
+            const userRef = await this.userReferenceService.findById(userId);
+
+            if (!userRef) {
+                throw new NotFoundException(`User with ID ${userId} not found`);
+            }
+            const createdNewsFeed = this.newsFeedRepository.create({
+                description: `New feed`,
+                visibility: visibilityEnum.PUBLIC,
+                owner: userRef,
+            });
+            await this.newsFeedRepository.save(createdNewsFeed);
+            return createdNewsFeed;
+        } else return newsFeed;
     }
 
     async getNewsFeedById(newsFeedId: string): Promise<NewsFeed> {
@@ -636,6 +692,9 @@ Return only the topic IDs as a JSON array with no explanations. For example:
     // ---------- COMMENT METHODS ----------
 
     async createComment(postId: string, userId: string, text: string, attachmentUrl?: string): Promise<Comment> {
+        // Ensure the user has a newsfeed before proceeding
+        await this.ensureUserHasNewsFeed(userId);
+
         const post = await this.getPostById(postId);
         const user = await this.userReferenceService.findById(userId);
 
@@ -722,6 +781,9 @@ Return only the topic IDs as a JSON array with no explanations. For example:
     // ---------- STORY COMMENT METHODS ----------
 
     async createStoryComment(storyId: string, userId: string, text: string, attachmentUrl?: string): Promise<Comment> {
+        // Ensure the user has a newsfeed before proceeding
+        await this.ensureUserHasNewsFeed(userId);
+
         const story = await this.getStoryById(storyId);
         const user = await this.userReferenceService.findById(userId);
 
@@ -814,6 +876,9 @@ Return only the topic IDs as a JSON array with no explanations. For example:
     // ---------- REACTION METHODS ----------
 
     async addReaction(userId: string, postId: string, reactionType: ReactionType): Promise<UserReactPost> {
+        // Ensure the user has a newsfeed before proceeding
+        await this.ensureUserHasNewsFeed(userId);
+
         const existingReaction = await this.userReactPostRepository.findOne({
             where: {
                 post_id: postId,
@@ -896,6 +961,9 @@ Return only the topic IDs as a JSON array with no explanations. For example:
     // ---------- STORY REACTION METHODS ----------
 
     async addStoryReaction(userId: string, storyId: string, reactionType: ReactionType): Promise<UserReactStory> {
+        // Ensure the user has a newsfeed before proceeding
+        await this.ensureUserHasNewsFeed(userId);
+
         const story = await this.getStoryById(storyId);
         if (!story) {
             throw new NotFoundException(`Story with ID ${storyId} not found`);
@@ -981,8 +1049,8 @@ Return only the topic IDs as a JSON array with no explanations. For example:
     }
 
     async getRandomReelsByUserId(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Reel>> {
-        // Get all reels for the user's news feeds
-        const userFeed = await this.getNewsFeedByUserId(userId);
+        // Ensure the user has a newsfeed before proceeding
+        const userFeed = await this.ensureUserHasNewsFeed(userId);
 
         const [reels, total] = await this.reelRepository.findAndCount({
             where: {newsFeed: {id: userFeed.id}},
