@@ -97,9 +97,18 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
         logger.log(`Retrieved ${users.length} users from user module database`);
 
+        // Find admin user
+        const adminUser = users.find((user) => user.username === 'admin' || user.email === 'admin@example.com');
+        if (!adminUser) {
+            logger.warn('Admin user not found in the database');
+        } else {
+            logger.log(`Found admin user: ${adminUser.username} (${adminUser.id})`);
+        }
+
         // Create user references with exact IDs and data from user module
         logger.log('Creating user references with actual user data...');
         const userRefs: UserReference[] = [];
+        let adminUserRef: UserReference | undefined;
 
         for (const userData of users) {
             const userRef = userReferenceRepo.create({
@@ -107,12 +116,16 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 email: userData.email,
                 username: userData.username,
                 firstName: userData.firstName,
-
                 lastName: userData.lastName,
                 profileImageUrl: userData.profileImageUrl,
             });
             await userReferenceRepo.save(userRef);
             userRefs.push(userRef);
+
+            // Keep reference to admin user
+            if (userData.username === 'admin' || userData.email === 'admin@example.com') {
+                adminUserRef = userRef;
+            }
 
             logger.log(`Created user reference for ${userData.username} with ID ${userData.id}`);
         }
@@ -166,13 +179,20 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         // Create news feeds for each user (one per user)
         logger.log('Creating news feeds...');
         const newsFeeds: NewsFeed[] = [];
+        let adminNewsFeed: NewsFeed | undefined;
 
         for (const userRef of userRefs) {
             try {
                 // First, create the news feed without many-to-many relationships
                 const newsFeed = newsFeedRepo.create({
-                    description: `Personal feed for ${userRef.firstName || userRef.username}`,
-                    visibility: faker.helpers.arrayElement(Object.values(visibilityEnum)),
+                    description:
+                        userRef === adminUserRef
+                            ? 'Official Infinivista Admin Feed'
+                            : `Personal feed for ${userRef.firstName || userRef.username}`,
+                    visibility:
+                        userRef === adminUserRef
+                            ? visibilityEnum.PUBLIC // Admin feed is always public
+                            : faker.helpers.arrayElement(Object.values(visibilityEnum)),
                 });
 
                 // Need to save first to get an ID
@@ -196,7 +216,14 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                 if (refreshedFeed) {
                     newsFeeds.push(refreshedFeed);
-                    logger.log(`Created news feed for ${userRef.username}`);
+
+                    // Store admin's feed separately
+                    if (userRef === adminUserRef) {
+                        adminNewsFeed = refreshedFeed;
+                        logger.log(`Created admin news feed for ${userRef.username}`);
+                    } else {
+                        logger.log(`Created news feed for ${userRef.username}`);
+                    }
                 }
             } catch (error: any) {
                 logger.error(`Error creating news feed for user ${userRef.username}: ${error.message}`);
@@ -205,14 +232,15 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             }
         }
 
-        // Create posts, comments, attachments, and reactions (more per feed)
+        // Create posts, comments, attachments, and reactions for regular users
         logger.log('Creating posts with attachments and comments...');
 
-        for (const newsFeed of newsFeeds) {
-            // 5-15 posts per news feed
-            const postCount = faker.number.int({min: 5, max: 15});
+        // First create content for regular users
+        for (const newsFeed of newsFeeds.filter((feed) => feed !== adminNewsFeed)) {
+            // 5-15 posts per regular news feed
+            const postCount = faker.number.int({min: 1, max: 3});
             // Add safety check for owner
-            const ownerName = newsFeed.owner?.username || 'unknown user';
+            const ownerName = newsFeed.owner?.id || 'unknown user';
             logger.log(`Creating ${postCount} posts for feed of ${ownerName}`);
 
             for (let i = 0; i < postCount; i++) {
@@ -345,19 +373,148 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     await liveStreamRepo.save(livestream);
                 }
             }
+        }
 
-            // Create advertisement (20% chance)
-            // if (faker.datatype.boolean({probability: 0.2})) {
-            //     const startDate = faker.date.recent({days: 5});
-            //     const endDate = new Date(startDate.getTime() + 86400000 * faker.number.int({min: 1, max: 30})); // 1-30 days
+        // Create special enhanced content for admin user
+        if (adminNewsFeed && adminUserRef) {
+            logger.log('Creating enhanced content for admin user feed...');
 
-            //     const advertisement = advertisementRepo.create({
-            //         start_time: startDate,
-            //         end_time: endDate,
-            //         newsFeed,
-            //     });
-            //     await advertisementRepo.save(advertisement);
-            // }
+            // Create 15-25 high-quality posts for admin
+            const adminPostCount = faker.number.int({min: 15, max: 25});
+            logger.log(`Creating ${adminPostCount} posts for admin feed`);
+
+            for (let i = 0; i < adminPostCount; i++) {
+                // Create post with more topics for better discoverability
+                const post = postRepo.create({
+                    content: faker.lorem.paragraphs(faker.number.int({min: 2, max: 5})), // Longer posts
+                    newsFeed: adminNewsFeed,
+                    topics:
+                        topics.length > 0
+                            ? faker.helpers.arrayElements(topics, faker.number.int({min: 2, max: 5})) // More topics
+                            : [],
+                });
+                await postRepo.save(post);
+
+                // 2-7 attachments per admin post (more media rich)
+                const attachmentCount = faker.number.int({min: 2, max: 7});
+                for (let j = 0; j < attachmentCount; j++) {
+                    const attachment = postAttachmentRepo.create({
+                        attachment_url: faker.image.url(),
+                        attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                        post,
+                    });
+                    await postAttachmentRepo.save(attachment);
+                }
+
+                // 8-15 comments per admin post (more engagement)
+                const commentCount = faker.number.int({min: 8, max: 15});
+                for (let k = 0; k < commentCount; k++) {
+                    // Random user comments on admin's post
+                    const randomUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: 0.4}) ? faker.image.url() : undefined,
+                        user: randomUser,
+                        post,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                // Add reactions to admin posts (15-30 reactions per post - very popular)
+                const reactionCount = faker.number.int({min: 15, max: 30});
+                const reactionTypes = Object.values(ReactionType);
+
+                // Get a diverse set of users reacting to admin's posts
+                const reactingUsers = faker.helpers.arrayElements(userRefs, Math.min(reactionCount, userRefs.length));
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactPostRepo.create({
+                        user_id: user.id,
+                        post_id: post.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactPostRepo.save(reaction);
+                }
+            }
+
+            // Create more stories for admin (3-6 stories)
+            const adminStoryCount = faker.number.int({min: 3, max: 6});
+            logger.log(`Creating ${adminStoryCount} stories for admin feed`);
+
+            for (let i = 0; i < adminStoryCount; i++) {
+                const story = storyRepo.create({
+                    story_url: faker.image.url(),
+                    duration: faker.number.int({min: 10, max: 30}), // seconds
+                    attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                    newsFeed: adminNewsFeed,
+                });
+                await storyRepo.save(story);
+
+                // Add 5-10 comments to each admin story
+                const storyCommentCount = faker.number.int({min: 5, max: 10});
+                for (let c = 0; c < storyCommentCount; c++) {
+                    const randomUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: 0.3}) ? faker.image.url() : undefined,
+                        user: randomUser,
+                        story: story,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                // Add more reactions to admin stories (10-20 reactions per story)
+                const storyReactionCount = faker.number.int({min: 10, max: 20});
+                const reactionTypes = Object.values(ReactionType);
+
+                // Select random users to react to admin's story
+                const reactingUsers = faker.helpers.arrayElements(
+                    userRefs,
+                    Math.min(storyReactionCount, userRefs.length)
+                );
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactStoryRepo.create({
+                        user_id: user.id,
+                        story_id: story.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactStoryRepo.save(reaction);
+                }
+            }
+
+            // Create more reels for admin (4-8 reels)
+            const adminReelCount = faker.number.int({min: 4, max: 8});
+            logger.log(`Creating ${adminReelCount} reels for admin feed`);
+
+            for (let i = 0; i < adminReelCount; i++) {
+                const reel = reelRepo.create({
+                    reel_url: faker.internet.url(),
+                    duration: faker.number.int({min: 20, max: 60}), // seconds (slightly longer)
+                    newsFeed: adminNewsFeed,
+                });
+                await reelRepo.save(reel);
+            }
+
+            // Create livestream history for admin (2-4 streams)
+            const adminLivestreamCount = faker.number.int({min: 2, max: 4});
+            logger.log(`Creating ${adminLivestreamCount} livestreams for admin feed`);
+
+            for (let i = 0; i < adminLivestreamCount; i++) {
+                // Create a mix of recent and slightly older livestreams
+                const startDate = faker.date.recent({days: 45});
+                const streamDuration = faker.number.int({min: 1800000, max: 10800000}); // 30-180 minutes
+                const endDate = new Date(startDate.getTime() + streamDuration);
+
+                const livestream = liveStreamRepo.create({
+                    stream_url: faker.internet.url(),
+                    start_time: startDate,
+                    end_time: endDate,
+                    view_count: faker.number.int({min: 500, max: 50000}), // Higher view counts
+                    newsFeed: adminNewsFeed,
+                });
+                await liveStreamRepo.save(livestream);
+            }
         }
 
         // Log some stats about what was created
