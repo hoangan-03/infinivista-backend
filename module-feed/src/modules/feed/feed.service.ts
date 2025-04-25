@@ -84,10 +84,6 @@ export class FeedService {
             order: {createdAt: 'DESC'},
         });
 
-        if (!userPosts.length && page === 1) {
-            throw new NotFoundException('No posts found for this user');
-        }
-
         // Map posts to include only topic name and description
         const mappedPosts = userPosts.map((post) => ({
             ...post,
@@ -119,10 +115,6 @@ export class FeedService {
             take: undefined,
             order: {createdAt: 'DESC'},
         });
-
-        if (!posts.length && page === 1) {
-            throw new NotFoundException('No posts found for this user');
-        }
 
         // Get all reactions for these posts
         const postIds = posts.map((post) => post.id);
@@ -194,10 +186,6 @@ export class FeedService {
             relations: ['newsFeed.owner', 'topics'],
             // Removed the ordering to apply random sorting after fetching
         });
-
-        if (!friendPosts.length && page === 1) {
-            throw new NotFoundException('Your friend has no posts yet');
-        }
 
         // Randomly shuffle the posts
         for (let i = friendPosts.length - 1; i > 0; i--) {

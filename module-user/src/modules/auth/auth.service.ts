@@ -81,24 +81,19 @@ export class AuthService {
     async validateUser(identifier: string, password: string): Promise<User> {
         let user: User;
 
-        this.logger.debug(`Validating user with identifieraea: ${identifier}`);
-
         try {
-            this.logger.debug(`Attempting to find user by email: ${identifier}`);
             try {
                 user = await this.userService.getOne({where: {email: identifier}});
-                this.logger.debug(`Attempting to find user by emaiel: ${identifier}`);
             } catch (error) {
                 user = await this.userService.getOne({where: {username: identifier}});
             }
 
             if (!(await checkPassword(password, user.password || ''))) {
-                throw new UnauthorizedException(`Invalid credentials password`);
+                throw new UnauthorizedException(`Invalid credentials`);
             }
             return user;
         } catch (err: any) {
-            Logger.error(`User validation failed for identifier: ${identifier}`, err);
-            throw new UnauthorizedException(`Invalid credentials unknown`, err.message);
+            throw new UnauthorizedException(`Invalid credentials`);
         }
     }
     getUserProfile(user: User) {
