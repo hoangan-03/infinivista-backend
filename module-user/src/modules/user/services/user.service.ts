@@ -57,7 +57,9 @@ export class UserService {
 
             throw new NotFoundException(`There isn't any user with id:  ${identifier}`);
         }
-        return user;
+        const userWithoutPassword = {...user};
+        delete userWithoutPassword.password;
+        return userWithoutPassword;
     }
 
     // Profile Management

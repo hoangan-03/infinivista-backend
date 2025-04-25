@@ -12,6 +12,7 @@ import {Friend} from './friend.entity';
 import {FriendRequest} from './friend-request.entity';
 import {SecurityAnswer} from './security-answer.entity';
 import {Setting} from './setting.entity';
+import {SocialLink} from './social-link.entity';
 import {UserStatus} from './user-status.entity';
 
 @Entity({name: 'users'})
@@ -104,6 +105,11 @@ export class User extends BaseEntity {
 
     // @ManyToMany(() => ProductReference, (product) => product.wishlistedUsers)
     // wishlistProducts: ProductReference[];
+
+    @OneToMany(() => SocialLink, (socialLink) => socialLink.user, {
+        cascade: true,
+    })
+    socialLinks: SocialLink[];
 
     constructor(data: Partial<User> = {}) {
         super();

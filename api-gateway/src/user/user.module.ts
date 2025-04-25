@@ -3,7 +3,9 @@ import {ConfigModule, ConfigService} from '@nestjs/config';
 import {ClientsModule, Transport} from '@nestjs/microservices';
 
 import {FileUploadModule} from '../services/file-upload.module';
-import {UserController} from './user.controller';
+import {FriendController} from './friend.controller';
+import {ProfileController} from './profile.controller';
+// import {UserController} from './user.controller';
 
 @Module({
     imports: [
@@ -28,6 +30,6 @@ import {UserController} from './user.controller';
             },
         ]),
     ],
-    controllers: [UserController],
+    controllers: [FriendController, ProfileController],
 })
 export class UserModule {}

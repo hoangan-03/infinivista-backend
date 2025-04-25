@@ -9,6 +9,7 @@ import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {SecurityAnswer} from '@/entities/local/security-answer.entity';
 import {SecurityQuestion} from '@/entities/local/security-question.entity';
 import {Setting} from '@/entities/local/setting.entity';
+import {SocialLink} from '@/entities/local/social-link.entity';
 import {User} from '@/entities/local/user.entity';
 import {UserStatus} from '@/entities/local/user-status.entity';
 import {UserController} from '@/modules/user/controllers/user.controller';
@@ -29,6 +30,7 @@ import {UserEventsService} from './services/user-events.service';
             SecurityQuestion,
             FriendRequest,
             Friend,
+            SocialLink,
 
             NewsFeedReference,
         ]),
