@@ -5,6 +5,7 @@ import {validate as uuidValidate} from 'uuid';
 
 import {SecurityAnswer} from '@/entities/local/security-answer.entity';
 import {Setting} from '@/entities/local/setting.entity';
+import {SocialLink} from '@/entities/local/social-link.entity';
 import {User} from '@/entities/local/user.entity';
 import {UpdateUserDto} from '@/modules/user/dto/update-user.dto';
 import {SettingType} from '@/modules/user/enums/setting.enum';
@@ -40,7 +41,7 @@ export class UserService {
         return this.userRepository.find();
     }
 
-    async getOne(options: FindOneOptions<User>): Promise<User> {
+    async getProfile(options: FindOneOptions<User>): Promise<User> {
         if (options.where && 'id' in options.where) {
             const id = options.where.id as string;
             if (!uuidValidate(id)) {
@@ -62,9 +63,33 @@ export class UserService {
         return userWithoutPassword;
     }
 
+    async getSocialLinks(userId: string): Promise<SocialLink[]> {
+        const user = await this.getProfile({where: {id: userId}});
+        if (!user) {
+            throw new NotFoundException(`There isn't any user with id: ${userId}`);
+        }
+        return user.socialLinks || [];
+    }
+
+    async getBiography(userId: string): Promise<string> {
+        const user = await this.getProfile({where: {id: userId}});
+        if (!user) {
+            throw new NotFoundException(`There isn't any user with id: ${userId}`);
+        }
+        return user.biography || 'No biography available';
+    }
+
+    async getUserEvents(userId: string): Promise<string[]> {
+        const user = await this.getProfile({where: {id: userId}});
+        if (!user) {
+            throw new NotFoundException(`There isn't any user with id: ${userId}`);
+        }
+        return user.userEvent || [];
+    }
+
     // Profile Management
     async updateProfile(id: string, updates: UpdateUserDto): Promise<User> {
-        const user = await this.getOne({where: {id}});
+        const user = await this.getProfile({where: {id}});
         if (!user) {
             throw new NotFoundException(`There isn't any user with id: ${id}`);
         }
@@ -80,7 +105,7 @@ export class UserService {
     }
 
     async updateProfilePicture(id: string, imageUrl: string): Promise<User> {
-        const user = await this.getOne({where: {id}});
+        const user = await this.getProfile({where: {id}});
         if (!user) {
             throw new NotFoundException(`There isn't any user with id: ${id}`);
         }
@@ -91,7 +116,7 @@ export class UserService {
     }
 
     async updateCoverPhoto(id: string, imageUrl: string): Promise<User> {
-        const user = await this.getOne({where: {id}});
+        const user = await this.getProfile({where: {id}});
         if (!user) {
             throw new NotFoundException(`There isn't any user with id: ${id}`);
         }
@@ -151,13 +176,13 @@ export class UserService {
 
     // User Status
     async toggleOnlineStatus(id: string, isOnline: boolean): Promise<User> {
-        const user = await this.getOne({where: {id}});
+        const user = await this.getProfile({where: {id}});
         user.status.isOnline = isOnline;
         return this.userRepository.save(user);
     }
 
     async suspendUser(id: string, suspended: boolean): Promise<User> {
-        const user = await this.getOne({where: {id}});
+        const user = await this.getProfile({where: {id}});
         user.status.isSuspended = suspended;
         return this.userRepository.save(user);
     }
@@ -189,19 +214,19 @@ export class UserService {
     }
 
     async suspendAccount(userId: string): Promise<User> {
-        const user = await this.getOne({where: {id: userId}});
+        const user = await this.getProfile({where: {id: userId}});
         user.status.isSuspended = true;
         return this.userRepository.save(user);
     }
 
     async unsuspendAccount(userId: string): Promise<User> {
-        const user = await this.getOne({where: {id: userId}});
+        const user = await this.getProfile({where: {id: userId}});
         user.status.isSuspended = false;
         return this.userRepository.save(user);
     }
 
     async deleteAccount(userId: string): Promise<void> {
-        const user = await this.getOne({where: {id: userId}});
+        const user = await this.getProfile({where: {id: userId}});
         // Mark as deleted instead of actually deleting
         user.status.isDeleted = true;
         await this.userRepository.save(user);
@@ -213,7 +238,7 @@ export class UserService {
     }
 
     async updateProfilePrivacy(userId: string, privacy: ProfilePrivacy): Promise<User> {
-        const user = await this.getOne({where: {id: userId}});
+        const user = await this.getProfile({where: {id: userId}});
         user.profilePrivacy = privacy;
         return this.userRepository.save(user);
     }
@@ -237,7 +262,7 @@ export class UserService {
     }
 
     async getUserBiography(userId: string): Promise<string> {
-        const user = await this.getOne({where: {id: userId}});
+        const user = await this.getProfile({where: {id: userId}});
         if (!user) {
             throw new NotFoundException(`There isn't any user with id: ${userId}`);
         }
@@ -245,7 +270,7 @@ export class UserService {
     }
 
     async updateBiography(userId: string, biography: string): Promise<User> {
-        const user = await this.getOne({where: {id: userId}});
+        const user = await this.getProfile({where: {id: userId}});
         if (!user) {
             throw new NotFoundException(`There isn't any user with id: ${userId}`);
         }
@@ -253,16 +278,8 @@ export class UserService {
         return this.userRepository.save(user);
     }
 
-    async getUserEvents(userId: string): Promise<string[]> {
-        const user = await this.getOne({where: {id: userId}});
-        if (!user) {
-            throw new NotFoundException(`There isn't any user with id: ${userId}`);
-        }
-        return user.userEvent || [];
-    }
-
     async addUserEvent(userId: string, event: string[]): Promise<User> {
-        const user = await this.getOne({where: {id: userId}});
+        const user = await this.getProfile({where: {id: userId}});
         if (!user) {
             throw new NotFoundException(`There isn't any user with id: ${userId}`);
         }
@@ -271,7 +288,7 @@ export class UserService {
     }
 
     async removeUserEvent(userId: string, event: string[]): Promise<User> {
-        const user = await this.getOne({where: {id: userId}});
+        const user = await this.getProfile({where: {id: userId}});
         if (!user) {
             throw new NotFoundException(`There isn't any user with id: ${userId}`);
         }

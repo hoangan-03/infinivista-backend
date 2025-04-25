@@ -21,6 +21,7 @@ import {CurrentUser} from '@/decorators/user.decorator';
 import {FileUploadDto} from '@/dtos/common/file-upload.dto';
 import {SecurityAnswer} from '@/entities/user-module/local/security-answer.entity';
 import {Setting} from '@/entities/user-module/local/setting.entity';
+import {SocialLink} from '@/entities/user-module/local/social-link.entity';
 import {User} from '@/entities/user-module/local/user.entity';
 import {ProfilePrivacy} from '@/enums/user-module/profile-privacy.enum';
 import {SettingType} from '@/enums/user-module/setting.enum';
@@ -46,6 +47,37 @@ export class ProfileController {
     @ApiResponse({status: 404, description: 'Not Found - User not found with the provided ID'})
     async update(@CurrentUser() currentUser: User, @Body() user: UpdateUserDto): Promise<User> {
         return await lastValueFrom(this.userClient.send<User>('UpdateUserCommand', {id: currentUser.id, user}));
+    }
+
+    @Get('social-links')
+    @ApiOperation({summary: 'Get user social links'})
+    @ApiResponse({status: 200, description: 'Return user social links', type: [SocialLink]})
+    @ApiResponse({status: 401, description: 'Unauthorized - Invalid credentials'})
+    @ApiResponse({status: 404, description: 'Not Found - User not found with the provided ID'})
+    async getSocialLinks(@CurrentUser() currentUser: User): Promise<SocialLink[]> {
+        return await lastValueFrom(
+            this.userClient.send<SocialLink[]>('GetSocialLinksUserCommand', {userId: currentUser.id})
+        );
+    }
+
+    @Get('user-events')
+    @ApiOperation({summary: 'Get user events'})
+    @ApiResponse({status: 200, description: 'Return user events', type: [String]})
+    @ApiResponse({status: 401, description: 'Unauthorized - Invalid credentials'})
+    @ApiResponse({status: 404, description: 'Not Found - User not found with the provided ID'})
+    async getUserEvents(@CurrentUser() currentUser: User): Promise<string[]> {
+        return await lastValueFrom(
+            this.userClient.send<string[]>('GetUserEventsUserCommand', {userId: currentUser.id})
+        );
+    }
+
+    @Get('biography')
+    @ApiOperation({summary: 'Get user biography'})
+    @ApiResponse({status: 200, description: 'Return user biography', type: String})
+    @ApiResponse({status: 401, description: 'Unauthorized - Invalid credentials'})
+    @ApiResponse({status: 404, description: 'Not Found - User not found with the provided ID'})
+    async getBiography(@CurrentUser() currentUser: User): Promise<string> {
+        return await lastValueFrom(this.userClient.send<string>('GetBiographyUserCommand', {userId: currentUser.id}));
     }
 
     @Put('profile-picture')

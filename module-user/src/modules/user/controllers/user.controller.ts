@@ -4,6 +4,7 @@ import {MessagePattern} from '@nestjs/microservices';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {SecurityAnswer} from '@/entities/local/security-answer.entity';
 import {Setting} from '@/entities/local/setting.entity';
+import {SocialLink} from '@/entities/local/social-link.entity';
 import {User} from '@/entities/local/user.entity';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 import {UpdateUserDto} from '@/modules/user/dto/update-user.dto';
@@ -30,7 +31,17 @@ export class UserController {
 
     @MessagePattern('GetByIdUserCommand')
     async getById(payload: {id: string}): Promise<User> {
-        return this.userService.getOne({where: {id: payload.id}});
+        return this.userService.getProfile({where: {id: payload.id}});
+    }
+
+    @MessagePattern('GetSocialLinksUserCommand')
+    async getSocialLinks(payload: {userId: string}): Promise<SocialLink[]> {
+        return this.userService.getSocialLinks(payload.userId);
+    }
+
+    @MessagePattern('GetUserEventsUserCommand')
+    async getUserEvents(payload: {userId: string}): Promise<string[]> {
+        return this.userService.getUserEvents(payload.userId);
     }
 
     @MessagePattern('UpdateUserCommand')
@@ -74,11 +85,6 @@ export class UserController {
     @MessagePattern('UpdateBiographyUserCommand')
     async updateBiography(payload: {userId: string; biography: string}): Promise<User> {
         return this.userService.updateBiography(payload.userId, payload.biography);
-    }
-
-    @MessagePattern('GetUserEventsUserCommand')
-    async getUserEvents(payload: {userId: string}): Promise<string[]> {
-        return this.userService.getUserEvents(payload.userId);
     }
 
     @MessagePattern('UpdateUserEventsUserCommand')

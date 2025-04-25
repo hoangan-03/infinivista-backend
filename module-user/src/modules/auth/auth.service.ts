@@ -67,7 +67,7 @@ export class AuthService {
         try {
             this.logger.debug(`Verifying JWT payload: ${JSON.stringify(payload)}`);
 
-            const user = await this.userService.getOne({where: {id: userId}});
+            const user = await this.userService.getProfile({where: {id: userId}});
 
             this.logger.log(`JWT verified for user: ${userId}, found: ${user.id} (${user.username})`);
 
@@ -83,9 +83,9 @@ export class AuthService {
 
         try {
             try {
-                user = await this.userService.getOne({where: {email: identifier}});
+                user = await this.userService.getProfile({where: {email: identifier}});
             } catch (error) {
-                user = await this.userService.getOne({where: {username: identifier}});
+                user = await this.userService.getProfile({where: {username: identifier}});
             }
 
             if (!(await checkPassword(password, user.password || ''))) {
@@ -116,7 +116,7 @@ export class AuthService {
         const {email, firstName, lastName} = userData;
 
         try {
-            const user = await this.userService.getOne({
+            const user = await this.userService.getProfile({
                 where: {username: email},
             });
             return user;
@@ -148,7 +148,7 @@ export class AuthService {
         const {email, firstName, lastName} = userData;
 
         try {
-            const user = await this.userService.getOne({
+            const user = await this.userService.getProfile({
                 where: {username: email},
             });
             return user;
