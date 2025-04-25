@@ -3,7 +3,8 @@ import {ConfigModule, ConfigService} from '@nestjs/config';
 import {ClientsModule, Transport} from '@nestjs/microservices';
 
 import {FileUploadModule} from '../services/file-upload.module';
-import {MessagingController} from './messaging.controller';
+import {GroupChatController} from './groupchat.controller';
+import {MessageController} from './message.controller';
 
 @Module({
     imports: [
@@ -45,6 +46,6 @@ import {MessagingController} from './messaging.controller';
             },
         ]),
     ],
-    controllers: [MessagingController],
+    controllers: [MessageController, GroupChatController],
 })
 export class MessagingModule {}
