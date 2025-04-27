@@ -82,6 +82,8 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
         // Create user references with exact IDs and data from user module
         logger.log('Creating user references with actual user data...');
         const userRefs: UserReference[] = [];
+        let adminUserRef: UserReference | undefined;
+        const otherUserRefs: UserReference[] = [];
 
         for (const userData of users) {
             const userRef = userReferenceRepo.create({
@@ -95,97 +97,151 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             await userReferenceRepo.save(userRef);
             userRefs.push(userRef);
 
+            if (userData.username === 'admin') {
+                adminUserRef = userRef; // Store the admin user reference for later use
+                logger.log(`Found admin user: ${userData.username} with ID ${userData.id}`);
+            } else {
+                otherUserRefs.push(userRef); // Store non-admin users separately
+            }
+
             logger.log(`Created user reference for ${userData.username} with ID ${userData.id}`);
+        }
+
+        if (!adminUserRef) {
+            logger.warn('Admin user not found. Using first user as admin for seeding purposes.');
+            adminUserRef = userRefs[0];
         }
 
         // Close the user module connection
         await userModuleConnection.destroy();
         logger.log('Closed connection to user module database');
 
-        // Create direct messages between users
-        logger.log('Creating direct messages...');
-        const [admin, user1, user2] = userRefs;
+        // Create direct messages between admin and other users
+        logger.log('Creating direct messages primarily for admin user...');
 
-        // Messages between admin and user1
-        for (let i = 0; i < 3; i++) {
-            const sender = i % 2 === 0 ? admin : user1;
-            const receiver = i % 2 === 0 ? user1 : admin;
+        // Create messages between admin and each other user (higher volume)
+        for (const otherUser of otherUserRefs) {
+            // Create 20-30 messages between admin and each user
+            const messageCount = faker.number.int({min: 20, max: 30});
 
-            const message = messageRepo.create({
-                messageText: faker.lorem.sentence(),
-                sent_at: faker.date.recent({days: 7}),
-                status: faker.helpers.arrayElement(Object.values(MessageStatus)),
-                sender,
-                receiver,
-            });
-            await messageRepo.save(message);
+            for (let i = 0; i < messageCount; i++) {
+                // Admin sends 70% of messages, other user sends 30%
+                const isAdminSender = faker.datatype.boolean({probability: 0.7});
+                const sender = isAdminSender ? adminUserRef : otherUser;
+                const receiver = isAdminSender ? otherUser : adminUserRef;
 
-            // Occasionally add an attachment
-            if (faker.datatype.boolean({probability: 0.3})) {
-                const attachment = messageAttachmentRepo.create({
-                    attachment_url: faker.image.url(),
-                    attachment_name: `file${i}.jpg`,
-                    attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
-                    sent_at: message.sent_at,
+                const message = messageRepo.create({
+                    messageText: faker.lorem.sentence(),
+                    sent_at: faker.date.recent({days: 14}),
                     status: faker.helpers.arrayElement(Object.values(MessageStatus)),
                     sender,
                     receiver,
+                    emotion: faker.helpers.maybe(() => faker.helpers.arrayElement(Object.values(EmoteIcon)), {
+                        probability: 0.3,
+                    }),
                 });
-                await messageAttachmentRepo.save(attachment);
+                await messageRepo.save(message);
+
+                // Occasionally add an attachment (40% for admin-sent messages, 20% for user-sent)
+                const attachmentProbability = isAdminSender ? 0.4 : 0.2;
+                if (faker.datatype.boolean({probability: attachmentProbability})) {
+                    const attachment = messageAttachmentRepo.create({
+                        attachment_url: faker.image.url(),
+                        attachment_name: `file${i}_${faker.lorem.word()}.${faker.helpers.arrayElement(['jpg', 'pdf', 'doc', 'png'])}`,
+                        attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                        sent_at: message.sent_at,
+                        status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                        sender,
+                        receiver,
+                    });
+                    await messageAttachmentRepo.save(attachment);
+                }
             }
         }
 
-        // Messages between user1 and user2
-        for (let i = 0; i < 102; i++) {
-            const sender = i % 2 === 0 ? user1 : user2;
-            const receiver = i % 2 === 0 ? user2 : user1;
+        // Create minimal direct messages between non-admin users
+        logger.log('Creating minimal direct messages between non-admin users...');
+        // Get 5 random pairs of users for conversations
+        const userPairs: [UserReference, UserReference][] = [];
+        for (let i = 0; i < Math.min(5, otherUserRefs.length); i++) {
+            const user1Index = faker.number.int({min: 0, max: otherUserRefs.length - 1});
+            let user2Index;
+            do {
+                user2Index = faker.number.int({min: 0, max: otherUserRefs.length - 1});
+            } while (user2Index === user1Index);
 
-            const message = messageRepo.create({
-                messageText: faker.lorem.sentence(),
-                sent_at: faker.date.recent({days: 3}),
-                status: faker.helpers.arrayElement(Object.values(MessageStatus)),
-                emotion: faker.helpers.arrayElement(Object.values(EmoteIcon)),
-                sender,
-                receiver,
+            userPairs.push([otherUserRefs[user1Index], otherUserRefs[user2Index]]);
+        }
+
+        // Create 3-8 messages for each pair
+        for (const [user1, user2] of userPairs) {
+            const messageCount = faker.number.int({min: 3, max: 8});
+
+            for (let i = 0; i < messageCount; i++) {
+                const sender = i % 2 === 0 ? user1 : user2;
+                const receiver = i % 2 === 0 ? user2 : user1;
+
+                const message = messageRepo.create({
+                    messageText: faker.lorem.sentence(),
+                    sent_at: faker.date.recent({days: 5}),
+                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                    emotion: faker.helpers.maybe(() => faker.helpers.arrayElement(Object.values(EmoteIcon)), {
+                        probability: 0.2,
+                    }),
+                    sender,
+                    receiver,
+                });
+                await messageRepo.save(message);
+            }
+        }
+
+        // Create group chats with admin always included
+        logger.log('Creating group chats with admin as a prominent member...');
+
+        // Create 3 different group chats
+        const groupChatNames = ['Project Team', 'Marketing Strategy', 'Tech Support'];
+
+        for (let chatIndex = 0; chatIndex < groupChatNames.length; chatIndex++) {
+            const groupChat = groupChatRepo.create({
+                group_name: groupChatNames[chatIndex],
             });
-            await messageRepo.save(message);
-        }
+            await groupChatRepo.save(groupChat);
 
-        // Create a group chat with multiple users
-        logger.log('Creating group chat...');
-        const groupChat = groupChatRepo.create({
-            group_name: 'Project Team',
-        });
-        await groupChatRepo.save(groupChat);
-
-        // Add members to the group chat - Fix for "Cannot query across one-to-many" error
-        logger.log('Adding users to group chat...');
-
-        // Clear existing join table and/or GroupChat table as needed
-        logger.log('Clearing group_chat_users join table...');
-        try {
-            await dataSource.query('TRUNCATE TABLE "group_chat_users" CASCADE;');
-            logger.log('Join table cleared successfully');
-        } catch (error: any) {
-            logger.warn(`Could not clear join table: ${error.message}. This may be normal if it doesn't exist yet.`);
-        }
-
-        // Add each user to the group chat using direct SQL insertion into join table
-        for (const user of userRefs) {
+            // Clear and prepare join table as in original code
             try {
-                // Insert into the join table directly
+                await dataSource.query('TRUNCATE TABLE "group_chat_users" CASCADE;');
+            } catch (error: any) {
+                logger.warn(
+                    `Could not clear join table: ${error.message}. This may be normal if it doesn't exist yet.`
+                );
+            }
+
+            // Always add admin to each group
+            try {
                 await dataSource.query(
                     'INSERT INTO "group_chat_users" ("groupChatGroupChatId", "userReferenceId") VALUES ($1, $2)',
-                    [groupChat.group_chat_id, user.id]
+                    [groupChat.group_chat_id, adminUserRef.id]
                 );
-                logger.log(`Added user ${user.username} to group chat ${groupChat.group_name}`);
+                logger.log(`Added admin to group chat ${groupChat.group_name}`);
+
+                // Add 3-8 random other users to the group
+                const memberCount = faker.number.int({min: 3, max: Math.min(8, otherUserRefs.length)});
+                const shuffledUsers = faker.helpers.shuffle([...otherUserRefs]);
+
+                for (let i = 0; i < memberCount; i++) {
+                    const user = shuffledUsers[i];
+                    await dataSource.query(
+                        'INSERT INTO "group_chat_users" ("groupChatGroupChatId", "userReferenceId") VALUES ($1, $2)',
+                        [groupChat.group_chat_id, user.id]
+                    );
+                }
             } catch (error: any) {
-                logger.error(`Failed to add user ${user.id} to group: ${error.message}`);
-                // If the error is about the table not existing, we need to create the table
+                // Same error handling as original code
+                logger.error(`Failed to add user to group: ${error.message}`);
                 if (error.message.includes('does not exist')) {
+                    // Create table and retry as in original code
                     logger.log('Attempting to create the join table and retry...');
 
-                    // Try to create the join table if it doesn't exist (optional/fallback)
                     await dataSource.query(`
                         CREATE TABLE IF NOT EXISTS "group_chat_users" (
                             "groupChatGroupChatId" uuid NOT NULL,
@@ -194,66 +250,76 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                         )
                     `);
 
-                    // Retry insertion
+                    // Retry insertion for admin
                     await dataSource.query(
                         'INSERT INTO "group_chat_users" ("groupChatGroupChatId", "userReferenceId") VALUES ($1, $2)',
-                        [groupChat.group_chat_id, user.id]
+                        [groupChat.group_chat_id, adminUserRef.id]
                     );
                 }
             }
+
+            // Create group messages - admin sends 60% of messages
+            const messageCount = faker.number.int({min: 30, max: 60});
+            for (let i = 0; i < messageCount; i++) {
+                const isAdminMessage = faker.datatype.boolean({probability: 0.6});
+                const sender = isAdminMessage ? adminUserRef : faker.helpers.arrayElement(otherUserRefs);
+
+                const groupMessage = groupChatMessageRepo.create({
+                    textMessage: faker.lorem.sentence(),
+                    sent_at: faker.date.recent({days: 10}),
+                    last_modified_at: new Date(),
+                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                    emotion: faker.helpers.maybe(
+                        () => faker.helpers.arrayElements(Object.values(EmoteIcon), {min: 1, max: 3}),
+                        {probability: 0.4}
+                    ),
+                    sender,
+                    groupChat,
+                });
+                await groupChatMessageRepo.save(groupMessage);
+            }
+
+            // Add 1-3 attachments per group, mostly from admin
+            const attachmentCount = faker.number.int({min: 1, max: 3});
+            for (let i = 0; i < attachmentCount; i++) {
+                const isAdminAttachment = faker.datatype.boolean({probability: 0.7});
+                const sender = isAdminAttachment ? adminUserRef : faker.helpers.arrayElement(otherUserRefs);
+
+                const attachment = groupChatAttachmentRepo.create({
+                    attachment_url: faker.image.url(),
+                    attachment_name: `group-${chatIndex}-doc${i}.${faker.helpers.arrayElement(['pdf', 'xlsx', 'docx', 'png'])}`,
+                    attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                    sent_at: faker.date.recent({days: 7}),
+                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                    sender,
+                    groupChat,
+                });
+                await groupChatAttachmentRepo.save(attachment);
+            }
         }
 
-        // Create group messages
-        logger.log('Creating group messages...');
-        for (let i = 0; i < 102; i++) {
-            const sender = faker.helpers.arrayElement(userRefs);
-            const groupMessage = groupChatMessageRepo.create({
-                textMessage: faker.lorem.sentence(),
-                sent_at: faker.date.recent({days: 5}),
-                last_modified_at: new Date(),
-                status: faker.helpers.arrayElement(Object.values(MessageStatus)),
-                emotion: faker.helpers.arrayElements(Object.values(EmoteIcon), {min: 2, max: 5}),
-                sender,
-                groupChat,
-            });
-            await groupChatMessageRepo.save(groupMessage);
-        }
-
-        // Create a group attachment
-        const groupAttachment = groupChatAttachmentRepo.create({
-            attachment_url: faker.image.url(),
-            attachment_name: 'group-doc.pdf',
-            attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
-            sent_at: faker.date.recent({days: 2}),
-            status: faker.helpers.arrayElement(Object.values(MessageStatus)),
-            sender: faker.helpers.arrayElement(userRefs),
-            groupChat,
-        });
-        await groupChatAttachmentRepo.save(groupAttachment);
-
-        // Create call history records
-        logger.log('Creating call history records...');
-
-        // Create various types of calls between users
+        // Create call history records with focus on admin
+        logger.log('Creating call history records focused on admin user...');
         const callStatusOptions = Object.values(CallStatus);
         const callTypeOptions = Object.values(CallType);
 
-        // Create 10 random calls between users
-        for (let i = 0; i < 100; i++) {
-            const caller = faker.helpers.arrayElement(userRefs);
-            const receiver = faker.helpers.arrayElement(userRefs.filter((u) => u.id !== caller.id));
+        // Create 50 calls where admin is involved (either caller or receiver)
+        for (let i = 0; i < 50; i++) {
+            const isAdminCaller = faker.datatype.boolean();
+            const otherUser = faker.helpers.arrayElement(otherUserRefs);
 
-            // Generate call times
-            const startTime = faker.date.recent({days: 14}); // Within last 2 weeks
+            const caller = isAdminCaller ? adminUserRef : otherUser;
+            const receiver = isAdminCaller ? otherUser : adminUserRef;
+
+            // Generate call details
+            const startTime = faker.date.recent({days: 21}); // Within last 3 weeks
             const callStatus = faker.helpers.arrayElement(callStatusOptions);
             let endTime: Date | undefined = undefined;
-            const acceptedAt: Date | undefined = undefined;
-
-            // Only add end_time and accepted_at for certain call statuses
+            let acceptedAt: Date | undefined = undefined;
 
             if (callStatus === CallStatus.ENDED) {
-                const acceptedAt = new Date(startTime.getTime() + faker.number.int({min: 1000, max: 5000}));
-                endTime = new Date(acceptedAt!.getTime() + faker.number.int({min: 30000, max: 1200000})); // 30s - 20 min call
+                acceptedAt = new Date(startTime.getTime() + faker.number.int({min: 1000, max: 5000}));
+                endTime = new Date(acceptedAt!.getTime() + faker.number.int({min: 30000, max: 1800000})); // 30s - 30 min call
             } else if (callStatus === CallStatus.REJECTED) {
                 endTime = new Date(startTime.getTime() + faker.number.int({min: 3000, max: 10000}));
             } else if (callStatus === CallStatus.MISSED) {
@@ -266,15 +332,48 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 accepted_at: acceptedAt,
                 status: callStatus,
                 type: faker.helpers.arrayElement(callTypeOptions),
-                caller: caller,
-                receiver: receiver,
+                caller,
+                receiver,
             });
 
             await CallHistoryRepo.save(callHistory);
         }
 
-        logger.log(`Created ${100} call history records`);
+        // Create just 15 calls between non-admin users
+        for (let i = 0; i < 15; i++) {
+            const userIndices = faker.helpers.shuffle([...Array(otherUserRefs.length).keys()]);
+            const caller = otherUserRefs[userIndices[0]];
+            const receiver = otherUserRefs[userIndices[1]];
 
+            // Generate call details
+            const startTime = faker.date.recent({days: 14});
+            const callStatus = faker.helpers.arrayElement(callStatusOptions);
+            let endTime: Date | undefined = undefined;
+            let acceptedAt: Date | undefined = undefined;
+
+            if (callStatus === CallStatus.ENDED) {
+                acceptedAt = new Date(startTime.getTime() + faker.number.int({min: 1000, max: 5000}));
+                endTime = new Date(acceptedAt.getTime() + faker.number.int({min: 10000, max: 600000})); // 10s - 10 min call
+            } else if (callStatus === CallStatus.REJECTED) {
+                endTime = new Date(startTime.getTime() + faker.number.int({min: 3000, max: 10000}));
+            } else if (callStatus === CallStatus.MISSED) {
+                endTime = new Date(startTime.getTime() + faker.number.int({min: 15000, max: 30000}));
+            }
+
+            const callHistory = CallHistoryRepo.create({
+                start_time: startTime,
+                end_time: endTime,
+                accepted_at: acceptedAt,
+                status: callStatus,
+                type: faker.helpers.arrayElement(callTypeOptions),
+                caller,
+                receiver,
+            });
+
+            await CallHistoryRepo.save(callHistory);
+        }
+
+        logger.log(`Created 65 call history records (50 involving admin)`);
         logger.log('Communication module seeding completed successfully!');
     } catch (error: any) {
         logger.error(`Error during seeding: ${error.message}`);
