@@ -2,7 +2,7 @@ import {Module} from '@nestjs/common';
 import {TypeOrmModule} from '@nestjs/typeorm';
 
 import {CommunityReference} from '@/entities/external/community-ref.entity';
-import {UserReference} from '@/entities/external/user-ref.entity';
+import {UserReference} from '@/entities/external/user-reference.entity';
 import {Advertisement} from '@/entities/local/advertisement.entity';
 import {Comment} from '@/entities/local/comment.entity';
 import {HashTag} from '@/entities/local/hashtag.entity';

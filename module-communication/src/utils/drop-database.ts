@@ -77,6 +77,7 @@ const dropDatabase = async () => {
 
         console.log('Dropping database tables...');
 
+        await queryRunner.query('DROP TABLE IF EXISTS user_reference CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS group_chat_users CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS message_attachment CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS group_chat_message CASCADE');

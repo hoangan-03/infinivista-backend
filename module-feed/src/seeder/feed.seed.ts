@@ -10,7 +10,7 @@ import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
 import {AppModule} from '../app.module';
 import {CommunityReference} from '../entities/external/community-ref.entity';
-import {UserReference} from '../entities/external/user-ref.entity';
+import {UserReference} from '../entities/external/user-reference.entity';
 import {Advertisement} from '../entities/local/advertisement.entity';
 import {Comment} from '../entities/local/comment.entity';
 import {HashTag} from '../entities/local/hashtag.entity';
@@ -31,6 +31,7 @@ interface UserData {
     firstName: string;
     lastName: string;
     profileImageUrl: string;
+    phoneNumber: string; // Assuming this field exists in the user module
     // Add any other fields you need
 }
 
@@ -118,6 +119,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 firstName: userData.firstName,
                 lastName: userData.lastName,
                 profileImageUrl: userData.profileImageUrl,
+                phoneNumber: userData.phoneNumber,
             });
             await userReferenceRepo.save(userRef);
             userRefs.push(userRef);

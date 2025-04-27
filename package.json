@@ -1,29 +1,30 @@
 {
-    "name": "infinivista-backend",
-    "version": "1.0.0",
-    "main": "index.js",
-    "scripts": {
-        "seed": "cd module-user && npm run seed && cd ../module-feed && npm run seed && cd ../module-communication && npm run seed",
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "down": "docker compose down",
-        "clean": "node clean-generated-files.js",
-        "start": "npm run down && docker compose -f docker-compose.dev.yaml up -d --build",
-        "lint": "cd api-gateway && npm run lint && cd ../module-communication && npm run lint && cd ../module-feed && npm run lint && cd ../module-user && npm run lint",
-        "format": "cd api-gateway && npm run format && cd ../module-communication && npm run format && cd ../module-feed && npm run format && cd ../module-user && npm run format",
-        "migrate": "cd module-user && npm run migrate:fresh && cd ../module-feed && npm run migrate:fresh && cd ../module-communication && npm run migrate:fresh"
-    },
-    "author": "",
-    "license": "ISC",
-    "description": "",
-    "devDependencies": {
-        "@types/amqplib": "^0.10.7",
-        "@types/dotenv": "^6.1.1",
-        "@types/node": "^22.14.0",
-        "ts-node": "^10.9.2",
-        "typescript": "^5.8.2"
-    },
-    "dependencies": {
-        "amqplib": "^0.10.7",
-        "dotenv": "^16.4.7"
-    }
+  "name": "infinivista-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "seed": "npm run migrate && cd module-user && npm run seed && cd .. && npm run seed-topic && cd module-feed && npm run seed && cd ../module-communication && npm run seed",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "down": "docker compose down",
+    "clean": "node clean-generated-files.js",
+    "start": "npm run down && docker compose -f docker-compose.dev.yaml up -d --build",
+    "lint": "cd api-gateway && npm run lint && cd ../module-communication && npm run lint && cd ../module-feed && npm run lint && cd ../module-user && npm run lint",
+    "format": "cd api-gateway && npm run format && cd ../module-communication && npm run format && cd ../module-feed && npm run format && cd ../module-user && npm run format",
+    "migrate": "cd module-user && npm run migrate:fresh && cd ../module-feed && npm run migrate:fresh && cd ../module-communication && npm run migrate:fresh",
+    "seed-topic": "node scripts/run-sql-seed.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/amqplib": "^0.10.7",
+    "@types/dotenv": "^6.1.1",
+    "@types/node": "^22.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.7",
+    "dotenv": "^16.4.7"
+  }
 }

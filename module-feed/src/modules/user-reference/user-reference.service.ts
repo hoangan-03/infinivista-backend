@@ -4,7 +4,7 @@ import {InjectRepository} from '@nestjs/typeorm';
 import {lastValueFrom} from 'rxjs';
 import {Repository} from 'typeorm';
 
-import {UserReference} from '@/entities/external/user-ref.entity';
+import {UserReference} from '@/entities/external/user-reference.entity';
 
 @Injectable()
 export class UserReferenceService {

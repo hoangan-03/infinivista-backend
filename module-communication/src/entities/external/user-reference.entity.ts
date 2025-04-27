@@ -1,4 +1,4 @@
-import {Entity, ManyToMany, OneToMany, PrimaryColumn} from 'typeorm';
+import {Column, Entity, ManyToMany, OneToMany, PrimaryColumn} from 'typeorm';
 
 import {CallHistory} from '../internal/call-history.entity';
 import {GroupChat} from '../internal/group-chat.entity';
@@ -39,15 +39,21 @@ export class UserReference {
     @ManyToMany(() => GroupChat, (groupChat) => groupChat.users)
     groupChats: GroupChat[];
 
+    @Column({type: 'varchar', length: 255, unique: true})
     email: string;
 
+    @Column({type: 'varchar', length: 255, unique: true})
     username: string;
 
+    @Column({type: 'varchar', length: 15, nullable: true})
     phoneNumber: string;
 
+    @Column({type: 'varchar', length: 255, nullable: true})
     firstName: string;
 
+    @Column({type: 'varchar', length: 255, nullable: true})
     lastName: string;
 
+    @Column({type: 'text', nullable: true})
     profileImageUrl: string;
 }

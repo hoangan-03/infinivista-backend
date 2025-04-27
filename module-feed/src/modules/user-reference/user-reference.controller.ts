@@ -1,7 +1,7 @@
 import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
-import {UserReference} from '@/entities/external/user-ref.entity';
+import {UserReference} from '@/entities/external/user-reference.entity';
 
 import {UserReferenceService} from './user-reference.service';
 

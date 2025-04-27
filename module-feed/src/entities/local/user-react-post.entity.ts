@@ -3,7 +3,7 @@ import {Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn} from 'typ
 import {BaseEntity} from '@/entities/base/base-class';
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 
-import {UserReference} from '../external/user-ref.entity';
+import {UserReference} from '../external/user-reference.entity';
 import {Post} from './post.entity';
 
 @Entity('user_react_post')

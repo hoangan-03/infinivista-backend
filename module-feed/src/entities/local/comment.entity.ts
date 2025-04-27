@@ -2,7 +2,7 @@ import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
 
-import {UserReference} from '../external/user-ref.entity';
+import {UserReference} from '../external/user-reference.entity';
 import {Post} from './post.entity';
 import {Story} from './story.entity';
 

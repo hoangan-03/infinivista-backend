@@ -68,6 +68,7 @@ const dropDatabase = async () => {
 
         // First drop all join tables and tables with foreign keys
         await queryRunner.query('DROP TABLE IF EXISTS user_react_post CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS user_react_story CASCADE');
 
         // Rest of your drop queries...
         // Drop tables with relationships to news_feed

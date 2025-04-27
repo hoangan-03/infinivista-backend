@@ -112,9 +112,10 @@ export class FeedService {
 
     async getPostsByNewsFeedId(newsFeedId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
         const userFeed = await this.getNewsFeedById(newsFeedId);
+        const userOwner = await this.userReferenceService.findById(userFeed.owner.id);
         const [userPosts, total] = await this.postRepository.findAndCount({
             where: {newsFeed: {id: userFeed.id}},
-            relations: ['topics', 'postAttachments'],
+            relations: ['topics', 'postAttachments', 'newsFeed.owner'],
             skip: (page - 1) * limit,
             take: limit,
             order: {createdAt: 'DESC'},
@@ -123,6 +124,7 @@ export class FeedService {
         // Map posts to include only topic name and description
         const mappedPosts = userPosts.map((post) => ({
             ...post,
+            userOwner: userOwner,
             topics: post.topics.map((topic) => ({
                 name: topic.topicName,
                 description: topic.topicDescription,
@@ -143,11 +145,12 @@ export class FeedService {
     async getPopularPostNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
         // Ensure the user has a newsfeed before proceeding
         const userFeed = await this.ensureUserHasNewsFeed(userId);
+        const userOwner = await this.userReferenceService.findById(userId);
 
         // Get posts with their reactions and comments
         const [posts, total] = await this.postRepository.findAndCount({
             where: {newsFeed: {id: userFeed.id}},
-            relations: ['topics', 'postAttachments', 'comments'],
+            relations: ['topics', 'postAttachments', 'comments', 'newsFeed.owner'],
             skip: 0, // Fetch all posts first to sort by popularity
             take: undefined,
             order: {createdAt: 'DESC'},
@@ -194,6 +197,7 @@ export class FeedService {
         // Map posts to include only topic name and description
         const mappedPosts = paginatedPosts.map((post) => ({
             ...post,
+            userOwner: userOwner,
             topics: post.topics.map((topic) => ({
                 name: topic.topicName,
                 description: topic.topicDescription,
@@ -219,6 +223,7 @@ export class FeedService {
     async getFriendsPostNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
         // Ensure the user has a newsfeed before proceeding
         await this.ensureUserHasNewsFeed(userId);
+        const userOwner = await this.userReferenceService.findById(userId);
 
         const friendIds = await this.userReferenceService.getFriends(userId || '');
         const friendPosts = await this.postRepository.find({
@@ -241,6 +246,7 @@ export class FeedService {
         // Map posts to include only topic name and description
         const mappedPosts = paginatedPosts.map((post) => ({
             ...post,
+            userOwner: userOwner,
             topics: post.topics.map((topic) => ({
                 name: topic.topicName,
                 description: topic.topicDescription,
@@ -261,6 +267,7 @@ export class FeedService {
     async getRandomNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Post>> {
         // Ensure the user has a newsfeed before proceeding
         await this.ensureUserHasNewsFeed(userId);
+        const userOwner = await this.userReferenceService.findById(userId);
 
         // Get all public posts with their topics
         const publicPosts = await this.postRepository.find({
@@ -302,8 +309,14 @@ export class FeedService {
                 const endIndex = Math.min(page * limit, combinedPosts.length);
                 const paginatedPosts = combinedPosts.slice(startIndex, endIndex);
 
+                // Add userOwner to each post
+                const mappedPosts = paginatedPosts.map((post) => ({
+                    ...post,
+                    userOwner: userOwner,
+                }));
+
                 return {
-                    data: paginatedPosts,
+                    data: mappedPosts,
                     metadata: {
                         total: combinedPosts.length,
                         page,
@@ -329,8 +342,14 @@ export class FeedService {
             const endIndex = Math.min(page * limit, sortedPosts.length);
             const paginatedPosts = sortedPosts.slice(startIndex, endIndex);
 
+            // Add userOwner to each post
+            const mappedPosts = paginatedPosts.map((post) => ({
+                ...post,
+                userOwner: userOwner,
+            }));
+
             return {
-                data: paginatedPosts,
+                data: mappedPosts,
                 metadata: {
                     total: sortedPosts.length,
                     page,
@@ -347,8 +366,15 @@ export class FeedService {
                 const j = Math.floor(Math.random() * (i + 1));
                 [combinedPosts[i], combinedPosts[j]] = [combinedPosts[j], combinedPosts[i]];
             }
+
+            // Add userOwner to each post
+            const mappedPosts = combinedPosts.slice(0, limit).map((post) => ({
+                ...post,
+                userOwner: userOwner,
+            }));
+
             return {
-                data: combinedPosts.slice(0, limit),
+                data: mappedPosts,
                 metadata: {
                     total: combinedPosts.length,
                     page,
@@ -592,8 +618,15 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         if (!post) {
             throw new NotFoundException(`Post with ID ${postId} not found`);
         }
+        const userOwner = await this.userReferenceService.findById(post.newsFeed.owner.id);
 
-        return post;
+        // Add userOwner property
+        const enhancedPost = {
+            ...post,
+            userOwner: userOwner,
+        };
+
+        return enhancedPost;
     }
 
     async getStoryById(storyId: string): Promise<Story> {
@@ -729,8 +762,14 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             order: {createdAt: 'DESC'},
         });
 
+        // Map comments to include userOwner
+        const mappedComments = comments.map((comment) => ({
+            ...comment,
+            userOwner: comment.user,
+        }));
+
         return {
-            data: comments,
+            data: mappedComments,
             metadata: {
                 total,
                 page,
@@ -762,14 +801,14 @@ Return only the topic IDs as a JSON array with no explanations. For example:
     async deleteComment(commentId: string, userId: string): Promise<Comment> {
         const comment = await this.commentRepository.findOne({
             where: {id: commentId},
-            relations: ['user', 'post', 'post.newsFeed', 'post.newsFeed.owner'],
+            relations: ['user', 'post', 'post.newsFeed'],
         });
 
         if (!comment) {
             throw new NotFoundException(`Comment with ID ${commentId} not found`);
         }
 
-        if (comment.user.id !== userId && comment.post.newsFeed.owner.id !== userId) {
+        if (comment.user.id !== userId) {
             throw new ForbiddenException(`User is not authorized to delete this comment`);
         }
 
@@ -818,8 +857,14 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             order: {createdAt: 'DESC'},
         });
 
+        // Map comments to include userOwner
+        const mappedComments = comments.map((comment) => ({
+            ...comment,
+            userOwner: comment.user,
+        }));
+
         return {
-            data: comments,
+            data: mappedComments,
             metadata: {
                 total,
                 page,
@@ -908,10 +953,16 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             throw new NotFoundException(`Post with ID ${postId} not found`);
         }
 
-        return this.userReactPostRepository.find({
+        const reactions = await this.userReactPostRepository.find({
             where: {post_id: postId},
             relations: ['user'],
         });
+
+        // Map reactions to include userOwner
+        return reactions.map((reaction) => ({
+            ...reaction,
+            userOwner: reaction.user,
+        }));
     }
 
     async removeReaction(postId: string, userId: string): Promise<{success: boolean}> {
@@ -998,10 +1049,16 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             throw new NotFoundException(`Story with ID ${storyId} not found`);
         }
 
-        return this.userReactStoryRepository.find({
+        const reactions = await this.userReactStoryRepository.find({
             where: {story_id: storyId},
             relations: ['user'],
         });
+
+        // Map reactions to include userOwner
+        return reactions.map((reaction) => ({
+            ...reaction,
+            userOwner: reaction.user,
+        }));
     }
 
     async removeStoryReaction(storyId: string, userId: string): Promise<{success: boolean}> {
@@ -1059,8 +1116,14 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             order: {createdAt: 'DESC'},
         });
 
+        // Map reels to include userOwner
+        const mappedReels = reels.map((reel) => ({
+            ...reel,
+            userOwner: reel.newsFeed?.owner,
+        }));
+
         return {
-            data: reels,
+            data: mappedReels,
             metadata: {
                 total,
                 page,

@@ -26,6 +26,7 @@ interface UserData {
     firstName: string;
     lastName: string;
     profileImageUrl: string;
+    phoneNumber: string;
 }
 
 export const seedCommunicationDatabase = async (dataSource: DataSource) => {
@@ -93,6 +94,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 firstName: userData.firstName,
                 lastName: userData.lastName,
                 profileImageUrl: userData.profileImageUrl,
+                phoneNumber: userData.phoneNumber,
             });
             await userReferenceRepo.save(userRef);
             userRefs.push(userRef);

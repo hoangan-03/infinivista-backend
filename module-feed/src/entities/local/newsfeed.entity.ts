@@ -9,7 +9,7 @@ import {Story} from '@/entities/local/story.entity';
 import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
 import {CommunityReference} from '../external/community-ref.entity';
-import {UserReference} from '../external/user-ref.entity';
+import {UserReference} from '../external/user-reference.entity';
 import {HashTag} from './hashtag.entity';
 
 @Entity()
