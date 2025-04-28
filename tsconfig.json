@@ -11,7 +11,10 @@
     "sourceMap": false,
     "declaration": false
   },
-  "include": ["seed-coordinator.ts"],
+  "include": [
+    "seed-coordinator.ts",
+    "scripts/**/*.js"  // Include JavaScript files in scripts directory
+  ],
   "exclude": ["node_modules", "dist", "test", "**/*spec.ts"],
   "ts-node": {
     "transpileOnly": true,

@@ -13,6 +13,9 @@ google-credentials.json
 !.eslintrc.js
 !webpack.config.js
 
+# Keep specific JavaScript files
+!scripts/run-sql-seed.js
+
 # Logs
 logs
 *.log
