@@ -91,12 +91,24 @@ const dropDatabase = async () => {
 
         // Drop reference tables
         await queryRunner.query('DROP TABLE IF EXISTS user_references CASCADE');
-        await queryRunner.query('DROP TABLE IF EXISTS community_references CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS community_reference CASCADE');
+
+        // Drop many-to-many join tables
+        await queryRunner.query('DROP TABLE IF EXISTS group_members_user_references CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS page_followers_user_references CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS user_references_followed_pages_page CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS user_references_memeber_in_groups_group CASCADE');
 
         // Drop any enum types
         await queryRunner.query('DROP TYPE IF EXISTS post_visibility_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS group_visibility_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS page_visibility_enum CASCADE');
         await queryRunner.query('DROP TYPE IF EXISTS news_feed_visibility_enum CASCADE');
-        await queryRunner.query('DROP TYPE IF EXISTS attachment_type_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS page_category_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS post_attachment_attachmenttype_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS story_attachmenttype_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS user_react_post_enum CASCADE');
+        await queryRunner.query('DROP TYPE IF EXISTS user_react_story_enum CASCADE');
 
         console.log(`Feed database ${dbName} tables dropped successfully.`);
 

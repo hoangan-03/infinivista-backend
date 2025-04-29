@@ -1,8 +1,7 @@
-import {Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
 import {PageCategoryEnum} from '@/modules/feed/enum/page-category.enum';
-import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
 import {UserReference} from '../external/user-reference.entity';
 import {NewsFeed} from './newsfeed.entity';
@@ -49,14 +48,14 @@ export class Page extends BaseEntity {
     @Column({nullable: true})
     country?: string;
 
-    @Column({type: 'enum', enum: visibilityEnum, default: visibilityEnum.PUBLIC})
-    visibility: visibilityEnum;
-
     @OneToOne(() => NewsFeed, (newsFeed) => newsFeed.id, {nullable: true})
     @JoinColumn({name: 'news_feed_id'})
     newsFeed?: NewsFeed;
 
-    @OneToOne(() => UserReference, (userRef) => userRef.newsFeed)
+    @Column({name: 'news_feed_id', nullable: true})
+    news_feed_id: string;
+
+    @ManyToOne(() => UserReference, (userRef) => userRef.newsFeed)
     @JoinColumn({name: 'owner_id'})
     owner: UserReference;
 

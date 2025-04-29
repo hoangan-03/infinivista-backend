@@ -1,9 +1,11 @@
 import {Controller} from '@nestjs/common';
 import {MessagePattern} from '@nestjs/microservices';
 
+import {UserReference} from '@/entities/external/user-reference.entity';
 import {Comment} from '@/entities/local/comment.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
+import {Page} from '@/entities/local/page.entity';
 import {Post as PostEntity} from '@/entities/local/post.entity';
 import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
@@ -13,9 +15,11 @@ import {PaginationResponseInterface} from '@/interfaces/pagination-response.inte
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 import {FileUploadService} from '@/services/file-upload.service';
 
+import {CreatePageDto} from './dto/create-page.dto';
 import {CreatePostDto} from './dto/create-post.dto';
 import {CreateStoryDto} from './dto/create-story.dto';
 import {FileUploadDto, FileUploadResponseDto} from './dto/file-upload.dto';
+import {UpdatePageDto} from './dto/update-page.dto';
 import {AttachmentType} from './enum/attachment-type.enum';
 import {FeedService} from './feed.service';
 
@@ -212,7 +216,25 @@ export class FeedController {
             mimeType: payload.mimeType,
         };
     }
-
+    /**
+     * Create a post with attachments after uploading files
+     */
+    @MessagePattern('CreatePostInPageAfterUploadingFilesCommand')
+    async createPostInPageAfterUploadingFiles(payload: {
+        userId: string;
+        newsFeedId: string;
+        postData: CreatePostDto;
+        files: Array<{url: string; fileName: string; mimeType: string}>;
+        attachmentType: AttachmentType[];
+    }): Promise<PostEntity> {
+        return this.feedService.createPostInPageAfterUploadingFiles(
+            payload.userId,
+            payload.newsFeedId,
+            payload.postData,
+            payload.files,
+            payload.attachmentType
+        );
+    }
     /**
      * Create a post with attachments after uploading files
      */
@@ -284,5 +306,78 @@ export class FeedController {
     @MessagePattern('GetStoryReactionCountByTypeCommand')
     async getStoryReactionCountByType(payload: {storyId: string}): Promise<Record<ReactionType, number>> {
         return this.feedService.getStoryReactionCountByType(payload.storyId);
+    }
+
+    // Page management endpoints
+    @MessagePattern('GetAllPages')
+    async getAllPages(payload: {page?: number; limit?: number}): Promise<PaginationResponseInterface<Page>> {
+        return this.feedService.getAllPages(payload.page, payload.limit);
+    }
+
+    @MessagePattern('GetMyPages')
+    async getMyPages(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<Page>> {
+        return this.feedService.getMyPages(payload.userId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('CreatePage')
+    async createPage(payload: {ownerId: string; pageData: CreatePageDto}): Promise<Page> {
+        return this.feedService.createPage(payload.ownerId, payload.pageData);
+    }
+
+    @MessagePattern('GetPageById')
+    async getPageById(payload: {id: string}): Promise<Page> {
+        return this.feedService.getPageById(payload.id);
+    }
+
+    @MessagePattern('UpdatePage')
+    async updatePage(payload: {userId: string; pageId: string; updateData: UpdatePageDto}): Promise<Page> {
+        return this.feedService.updatePage(payload.userId, payload.pageId, payload.updateData);
+    }
+
+    @MessagePattern('DeletePage')
+    async deletePage(payload: {userId: string; pageId: string}): Promise<{success: boolean}> {
+        return this.feedService.deletePage(payload.userId, payload.pageId);
+    }
+
+    @MessagePattern('FollowPage')
+    async followPage(payload: {userId: string; pageId: string}): Promise<{success: boolean}> {
+        return this.feedService.followPage(payload.userId, payload.pageId);
+    }
+
+    @MessagePattern('UnfollowPage')
+    async unfollowPage(payload: {userId: string; pageId: string}): Promise<{success: boolean}> {
+        return this.feedService.unfollowPage(payload.userId, payload.pageId);
+    }
+
+    @MessagePattern('GetPageFollowers')
+    async getPageFollowers(payload: {
+        pageId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<UserReference>> {
+        return this.feedService.getPageFollowers(payload.pageId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('GetPagePosts')
+    async getPagePosts(payload: {
+        pageId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<PostEntity>> {
+        return this.feedService.getPagePosts(payload.pageId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('UpdatePageProfileImage')
+    async updatePageProfileImage(payload: {userId: string; pageId: string; imageUrl: string}): Promise<Page> {
+        return this.feedService.updatePageProfileImage(payload.userId, payload.pageId, payload.imageUrl);
+    }
+
+    @MessagePattern('UpdatePageCoverImage')
+    async updatePageCoverImage(payload: {userId: string; pageId: string; imageUrl: string}): Promise<Page> {
+        return this.feedService.updatePageCoverImage(payload.userId, payload.pageId, payload.imageUrl);
     }
 }

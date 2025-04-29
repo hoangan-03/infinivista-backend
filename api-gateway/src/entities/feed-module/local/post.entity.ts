@@ -1,5 +1,6 @@
 import {ApiProperty} from '@nestjs/swagger';
 
+import {UserReference} from '@/entities/communication-module/external/user-reference.entity';
 import {visibilityEnum} from '@/enums/feed-module/visibility.enum';
 
 import {BaseEntity} from '../../base/base-class';
@@ -44,6 +45,12 @@ export class Post extends BaseEntity {
         isArray: true,
     })
     comments: Comment[];
+
+    @ApiProperty({
+        description: 'User who created this post',
+        type: () => UserReference,
+    })
+    owner: UserReference;
 
     @ApiProperty({
         description: 'Attachments (images, videos) for this post',

@@ -4,6 +4,7 @@ import {Comment} from '../local/comment.entity';
 import {Group} from '../local/group.entity';
 import {NewsFeed} from '../local/newsfeed.entity';
 import {Page} from '../local/page.entity';
+import {Post} from '../local/post.entity';
 
 @Entity('user_references')
 export class UserReference {
@@ -24,6 +25,9 @@ export class UserReference {
 
     @OneToMany(() => Comment, (comment) => comment.user)
     comments: Comment[];
+
+    @OneToMany(() => Post, (post) => post.owner)
+    posts: Post[];
 
     @Column({type: 'varchar', length: 255, unique: true})
     email: string;

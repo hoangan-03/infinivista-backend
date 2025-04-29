@@ -1,7 +1,8 @@
 import {ApiProperty} from '@nestjs/swagger';
-import {Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
+import {groupVisibility} from '@/enums/feed-module/group-visibility.enum';
 import {visibilityEnum} from '@/enums/feed-module/visibility.enum';
 
 import {UserReference} from '../external/user.entity';
@@ -82,10 +83,10 @@ export class Group extends BaseEntity {
     })
     @Column({
         type: 'enum',
-        enum: visibilityEnum,
-        default: visibilityEnum.PUBLIC,
+        enum: groupVisibility,
+        default: groupVisibility.PUBLIC,
     })
-    visibility: visibilityEnum;
+    visibility: groupVisibility;
 
     @ApiProperty({
         description: 'Associated news feed for the group',
@@ -101,7 +102,7 @@ export class Group extends BaseEntity {
         type: () => UserReference,
         required: true,
     })
-    @OneToOne(() => UserReference, (userRef) => userRef.newsFeed)
+    @ManyToOne(() => UserReference, (userRef) => userRef.newsFeed)
     @JoinColumn({name: 'owner_id'})
     owner: UserReference;
 

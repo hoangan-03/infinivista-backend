@@ -1,9 +1,8 @@
 import {ApiProperty} from '@nestjs/swagger';
-import {Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
 import {PageCategoryEnum} from '@/enums/feed-module/page-category.enum';
-import {visibilityEnum} from '@/enums/feed-module/visibility.enum';
 
 import {UserReference} from '../external/user.entity';
 import {NewsFeed} from './newsfeed.entity';
@@ -112,19 +111,6 @@ export class Page extends BaseEntity {
     country?: string;
 
     @ApiProperty({
-        description: 'Visibility settings for the page',
-        enum: visibilityEnum,
-        example: visibilityEnum.PUBLIC,
-        required: true,
-    })
-    @Column({
-        type: 'enum',
-        enum: visibilityEnum,
-        default: visibilityEnum.PUBLIC,
-    })
-    visibility: visibilityEnum;
-
-    @ApiProperty({
         description: 'Associated news feed for the page',
         type: () => NewsFeed,
         required: false,
@@ -138,7 +124,7 @@ export class Page extends BaseEntity {
         type: () => UserReference,
         required: true,
     })
-    @OneToOne(() => UserReference, (userRef) => userRef.newsFeed)
+    @ManyToOne(() => UserReference, (userRef) => userRef.newsFeed)
     @JoinColumn({name: 'owner_id'})
     owner: UserReference;
 

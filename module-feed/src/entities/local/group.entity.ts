@@ -1,7 +1,17 @@
-import {Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {
+    Column,
+    Entity,
+    JoinColumn,
+    JoinTable,
+    ManyToMany,
+    ManyToOne,
+    OneToMany,
+    OneToOne,
+    PrimaryGeneratedColumn,
+} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
-import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
+import {groupVisibility} from '@/modules/feed/enum/group-visibility.enum';
 
 import {UserReference} from '../external/user-reference.entity';
 import {GroupRule} from './group-rule.entity';
@@ -33,15 +43,18 @@ export class Group extends BaseEntity {
     @Column({nullable: true})
     country?: string;
 
-    @Column({type: 'enum', enum: visibilityEnum, default: visibilityEnum.PUBLIC})
-    visibility: visibilityEnum;
+    @Column({type: 'enum', enum: groupVisibility, default: groupVisibility.PUBLIC})
+    visibility: groupVisibility;
 
     @OneToOne(() => NewsFeed, (newsFeed) => newsFeed.id, {nullable: true})
     @JoinColumn({name: 'news_feed_id'})
     newsFeed?: NewsFeed;
 
+    @Column({name: 'news_feed_id', nullable: true})
+    news_feed_id: string;
+
     // Page owner
-    @OneToOne(() => UserReference, (userRef) => userRef.newsFeed)
+    @ManyToOne(() => UserReference, (userRef) => userRef.newsFeed)
     @JoinColumn({name: 'owner_id'})
     owner: UserReference;
 
