@@ -4,8 +4,10 @@ import axios from 'axios';
 import {In, Repository} from 'typeorm';
 
 import {Comment} from '@/entities/local/comment.entity';
+import {Group} from '@/entities/local/group.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
+import {Page} from '@/entities/local/page.entity';
 import {Post} from '@/entities/local/post.entity';
 import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reel} from '@/entities/local/reel.entity';
@@ -46,7 +48,11 @@ export class FeedService {
         @InjectRepository(Topic)
         private readonly topicRepository: Repository<Topic>,
         @InjectRepository(Reel)
-        private readonly reelRepository: Repository<Reel>
+        private readonly reelRepository: Repository<Reel>,
+        @InjectRepository(Page)
+        private readonly pageRepository: Repository<Page>,
+        @InjectRepository(Group)
+        private readonly groupRepository: Repository<Group>
     ) {}
 
     /**
