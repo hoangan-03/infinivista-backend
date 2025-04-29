@@ -3,7 +3,7 @@ import {Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToMany, OneToOne, 
 import {BaseEntity} from '@/entities/base/base-class';
 import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
-import {UserReference} from '../external/user-ref.entity';
+import {UserReference} from '../external/user-reference.entity';
 import {GroupRule} from './group-rule.entity';
 import {NewsFeed} from './newsfeed.entity';
 

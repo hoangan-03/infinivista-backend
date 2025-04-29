@@ -82,6 +82,9 @@ const dropDatabase = async () => {
         await queryRunner.query('DROP TABLE IF EXISTS security_answers CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS payment_methods CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS user_status CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS social_links CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS friends CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS friend_requests CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS users CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS security_questions CASCADE');
 

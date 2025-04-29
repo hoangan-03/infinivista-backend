@@ -82,6 +82,9 @@ const dropDatabase = async () => {
         await queryRunner.query('DROP TABLE IF EXISTS advertisement CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS hash_tag CASCADE');
         await queryRunner.query('DROP TABLE IF EXISTS news_feed CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS page CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS group_rule CASCADE');
+        await queryRunner.query('DROP TABLE IF EXISTS "group" CASCADE');
 
         // Drop many-to-many join tables
         await queryRunner.query('DROP TABLE IF EXISTS post_topics CASCADE');

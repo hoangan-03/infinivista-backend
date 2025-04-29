@@ -4,7 +4,7 @@ import {BaseEntity} from '@/entities/base/base-class';
 import {PageCategoryEnum} from '@/modules/feed/enum/page-category.enum';
 import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
-import {UserReference} from '../external/user-ref.entity';
+import {UserReference} from '../external/user-reference.entity';
 import {NewsFeed} from './newsfeed.entity';
 
 @Entity()

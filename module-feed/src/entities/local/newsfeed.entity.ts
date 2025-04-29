@@ -8,7 +8,7 @@ import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
-import {UserReference} from '../external/user-ref.entity';
+import {UserReference} from '../external/user-reference.entity';
 import {Group} from './group.entity';
 import {HashTag} from './hashtag.entity';
 import {Page} from './page.entity';
@@ -45,15 +45,21 @@ export class NewsFeed extends BaseEntity {
     owner: UserReference;
 
     @OneToOne(() => Page, (page) => page.newsFeed)
-    @JoinColumn({name: 'owner_id'})
+    @JoinColumn({name: 'page_owner_id'})
     pageOwner?: Page;
 
     @OneToOne(() => Group, (group) => group.newsFeed)
-    @JoinColumn({name: 'owner_id'})
+    @JoinColumn({name: 'group_owner_id'})
     groupOwner?: Group;
 
     @Column({name: 'owner_id', nullable: true})
     owner_id: string;
+
+    @Column({name: 'page_owner_id', nullable: true})
+    page_owner_id: string;
+
+    @Column({name: 'group_owner_id', nullable: true})
+    group_owner_id: string;
 
     @ManyToMany(() => HashTag, (tag) => tag.newsFeeds)
     @JoinColumn()

@@ -3,6 +3,7 @@ import {Logger} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {DataSource} from 'typeorm';
 
+import {UserReference} from '@/entities/external/user-reference.entity';
 import {UserReactStory} from '@/entities/local/user-react-story.entity';
 import {AttachmentType} from '@/modules/feed/enum/attachment-type.enum';
 import {PageCategoryEnum} from '@/modules/feed/enum/page-category.enum';
@@ -10,7 +11,6 @@ import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
 import {AppModule} from '../app.module';
-import {UserReference} from '../entities/external/user-ref.entity';
 import {Advertisement} from '../entities/local/advertisement.entity';
 import {Comment} from '../entities/local/comment.entity';
 import {Group} from '../entities/local/group.entity';

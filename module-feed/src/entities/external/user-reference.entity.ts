@@ -7,7 +7,7 @@ import {Page} from '../local/page.entity';
 
 @Entity('user_references')
 export class UserReference {
-    @PrimaryColumn()
+    @PrimaryColumn('uuid')
     id: string;
 
     @OneToOne(() => NewsFeed, (newsFeed) => newsFeed.owner, {cascade: true})
