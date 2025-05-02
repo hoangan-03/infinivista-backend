@@ -50,8 +50,8 @@ export class ProfileController {
     }
 
     @Get('social-links/:id')
-    @ApiOperation({summary: 'Get user profile by ID'})
-    @ApiResponse({status: 200, description: 'Return user profile by ID', type: SocialLink})
+    @ApiOperation({summary: 'Get user social links by ID'})
+    @ApiResponse({status: 200, description: 'Return social links by ID', type: [SocialLink]})
     @ApiResponse({
         status: 400,
         description: 'Bad Request - Invalid input data',
@@ -127,6 +127,23 @@ export class ProfileController {
         },
     })
     @ApiResponse({status: 200, description: 'Return user social links', type: [SocialLink]})
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                socialLinks: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            type: {type: 'string', example: 'FACEBOOK'},
+                            link: {type: 'string', example: 'https://facebook.com/user'},
+                        },
+                    },
+                },
+            },
+        },
+    })
     @ApiResponse({
         status: 400,
         description: 'Bad Request - Invalid input data',

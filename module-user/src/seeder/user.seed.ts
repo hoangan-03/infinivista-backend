@@ -255,6 +255,8 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
         // Create social links
         logger.log('Creating social links...');
 
+        logger.log('Creating social links for admin...');
+
         // All social link types
         const socialLinkTypes = Object.values(SocialLinkType);
 

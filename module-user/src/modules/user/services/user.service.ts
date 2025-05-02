@@ -22,6 +22,8 @@ export class UserService {
         private readonly settingRepository: Repository<Setting>,
         @InjectRepository(SecurityAnswer)
         private readonly securityAnswerRepository: Repository<SecurityAnswer>,
+        @InjectRepository(SocialLink)
+        private readonly socialLinkRepository: Repository<SocialLink>,
         private readonly userEventsService: UserEventsService
     ) {}
 
@@ -88,7 +90,11 @@ export class UserService {
         if (!user) {
             throw new NotFoundException(`There isn't any user with id: ${userId}`);
         }
-        return user.socialLinks || [];
+        const socialLinks = await this.socialLinkRepository.find({where: {user_id: userId}});
+        if (!socialLinks) {
+            throw new NotFoundException(`There isn't any social link for user with id: ${userId}`);
+        }
+        return socialLinks;
     }
 
     async getBiography(userId: string): Promise<string> {
@@ -129,9 +135,34 @@ export class UserService {
         if (!user) {
             throw new NotFoundException(`There isn't any user with id: ${userId}`);
         }
-        user.socialLinks = socialLinks;
+
+        // Delete existing social links for this user
+        await this.socialLinkRepository.delete({user_id: userId});
+
+        // Create and save each social link properly
+        const savedLinks: SocialLink[] = [];
+
+        for (const socialLink of socialLinks) {
+            // Ensure each link has the required fields
+            if (!socialLink.type || !socialLink.link) {
+                throw new BadRequestException('Social links must include type and link');
+            }
+
+            // Create a proper entity with all required fields
+            const ujpdatedSocialLink = this.socialLinkRepository.create({
+                type: socialLink.type,
+                link: socialLink.link,
+                user_id: userId,
+            });
+
+            savedLinks.push(await this.socialLinkRepository.save(ujpdatedSocialLink));
+        }
+
+        // Update the user's socialLinks reference
+        user.socialLinks = savedLinks;
         await this.userRepository.save(user);
-        return socialLinks;
+
+        return savedLinks;
     }
 
     async updateProfilePicture(id: string, imageUrl: string): Promise<User> {

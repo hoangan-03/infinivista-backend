@@ -1,6 +1,6 @@
 import {Body, Controller, Delete, Get, Inject, Param, Post, Put, Query, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {ApiBearerAuth, ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {CurrentUser} from '@/decorators/user.decorator';
@@ -36,7 +36,7 @@ export class FriendController {
         );
     }
     @Get(':id')
-    @ApiOperation({summary: 'Get paginated list of friends for current user'})
+    @ApiOperation({summary: 'Get paginated list of friends for a user'})
     @ApiQuery({type: PaginationDto})
     @ApiResponse({status: 200, description: 'Returns paginated list of friends'})
     async getFriends(
