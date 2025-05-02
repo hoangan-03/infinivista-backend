@@ -1,13 +1,15 @@
 import {Module} from '@nestjs/common';
 import {TypeOrmModule} from '@nestjs/typeorm';
 
-import {CommunityReference} from '@/entities/external/community-ref.entity';
 import {UserReference} from '@/entities/external/user-reference.entity';
 import {Advertisement} from '@/entities/local/advertisement.entity';
 import {Comment} from '@/entities/local/comment.entity';
+import {Group} from '@/entities/local/group.entity';
+import {GroupRule} from '@/entities/local/group-rule.entity';
 import {HashTag} from '@/entities/local/hashtag.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
+import {Page} from '@/entities/local/page.entity';
 import {Post} from '@/entities/local/post.entity';
 import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reel} from '@/entities/local/reel.entity';
@@ -33,10 +35,12 @@ import {FeedService} from './feed.service';
             Topic,
             Reel,
             Story,
-            CommunityReference,
             UserReference,
             UserReactPost,
             UserReactStory,
+            Page,
+            Group,
+            GroupRule,
         ]),
         UserReferenceModule,
     ],

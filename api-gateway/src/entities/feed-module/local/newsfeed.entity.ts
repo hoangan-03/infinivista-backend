@@ -2,11 +2,12 @@ import {ApiProperty} from '@nestjs/swagger';
 
 import {visibilityEnum} from '../../../enums/feed-module/visibility.enum';
 import {BaseEntity} from '../../base/base-class';
-import {CommunityReference} from '../external/community.entity';
 import {UserReference} from '../external/user.entity';
 import {Advertisement} from './advertisement.entity';
+import {Group} from './group.entity';
 import {HashTag} from './hashtag.entity';
 import {LiveStreamHistory} from './live-stream-history.entity';
+import {Page} from './page.entity';
 import {Post} from './post.entity';
 import {Reel} from './reel.entity';
 import {Story} from './story.entity';
@@ -69,17 +70,22 @@ export class NewsFeed extends BaseEntity {
     advertisements: Advertisement[];
 
     @ApiProperty({
-        description: 'Community that owns this news feed (if applicable)',
-        type: () => CommunityReference,
-        required: false,
-    })
-    community?: CommunityReference;
-
-    @ApiProperty({
         description: 'User who owns this news feed',
         type: () => UserReference,
     })
     owner: UserReference;
+
+    @ApiProperty({
+        description: 'Page who owns this news feed',
+        type: () => Page,
+    })
+    pageOwner: Page;
+
+    @ApiProperty({
+        description: 'Group who owns this news feed',
+        type: () => Group,
+    })
+    groupOwner: Group;
 
     @ApiProperty({
         description: 'Hashtags used in this news feed',

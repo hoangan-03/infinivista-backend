@@ -1,4 +1,4 @@
-import {Entity, JoinColumn, OneToMany, OneToOne, PrimaryColumn} from 'typeorm';
+import {Entity, JoinColumn, ManyToMany, OneToMany, OneToOne, PrimaryColumn} from 'typeorm';
 
 import {Comment} from '../local/comment.entity';
 import {NewsFeed} from '../local/newsfeed.entity';
@@ -14,4 +14,10 @@ export class UserReference {
 
     @OneToMany(() => Comment, (comment) => comment.user)
     comments: Comment[];
+
+    @ManyToMany(() => UserReference, (userRef) => userRef.memberInGroups)
+    memberInGroups: UserReference[];
+
+    @ManyToMany(() => UserReference, (userRef) => userRef.followedPages)
+    followedPages: UserReference[];
 }

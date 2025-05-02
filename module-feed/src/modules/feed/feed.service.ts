@@ -3,9 +3,12 @@ import {InjectRepository} from '@nestjs/typeorm';
 import axios from 'axios';
 import {In, Repository} from 'typeorm';
 
+import {UserReference} from '@/entities/external/user-reference.entity';
 import {Comment} from '@/entities/local/comment.entity';
+import {Group} from '@/entities/local/group.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
+import {Page} from '@/entities/local/page.entity';
 import {Post} from '@/entities/local/post.entity';
 import {PostAttachment} from '@/entities/local/post-attachment';
 import {Reel} from '@/entities/local/reel.entity';
@@ -17,8 +20,10 @@ import {PaginationResponseInterface} from '@/interfaces/pagination-response.inte
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 
 import {UserReferenceService} from '../user-reference/user-reference.service';
+import {CreatePageDto} from './dto/create-page.dto';
 import {CreatePostDto} from './dto/create-post.dto';
 import {CreateStoryDto} from './dto/create-story.dto';
+import {UpdatePageDto} from './dto/update-page.dto';
 import {AttachmentType} from './enum/attachment-type.enum';
 import {visibilityEnum} from './enum/visibility.enum';
 
@@ -43,10 +48,16 @@ export class FeedService {
         private readonly userReactPostRepository: Repository<UserReactPost>,
         @InjectRepository(UserReactStory)
         private readonly userReactStoryRepository: Repository<UserReactStory>,
+        @InjectRepository(UserReference)
+        private readonly userReferenceRepository: Repository<UserReference>,
         @InjectRepository(Topic)
         private readonly topicRepository: Repository<Topic>,
         @InjectRepository(Reel)
-        private readonly reelRepository: Repository<Reel>
+        private readonly reelRepository: Repository<Reel>,
+        @InjectRepository(Page)
+        private readonly pageRepository: Repository<Page>,
+        @InjectRepository(Group)
+        private readonly groupRepository: Repository<Group>
     ) {}
 
     /**
@@ -1140,6 +1151,98 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         };
     }
 
+    async createPostInPageAfterUploadingFiles(
+        userId: string,
+        newsFeedId: string,
+        postData: CreatePostDto,
+        files: Array<{url: string; fileName: string; mimeType: string}>,
+        attachmentType: AttachmentType[]
+    ): Promise<Post> {
+        this.logger.log(`Creating post with ${files?.length || 0} attachments for news feed ${newsFeedId} of page`);
+        const newsFeed = await this.getNewsFeedById(newsFeedId);
+
+        const post = this.postRepository.create({
+            content: postData.content,
+            owner_id: userId,
+            newsFeed: newsFeed,
+        });
+
+        try {
+            // Call Gemini API to analyze content and classify topics
+            const topicIds = await this.classifyPostContent(postData.content);
+
+            // Find the corresponding topic entities
+            if (topicIds && topicIds.length > 0) {
+                const topics = await this.topicRepository.findBy({
+                    id: In(topicIds),
+                });
+
+                // Associate topics with the post
+                if (topics && topics.length > 0) {
+                    post.topics = topics;
+                    this.logger.log(`Post classified into ${topics.length} topics`);
+                }
+            }
+        } catch (error: any) {
+            this.logger.error(`Error classifying post content: ${error.message}`);
+            // Continue with post creation even if classification fails
+        }
+
+        // Save the post first to get an ID
+        const savedPost = await this.postRepository.save(post);
+
+        // Now create and link attachments if they exist
+        if (files && files.length > 0) {
+            // Initialize post.postAttachments if not already
+            if (!savedPost.postAttachments) {
+                savedPost.postAttachments = [];
+            }
+
+            // Create attachment entities for each file
+            files.forEach((file, index) => {
+                const attachment = new PostAttachment();
+                attachment.attachment_url = file.url;
+                attachment.post = savedPost; // Link to the post
+                attachment.attachmentType =
+                    index < attachmentType.length ? attachmentType[index] : AttachmentType.IMAGE;
+
+                this.postAttachmentRepository.save(attachment).then((savedAttachment) => {
+                    savedPost.postAttachments.push(savedAttachment);
+                });
+            });
+
+            // Wait for all attachments to be saved
+            await Promise.all(
+                files.map((file, index) => {
+                    const attachment = new PostAttachment();
+                    attachment.attachment_url = file.url;
+                    attachment.post = savedPost;
+                    attachment.attachmentType =
+                        index < attachmentType.length ? attachmentType[index] : AttachmentType.IMAGE;
+
+                    return this.postAttachmentRepository.save(attachment);
+                })
+            ).then((savedAttachments) => {
+                savedPost.postAttachments = savedAttachments;
+            });
+
+            // Update the post with the attachments
+            await this.postRepository.save(savedPost);
+        }
+
+        // Load the post with attachments to return
+        const finalPost = await this.postRepository.findOne({
+            where: {id: savedPost.id},
+            relations: ['postAttachments', 'topics'],
+        });
+
+        if (!finalPost) {
+            throw new NotFoundException(`Post with ID ${savedPost.id} not found after saving`);
+        }
+
+        return finalPost;
+    }
+
     async createPostAfterUploadingFiles(
         newsFeedId: string,
         postData: CreatePostDto,
@@ -1149,9 +1252,12 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         this.logger.log(`Creating post with ${files?.length || 0} attachments for news feed ${newsFeedId}`);
         const newsFeed = await this.getNewsFeedById(newsFeedId);
 
+        // We need to know that post is user post or page post
+
         // Create the post first and associate it with the news feed
         const post = this.postRepository.create({
             content: postData.content,
+            owner: newsFeed.owner,
             newsFeed: newsFeed, // This is critical - associate with newsFeed
         });
 
@@ -1229,5 +1335,271 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         }
 
         return finalPost;
+    }
+
+    // Page management methods
+    async getAllPages(page = 1, limit = 10): Promise<PaginationResponseInterface<Page>> {
+        const [pages, total] = await this.pageRepository.findAndCount({
+            relations: ['owner'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {
+                createdAt: 'DESC',
+            },
+        });
+
+        return {
+            data: pages,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async createPage(ownerId: string, pageData: CreatePageDto): Promise<Page> {
+        const owner = await this.userReferenceService.findById(ownerId);
+
+        if (!owner) {
+            throw new NotFoundException(`User with ID ${ownerId} not found`);
+        }
+
+        // Create the page with owner
+        const page = this.pageRepository.create({
+            ...pageData,
+            owner,
+        });
+
+        const savedPage = await this.pageRepository.save(page);
+
+        // Create a news feed for the page
+        const newsFeed = this.newsFeedRepository.create({
+            description: `${savedPage.name} Official Feed`,
+            visibility: visibilityEnum.PUBLIC,
+            pageOwner: savedPage,
+        });
+
+        const savedNewsFeed = await this.newsFeedRepository.save(newsFeed);
+
+        // Update the page with the news feed ID
+        savedPage.newsFeed = savedNewsFeed;
+        await this.pageRepository.save(savedPage);
+
+        return savedPage;
+    }
+
+    async getMyPages(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Page>> {
+        const user = await this.userReferenceService.findById(userId);
+
+        if (!user) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
+        }
+
+        const [pages, total] = await this.pageRepository.findAndCount({
+            where: {owner: {id: userId}},
+            relations: ['owner'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {
+                createdAt: 'DESC',
+            },
+        });
+
+        return {
+            data: pages,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async getPageById(id: string): Promise<Page> {
+        const page = await this.pageRepository.findOne({
+            where: {id},
+            relations: ['owner', 'newsFeed', 'followers'],
+        });
+
+        if (!page) {
+            throw new NotFoundException(`Page with ID ${id} not found`);
+        }
+
+        return page;
+    }
+
+    async updatePage(userId: string, pageId: string, updateData: UpdatePageDto): Promise<Page> {
+        const page = await this.getPageById(pageId);
+
+        // Check if the user is the owner of the page
+        if (page.owner_id !== userId) {
+            throw new ForbiddenException('Only page owners can update pages');
+        }
+
+        // Update the page with the new data
+        this.pageRepository.merge(page, updateData);
+
+        return this.pageRepository.save(page);
+    }
+
+    async deletePage(userId: string, pageId: string): Promise<{success: boolean}> {
+        const page = await this.getPageById(pageId);
+
+        // Check if the user is the owner of the page
+        if (page.owner_id !== userId) {
+            throw new ForbiddenException('Only page owners can delete pages');
+        }
+
+        // Delete the page
+        await this.pageRepository.remove(page);
+
+        return {success: true};
+    }
+
+    async followPage(userId: string, pageId: string): Promise<{success: boolean}> {
+        const page = await this.getPageById(pageId);
+        const user = await this.userReferenceService.findById(userId);
+
+        if (!user) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
+        }
+
+        // Check if user is already a follower
+        const isFollower = page.followers?.some((follower) => follower.id === userId);
+
+        if (isFollower) {
+            return {success: true}; // Already following
+        }
+
+        // Initialize followers array if not present
+        if (!page.followers) {
+            page.followers = [];
+        }
+
+        // Add user to followers
+        page.followers.push(user);
+
+        await this.pageRepository.save(page);
+
+        return {success: true};
+    }
+
+    async unfollowPage(userId: string, pageId: string): Promise<{success: boolean}> {
+        const page = await this.getPageById(pageId);
+
+        // Check if user is a follower
+        if (!page.followers) {
+            return {success: true}; // No followers, nothing to do
+        }
+
+        // Remove user from followers
+        page.followers = page.followers.filter((follower) => follower.id !== userId);
+
+        await this.pageRepository.save(page);
+
+        return {success: true};
+    }
+
+    async getPageFollowers(pageId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<UserReference>> {
+        const foundPage = await this.getPageById(pageId);
+
+        if (!foundPage.newsFeed) {
+            return {
+                data: [],
+                metadata: {
+                    total: 0,
+                    page,
+                    limit,
+                    totalPages: 0,
+                },
+            };
+        }
+        const [followers, total] = await this.userReferenceRepository.findAndCount({
+            where: {followedPages: {id: foundPage.id}},
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+
+        return {
+            data: followers,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async getPagePosts(pageId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Post>> {
+        const foundPage = await this.getPageById(pageId);
+
+        if (!foundPage.newsFeed) {
+            return {
+                data: [],
+                metadata: {
+                    total: 0,
+                    page,
+                    limit,
+                    totalPages: 0,
+                },
+            };
+        }
+
+        // Query posts directly from the repository instead of relying on the loaded relationship
+        const [posts, total] = await this.postRepository.findAndCount({
+            where: {newsFeed: {id: foundPage.newsFeed.id}},
+            relations: ['postAttachments', 'topics'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {createdAt: 'DESC'},
+        });
+
+        // Add page owner information to posts if needed
+        const postsWithOwner = posts.map((post) => ({
+            ...post,
+            userOwner: foundPage.owner,
+        }));
+
+        return {
+            data: postsWithOwner,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async updatePageProfileImage(userId: string, pageId: string, imageUrl: string): Promise<Page> {
+        const page = await this.getPageById(pageId);
+
+        // Check if the user is the owner of the page
+        if (page.owner_id !== userId) {
+            throw new ForbiddenException('Only page owners can update page profile images');
+        }
+
+        // Update profile image URL
+        page.profileImageUrl = imageUrl;
+
+        return this.pageRepository.save(page);
+    }
+
+    async updatePageCoverImage(userId: string, pageId: string, imageUrl: string): Promise<Page> {
+        const page = await this.getPageById(pageId);
+
+        // Check if the user is the owner of the page
+        if (page.owner_id !== userId) {
+            throw new ForbiddenException('Only page owners can update page cover images');
+        }
+
+        // Update cover image URL
+        page.coverImageUrl = imageUrl;
+
+        return this.pageRepository.save(page);
     }
 }

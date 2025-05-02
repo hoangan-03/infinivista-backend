@@ -9,7 +9,7 @@ import {MessageAttachment} from '../internal/message-attachment.entity';
 
 @Entity()
 export class UserReference {
-    @PrimaryColumn()
+    @PrimaryColumn('uuid')
     id: string;
 
     @OneToMany(() => Message, (message) => message.sender)

@@ -5,6 +5,7 @@ import {ClientsModule, Transport} from '@nestjs/microservices';
 import {FileUploadModule} from '@/services/file-upload.module';
 
 import {NewsFeedController} from './newsfeed.controller';
+import {PageController} from './page.controller';
 import {PostController} from './post.controller';
 import {StoryController} from './story.controller';
 
@@ -48,6 +49,6 @@ import {StoryController} from './story.controller';
             },
         ]),
     ],
-    controllers: [StoryController, NewsFeedController, PostController],
+    controllers: [StoryController, NewsFeedController, PostController, PageController],
 })
 export class FeedModule {}

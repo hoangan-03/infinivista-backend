@@ -1,9 +1,10 @@
-import {Column, Entity, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
+import {UserReference} from '../external/user-reference.entity';
 import {Comment} from './comment.entity';
 import {PostAttachment} from './post-attachment';
 import {Topic} from './topic.entity';
@@ -19,6 +20,13 @@ export class Post extends BaseEntity {
 
     @Column({type: 'enum', enum: visibilityEnum, default: visibilityEnum.PUBLIC})
     visibility: visibilityEnum;
+
+    @ManyToOne(() => UserReference, (userRef) => userRef.posts)
+    @JoinColumn({name: 'owner_id'})
+    owner: UserReference;
+
+    @Column({name: 'owner_id', nullable: true})
+    owner_id: string;
 
     @ManyToOne(() => NewsFeed, (newsFeed) => newsFeed.posts)
     newsFeed: NewsFeed;

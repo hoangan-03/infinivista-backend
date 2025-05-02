@@ -3,19 +3,23 @@ import {Logger} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {DataSource} from 'typeorm';
 
+import {UserReference} from '@/entities/external/user-reference.entity';
 import {UserReactStory} from '@/entities/local/user-react-story.entity';
 import {AttachmentType} from '@/modules/feed/enum/attachment-type.enum';
+import {groupVisibility} from '@/modules/feed/enum/group-visibility.enum';
+import {PageCategoryEnum} from '@/modules/feed/enum/page-category.enum';
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
 import {AppModule} from '../app.module';
-import {CommunityReference} from '../entities/external/community-ref.entity';
-import {UserReference} from '../entities/external/user-reference.entity';
 import {Advertisement} from '../entities/local/advertisement.entity';
 import {Comment} from '../entities/local/comment.entity';
+import {Group} from '../entities/local/group.entity';
+import {GroupRule} from '../entities/local/group-rule.entity';
 import {HashTag} from '../entities/local/hashtag.entity';
 import {LiveStreamHistory} from '../entities/local/live-stream-history.entity';
 import {NewsFeed} from '../entities/local/newsfeed.entity';
+import {Page} from '../entities/local/page.entity';
 import {Post} from '../entities/local/post.entity';
 import {PostAttachment} from '../entities/local/post-attachment';
 import {Reel} from '../entities/local/reel.entity';
@@ -44,7 +48,6 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
         // Get repositories
         const userReferenceRepo = dataSource.getRepository(UserReference);
-        const communityReferenceRepo = dataSource.getRepository(CommunityReference);
         const newsFeedRepo = dataSource.getRepository(NewsFeed);
         const postRepo = dataSource.getRepository(Post);
         const postAttachmentRepo = dataSource.getRepository(PostAttachment);
@@ -57,6 +60,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         const topicRepo = dataSource.getRepository(Topic);
         const userReactPostRepo = dataSource.getRepository(UserReactPost);
         const userReactStoryRepo = dataSource.getRepository(UserReactStory);
+        const pageRepo = dataSource.getRepository(Page);
+        const groupRepo = dataSource.getRepository(Group);
+        const groupRuleRepo = dataSource.getRepository(GroupRule);
 
         logger.log('Clearing existing data...');
         await userReactPostRepo.query('TRUNCATE TABLE "user_react_post" CASCADE');
@@ -71,7 +77,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         await newsFeedRepo.query('TRUNCATE TABLE "news_feed" CASCADE');
         await hashTagRepo.query('TRUNCATE TABLE "hash_tag" CASCADE');
         await userReferenceRepo.query('TRUNCATE TABLE "user_references" CASCADE');
-        await communityReferenceRepo.query('TRUNCATE TABLE "community_reference" CASCADE');
+        await groupRuleRepo.query('TRUNCATE TABLE "group_rule" CASCADE');
+        await groupRepo.query('TRUNCATE TABLE "group" CASCADE');
+        await pageRepo.query('TRUNCATE TABLE "page" CASCADE');
 
         // Connect to the user module database to get real user data
         logger.log('Connecting to user module database...');
@@ -178,14 +186,139 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             logger.log(`Found ${topics.length} existing topics in the database`);
         }
 
-        // Create news feeds for each user (one per user)
+        // Create group rules first
+        logger.log('Creating group rules...');
+        const commonGroupRules = [
+            {
+                title: 'Be Respectful',
+                description: 'Treat everyone with respect. Healthy debates are natural, but kindness is required.',
+            },
+            {title: 'No Spam', description: "Don't spam the group with repetitive content or advertisements."},
+            {title: 'Stay On Topic', description: "Keep your posts relevant to the group's purpose."},
+            {title: 'No Harassment', description: 'Harassment or bullying will not be tolerated.'},
+            {title: 'Keep It Civil', description: 'No hate speech, discrimination, or offensive content.'},
+        ];
+
+        const storedGroupRules: GroupRule[] = [];
+        for (const rule of commonGroupRules) {
+            const groupRule = groupRuleRepo.create(rule);
+            await groupRuleRepo.save(groupRule);
+            storedGroupRules.push(groupRule);
+        }
+
+        // Create pages
+        logger.log('Creating pages...');
+        const pages: Page[] = [];
+        const pageCategories = Object.values(PageCategoryEnum);
+        const pageNames = [
+            'Infinivista Official',
+            'Travel Photography',
+            'Tech Enthusiasts',
+            'Fitness Lovers',
+            'Digital Nomads Group',
+            'Cooking Masters',
+            'Art & Design Hub',
+        ];
+
+        // Create pages with admin as owner and generate random content
+        for (let i = 0; i < pageNames.length; i++) {
+            const pageOwner = i === 0 ? adminUserRef : faker.helpers.arrayElement(userRefs);
+            const page = pageRepo.create({
+                name: pageNames[i],
+                description: faker.lorem.paragraph(),
+                profileImageUrl: faker.image.url(),
+                coverImageUrl: faker.image.url(),
+                category: faker.helpers.arrayElement(pageCategories),
+                website: faker.internet.url(),
+                email: faker.internet.email(),
+                phoneNumber: faker.phone.number(),
+                address: faker.location.streetAddress(),
+                city: faker.location.city(),
+                country: faker.location.country(),
+                owner: pageOwner,
+            });
+
+            await pageRepo.save(page);
+
+            // Add followers - a random selection of users
+            const followerCount = faker.number.int({min: 5, max: userRefs.length - 1});
+            const followers = faker.helpers.arrayElements(userRefs, followerCount);
+
+            // SQL approach for many-to-many - FIX: Change column name from "userReferenceId" to "userReferencesId"
+            for (const follower of followers) {
+                try {
+                    await dataSource.query(
+                        'INSERT INTO "page_followers_user_references" ("pageId", "userReferencesId") VALUES ($1, $2)',
+                        [page.id, follower.id]
+                    );
+                } catch (error: any) {
+                    logger.warn(`Failed to add follower ${follower.id} to page ${page.id}: ${error.message}`);
+                }
+            }
+
+            pages.push(page);
+        }
+
+        // Create groups
+        logger.log('Creating groups...');
+        const groups: Group[] = [];
+        const groupNames = [
+            'Photography Enthusiasts',
+            'Software Developers',
+            'Fitness Motivation',
+            'Food Lovers',
+            'Book Club',
+            'Travel Addicts',
+            'Music Discussion',
+        ];
+
+        // Create groups with random owners
+        for (let i = 0; i < groupNames.length; i++) {
+            const groupOwner = i === 0 ? adminUserRef : faker.helpers.arrayElement(userRefs);
+
+            const group = groupRepo.create({
+                name: groupNames[i],
+                description: faker.lorem.paragraph(),
+                profileImageUrl: faker.image.url(),
+                coverImageUrl: faker.image.url(),
+                city: faker.location.city(),
+                country: faker.location.country(),
+                visibility: i === 0 ? groupVisibility.PUBLIC : groupVisibility.PRIVATE,
+                owner: groupOwner,
+            });
+
+            // Assign 2-4 rules to each group
+            group.groupRules = faker.helpers.arrayElements(storedGroupRules, faker.number.int({min: 2, max: 4}));
+
+            await groupRepo.save(group);
+
+            // Add members - a random selection of users
+            const memberCount = faker.number.int({min: 5, max: userRefs.length - 1});
+            const members = faker.helpers.arrayElements(userRefs, memberCount);
+
+            // SQL approach for many-to-many - FIX: Change column name from "userReferenceId" to "userReferencesId"
+            for (const member of members) {
+                try {
+                    await dataSource.query(
+                        'INSERT INTO "group_members_user_references" ("groupId", "userReferencesId") VALUES ($1, $2)',
+                        [group.id, member.id]
+                    );
+                } catch (error: any) {
+                    logger.warn(`Failed to add member ${member.id} to group ${group.id}: ${error.message}`);
+                }
+            }
+
+            groups.push(group);
+        }
+
+        // Create news feeds for each user, page, and group
         logger.log('Creating news feeds...');
         const newsFeeds: NewsFeed[] = [];
         let adminNewsFeed: NewsFeed | undefined;
 
+        // Create user news feeds
         for (const userRef of userRefs) {
             try {
-                // First, create the news feed without many-to-many relationships
                 const newsFeed = newsFeedRepo.create({
                     description:
                         userRef === adminUserRef
@@ -197,10 +330,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                             : faker.helpers.arrayElement(Object.values(visibilityEnum)),
                 });
 
-                // Need to save first to get an ID
                 const savedFeed = await newsFeedRepo.save(newsFeed);
 
-                // Now update the owner relationship with direct SQL to avoid ORM issues
                 await dataSource
                     .createQueryBuilder()
                     .update(NewsFeed)
@@ -208,18 +339,14 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     .where('id = :id', {id: savedFeed.id})
                     .execute();
 
-                logger.log(`Set owner_id for news feed ${savedFeed.id} to user ${userRef.id}`);
-
-                // Refresh the feed to get the updated entity with owner - include relations
                 const refreshedFeed = await newsFeedRepo.findOne({
                     where: {id: savedFeed.id},
-                    relations: ['owner'], // Include owner relation
+                    relations: ['owner'],
                 });
 
                 if (refreshedFeed) {
                     newsFeeds.push(refreshedFeed);
 
-                    // Store admin's feed separately
                     if (userRef === adminUserRef) {
                         adminNewsFeed = refreshedFeed;
                         logger.log(`Created admin news feed for ${userRef.username}`);
@@ -229,24 +356,153 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 }
             } catch (error: any) {
                 logger.error(`Error creating news feed for user ${userRef.username}: ${error.message}`);
-                logger.error(error.stack);
-                // Continue with next user even if one fails
+            }
+        }
+
+        // Create news feeds for pages
+        logger.log('Creating news feeds for pages...');
+        for (const page of pages) {
+            try {
+                const newsFeed = newsFeedRepo.create({
+                    description: `${page.name} Official Feed`,
+                    visibility: visibilityEnum.PUBLIC,
+                    pageOwner: page,
+                });
+
+                const savedFeed = await newsFeedRepo.save(newsFeed);
+
+                await dataSource
+                    .createQueryBuilder()
+                    .update(Page)
+                    .set({news_feed_id: savedFeed.id})
+                    .where('id = :id', {id: page.id})
+                    .execute();
+
+                logger.log(`Created news feed for page: ${page.name}`);
+
+                const pagePostCount = faker.number.int({min: 10, max: 20});
+                for (let i = 0; i < pagePostCount; i++) {
+                    const post = postRepo.create({
+                        content: faker.lorem.paragraphs(faker.number.int({min: 1, max: 3})),
+                        newsFeed,
+                        topics:
+                            topics.length > 0
+                                ? faker.helpers.arrayElements(topics, faker.number.int({min: 1, max: 3}))
+                                : [],
+                        owner: page.owner, // Set the page owner as the post owner
+                    });
+                    await postRepo.save(post);
+
+                    const attachmentCount = faker.number.int({min: 1, max: 4});
+                    for (let j = 0; j < attachmentCount; j++) {
+                        const attachment = postAttachmentRepo.create({
+                            attachment_url: faker.image.url(),
+                            attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                            post,
+                        });
+                        await postAttachmentRepo.save(attachment);
+                    }
+
+                    const reactionCount = faker.number.int({min: 10, max: 30});
+                    const reactingUsers = faker.helpers.arrayElements(
+                        userRefs,
+                        Math.min(reactionCount, userRefs.length)
+                    );
+
+                    for (const user of reactingUsers) {
+                        const reaction = userReactPostRepo.create({
+                            user_id: user.id,
+                            post_id: post.id,
+                            reactionType: faker.helpers.arrayElement(Object.values(ReactionType)),
+                        });
+                        await userReactPostRepo.save(reaction);
+                    }
+                }
+            } catch (error: any) {
+                logger.error(`Error creating news feed for page ${page.name}: ${error.message}`);
+            }
+        }
+
+        // Create news feeds for groups
+        logger.log('Creating news feeds for groups...');
+        for (const group of groups) {
+            try {
+                const newsFeed = newsFeedRepo.create({
+                    description: `${group.name} Group Feed`,
+                    visibility: groupVisibility.PUBLIC ? visibilityEnum.PUBLIC : visibilityEnum.PRIVATE,
+                    groupOwner: group,
+                });
+
+                const savedFeed = await newsFeedRepo.save(newsFeed);
+
+                await dataSource
+                    .createQueryBuilder()
+                    .update(Group)
+                    .set({news_feed_id: savedFeed.id})
+                    .where('id = :id', {id: group.id})
+                    .execute();
+
+                logger.log(`Created news feed for group: ${group.name}`);
+
+                const groupPostCount = faker.number.int({min: 30, max: 50});
+                for (let i = 0; i < groupPostCount; i++) {
+                    const memberIds: {userReferencesId: string}[] = await dataSource.query(
+                        'SELECT "userReferencesId" FROM "group_members_user_references" WHERE "groupId" = $1',
+                        [group.id]
+                    );
+
+                    if (memberIds.length > 0) {
+                        const randomMemberId = faker.helpers.arrayElement(memberIds).userReferencesId;
+                        const memberUser = await userReferenceRepo.findOne({where: {id: randomMemberId}});
+
+                        if (memberUser) {
+                            const post = postRepo.create({
+                                content: faker.lorem.paragraphs(faker.number.int({min: 1, max: 2})),
+                                newsFeed,
+                                topics:
+                                    topics.length > 0
+                                        ? faker.helpers.arrayElements(topics, faker.number.int({min: 1, max: 3}))
+                                        : [],
+                                owner: memberUser, // Set the group member as the post owner
+                            });
+                            await postRepo.save(post);
+
+                            if (faker.datatype.boolean()) {
+                                const attachment = postAttachmentRepo.create({
+                                    attachment_url: faker.image.url(),
+                                    attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                                    post,
+                                });
+                                await postAttachmentRepo.save(attachment);
+                            }
+
+                            const reactionCount = faker.number.int({min: 3, max: 10});
+                            for (let r = 0; r < reactionCount && r < memberIds.length; r++) {
+                                const memberId = memberIds[r].userReferencesId;
+                                const reaction = userReactPostRepo.create({
+                                    user_id: memberId,
+                                    post_id: post.id,
+                                    reactionType: faker.helpers.arrayElement(Object.values(ReactionType)),
+                                });
+                                await userReactPostRepo.save(reaction);
+                            }
+                        }
+                    }
+                }
+            } catch (error: any) {
+                logger.error(`Error creating news feed for group ${group.name}: ${error.message}`);
             }
         }
 
         // Create posts, comments, attachments, and reactions for regular users
         logger.log('Creating posts with attachments and comments...');
 
-        // First create content for regular users
         for (const newsFeed of newsFeeds.filter((feed) => feed !== adminNewsFeed)) {
-            // 1-3 posts per regular news feed
-            const postCount = faker.number.int({min: 1, max: 3});
-            // Add safety check for owner
+            const postCount = faker.number.int({min: 1, max: 2});
             const ownerName = newsFeed.owner?.id || 'unknown user';
             logger.log(`Creating ${postCount} posts for feed of ${ownerName}`);
 
             for (let i = 0; i < postCount; i++) {
-                // Create post with random topics
                 const post = postRepo.create({
                     content: faker.lorem.paragraphs(faker.number.int({min: 1, max: 3})),
                     newsFeed,
@@ -254,11 +510,11 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         topics.length > 0
                             ? faker.helpers.arrayElements(topics, faker.number.int({min: 1, max: 3}))
                             : [],
+                    owner: newsFeed.owner, // Set the newsfeed's owner as the post owner
                 });
                 await postRepo.save(post);
 
-                // 0-5 attachments per post
-                const attachmentCount = faker.number.int({min: 0, max: 5});
+                const attachmentCount = faker.number.int({min: 0, max: 3});
                 for (let j = 0; j < attachmentCount; j++) {
                     const attachment = postAttachmentRepo.create({
                         attachment_url: faker.image.url(),
@@ -268,10 +524,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     await postAttachmentRepo.save(attachment);
                 }
 
-                // 3-10 comments per post
-                const commentCount = faker.number.int({min: 3, max: 10});
+                const commentCount = faker.number.int({min: 2, max: 5});
                 for (let k = 0; k < commentCount; k++) {
-                    // Random user comments
                     const randomUser = faker.helpers.arrayElement(userRefs);
                     const comment = commentRepo.create({
                         text: faker.lorem.sentence(),
@@ -282,11 +536,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     await commentRepo.save(comment);
                 }
 
-                // Add reactions to posts (5-15 reactions per post)
                 const reactionCount = faker.number.int({min: 5, max: 15});
                 const reactionTypes = Object.values(ReactionType);
 
-                // Select random users to react to this post
                 const reactingUsers = faker.helpers.arrayElements(userRefs, Math.min(reactionCount, userRefs.length));
 
                 for (const user of reactingUsers) {
@@ -299,19 +551,17 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 }
             }
 
-            // Create stories (1-3 per user with 70% chance)
             if (faker.datatype.boolean({probability: 0.7})) {
                 const storyCount = faker.number.int({min: 1, max: 3});
                 for (let i = 0; i < storyCount; i++) {
                     const story = storyRepo.create({
                         story_url: faker.image.url(),
-                        duration: faker.number.int({min: 5, max: 30}), // seconds
+                        duration: faker.number.int({min: 5, max: 30}),
                         attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
                         newsFeed,
                     });
                     await storyRepo.save(story);
 
-                    // Add 0-5 comments to each story
                     const storyCommentCount = faker.number.int({min: 0, max: 5});
                     for (let c = 0; c < storyCommentCount; c++) {
                         const randomUser = faker.helpers.arrayElement(userRefs);
@@ -319,16 +569,14 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                             text: faker.lorem.sentence(),
                             attachment_url: faker.datatype.boolean({probability: 0.2}) ? faker.image.url() : undefined,
                             user: randomUser,
-                            story: story, // Associate with story instead of post
+                            story: story,
                         });
                         await commentRepo.save(comment);
                     }
 
-                    // Add reactions to stories (0-8 reactions per story)
                     const storyReactionCount = faker.number.int({min: 0, max: 8});
                     const reactionTypes = Object.values(ReactionType);
 
-                    // Select random users to react to this story
                     const reactingUsers = faker.helpers.arrayElements(
                         userRefs,
                         Math.min(storyReactionCount, userRefs.length)
@@ -345,25 +593,23 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 }
             }
 
-            // Create reels (2-5 per feed with 60% chance)
             if (faker.datatype.boolean({probability: 0.6})) {
                 const reelCount = faker.number.int({min: 2, max: 5});
                 for (let i = 0; i < reelCount; i++) {
                     const reel = reelRepo.create({
                         reel_url: faker.internet.url(),
-                        duration: faker.number.int({min: 15, max: 60}), // seconds
+                        duration: faker.number.int({min: 15, max: 60}),
                         newsFeed,
                     });
                     await reelRepo.save(reel);
                 }
             }
 
-            // Create livestreams (1-2 per feed with 40% chance)
             if (faker.datatype.boolean({probability: 0.4})) {
                 const livestreamCount = faker.number.int({min: 1, max: 2});
                 for (let i = 0; i < livestreamCount; i++) {
                     const startDate = faker.date.recent({days: 30});
-                    const endDate = new Date(startDate.getTime() + faker.number.int({min: 900000, max: 7200000})); // 15-120 minutes
+                    const endDate = new Date(startDate.getTime() + faker.number.int({min: 900000, max: 7200000}));
 
                     const livestream = liveStreamRepo.create({
                         stream_url: faker.internet.url(),
@@ -377,16 +623,13 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             }
         }
 
-        // Create special enhanced content for admin user
         if (adminNewsFeed && adminUserRef) {
             logger.log('Creating enhanced content for admin user feed...');
 
-            // Create 25-35 high-quality posts for admin
-            const adminPostCount = faker.number.int({min: 25, max: 35});
+            const adminPostCount = faker.number.int({min: 15, max: 25});
             logger.log(`Creating ${adminPostCount} posts for admin feed`);
 
             for (let i = 0; i < adminPostCount; i++) {
-                // Create post with more topics for better discoverability
                 const post = postRepo.create({
                     content: faker.lorem.paragraphs(faker.number.int({min: 4, max: 8})),
                     newsFeed: adminNewsFeed,
@@ -394,10 +637,10 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         topics.length > 0
                             ? faker.helpers.arrayElements(topics, faker.number.int({min: 4, max: 6}))
                             : [],
+                    owner: adminUserRef, // Set the admin user as the post owner
                 });
                 await postRepo.save(post);
 
-                // 6-12 attachments per admin post (more media rich)
                 const attachmentCount = faker.number.int({min: 6, max: 12});
                 for (let j = 0; j < attachmentCount; j++) {
                     const attachment = postAttachmentRepo.create({
@@ -408,10 +651,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     await postAttachmentRepo.save(attachment);
                 }
 
-                // 14-35 comments per admin post (more engagement)
                 const commentCount = faker.number.int({min: 14, max: 35});
                 for (let k = 0; k < commentCount; k++) {
-                    // Random user comments on admin's post
                     const randomUser = faker.helpers.arrayElement(userRefs);
                     const comment = commentRepo.create({
                         text: faker.lorem.sentence(),
@@ -422,11 +663,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     await commentRepo.save(comment);
                 }
 
-                // Add reactions to admin posts (150-1330 reactions per post - very popular)
-                const reactionCount = faker.number.int({min: 150, max: 1330});
+                const reactionCount = faker.number.int({min: 250, max: 1200});
                 const reactionTypes = Object.values(ReactionType);
 
-                // Get a diverse set of users reacting to admin's posts
                 const reactingUsers = faker.helpers.arrayElements(userRefs, Math.min(reactionCount, userRefs.length));
 
                 for (const user of reactingUsers) {
@@ -439,20 +678,18 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 }
             }
 
-            // Create more stories for admin (13-26 stories)
-            const adminStoryCount = faker.number.int({min: 13, max: 26});
+            const adminStoryCount = faker.number.int({min: 12, max: 20});
             logger.log(`Creating ${adminStoryCount} stories for admin feed`);
 
             for (let i = 0; i < adminStoryCount; i++) {
                 const story = storyRepo.create({
                     story_url: faker.image.url(),
-                    duration: faker.number.int({min: 10, max: 30}), // seconds
+                    duration: faker.number.int({min: 10, max: 30}),
                     attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
                     newsFeed: adminNewsFeed,
                 });
                 await storyRepo.save(story);
 
-                // Add 5-10 comments to each admin story
                 const storyCommentCount = faker.number.int({min: 5, max: 10});
                 for (let c = 0; c < storyCommentCount; c++) {
                     const randomUser = faker.helpers.arrayElement(userRefs);
@@ -465,11 +702,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     await commentRepo.save(comment);
                 }
 
-                // Add more reactions to admin stories (20-50 reactions per story)
-                const storyReactionCount = faker.number.int({min: 20, max: 50});
+                const storyReactionCount = faker.number.int({min: 40, max: 60});
                 const reactionTypes = Object.values(ReactionType);
 
-                // Select random users to react to admin's story
                 const reactingUsers = faker.helpers.arrayElements(
                     userRefs,
                     Math.min(storyReactionCount, userRefs.length)
@@ -485,7 +720,6 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 }
             }
 
-            // Create more reels for admin (4-8 reels)
             const adminReelCount = faker.number.int({min: 1, max: 1});
             logger.log(`Creating ${adminReelCount} reels for admin feed`);
 
@@ -498,28 +732,25 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 await reelRepo.save(reel);
             }
 
-            // Create livestream history for admin (2-4 streams)
             const adminLivestreamCount = faker.number.int({min: 1, max: 1});
             logger.log(`Creating ${adminLivestreamCount} livestreams for admin feed`);
 
             for (let i = 0; i < adminLivestreamCount; i++) {
-                // Create a mix of recent and slightly older livestreams
                 const startDate = faker.date.recent({days: 45});
-                const streamDuration = faker.number.int({min: 1800000, max: 10800000}); // 30-180 minutes
+                const streamDuration = faker.number.int({min: 1800000, max: 10800000});
                 const endDate = new Date(startDate.getTime() + streamDuration);
 
                 const livestream = liveStreamRepo.create({
                     stream_url: faker.internet.url(),
                     start_time: startDate,
                     end_time: endDate,
-                    view_count: faker.number.int({min: 50000, max: 5000000}), // Higher view counts
+                    view_count: faker.number.int({min: 50000, max: 5000000}),
                     newsFeed: adminNewsFeed,
                 });
                 await liveStreamRepo.save(livestream);
             }
         }
 
-        // Log some stats about what was created
         const postCount = await postRepo.count();
         const commentCount = await commentRepo.count();
         const attachmentCount = await postAttachmentRepo.count();
@@ -528,11 +759,17 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         const storyCount = await storyRepo.count();
         const reelCount = await reelRepo.count();
         const livestreamCount = await liveStreamRepo.count();
+        const pageCount = await pageRepo.count();
+        const groupCount = await groupRepo.count();
+        const ruleCount = await groupRuleRepo.count();
 
         logger.log(`
 Feed module seeding summary:
 - ${userRefs.length} user references
 - ${newsFeeds.length} news feeds
+- ${pageCount} pages
+- ${groupCount} groups
+- ${ruleCount} group rules
 - ${postCount} posts
 - ${commentCount} comments
 - ${attachmentCount} post attachments

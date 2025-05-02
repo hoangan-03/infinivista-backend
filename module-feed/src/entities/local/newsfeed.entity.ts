@@ -1,4 +1,4 @@
-import {Column, Entity, JoinColumn, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, JoinColumn, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {BaseEntity} from '@/entities/base/base-class';
 import {Advertisement} from '@/entities/local/advertisement.entity';
@@ -8,9 +8,10 @@ import {Reel} from '@/entities/local/reel.entity';
 import {Story} from '@/entities/local/story.entity';
 import {visibilityEnum} from '@/modules/feed/enum/visibility.enum';
 
-import {CommunityReference} from '../external/community-ref.entity';
 import {UserReference} from '../external/user-reference.entity';
+import {Group} from './group.entity';
 import {HashTag} from './hashtag.entity';
+import {Page} from './page.entity';
 
 @Entity()
 export class NewsFeed extends BaseEntity {
@@ -39,15 +40,26 @@ export class NewsFeed extends BaseEntity {
     @OneToMany(() => Advertisement, (ad) => ad.newsFeed)
     advertisements: Advertisement[];
 
-    @ManyToOne(() => CommunityReference, (community) => community.newsFeeds, {nullable: true})
-    community?: CommunityReference;
-
     @OneToOne(() => UserReference, (userRef) => userRef.newsFeed)
     @JoinColumn({name: 'owner_id'})
     owner: UserReference;
 
+    @OneToOne(() => Page, (page) => page.newsFeed)
+    @JoinColumn({name: 'page_owner_id'})
+    pageOwner?: Page;
+
+    @OneToOne(() => Group, (group) => group.newsFeed)
+    @JoinColumn({name: 'group_owner_id'})
+    groupOwner?: Group;
+
     @Column({name: 'owner_id', nullable: true})
     owner_id: string;
+
+    @Column({name: 'page_owner_id', nullable: true})
+    page_owner_id: string;
+
+    @Column({name: 'group_owner_id', nullable: true})
+    group_owner_id: string;
 
     @ManyToMany(() => HashTag, (tag) => tag.newsFeeds)
     @JoinColumn()
