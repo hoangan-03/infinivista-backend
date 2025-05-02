@@ -70,17 +70,28 @@ export class UserReferenceService {
 
             // Convert user data to UserReference entities
             const friendRefs: UserReference[] = [];
-            for (const friend of response) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-                const userRef = await this.findById(friend.id);
-                if (userRef) {
-                    friendRefs.push(userRef);
+
+            // Check if response has expected structure
+            if (response && response.data && Array.isArray(response.data)) {
+                // Iterate over the data array in the response
+                for (const friend of response.data) {
+                    if (friend && friend.id) {
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                        const userRef = await this.findById(friend.id);
+                        if (userRef) {
+                            friendRefs.push(userRef);
+                        }
+                    }
                 }
+            } else {
+                this.logger.warn(
+                    `Unexpected response structure from GetFriendsUserCommand: ${JSON.stringify(response)}`
+                );
             }
 
             return friendRefs;
         } catch (error: any) {
-            this.logger.error(`Failed to get friends: ${error.message}`);
+            this.logger.error(`Failed to get friends: ${error}`);
             return [];
         }
     }

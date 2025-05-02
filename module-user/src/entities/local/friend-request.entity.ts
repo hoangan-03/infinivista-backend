@@ -1,7 +1,8 @@
-import {BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {FriendStatus} from '@/modules/user/enums/friend-status.enum';
 
+import {BaseEntity} from './base-class';
 import {User} from './user.entity';
 
 @Entity({name: 'friend_requests'})

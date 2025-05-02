@@ -1,6 +1,6 @@
 import {Body, Controller, Delete, Get, Inject, Param, Post, Put, Query, UseGuards} from '@nestjs/common';
 import {ClientProxy} from '@nestjs/microservices';
-import {ApiBearerAuth, ApiBody, ApiOperation, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
+import {ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags} from '@nestjs/swagger';
 import {lastValueFrom} from 'rxjs';
 
 import {CurrentUser} from '@/decorators/user.decorator';
@@ -18,24 +18,6 @@ import {PaginationResponseInterface} from '@/interfaces/common/pagination-respon
 export class FriendController {
     constructor(@Inject('USER_SERVICE') private userClient: ClientProxy) {}
 
-    @Get()
-    @ApiOperation({summary: 'Get paginated list of friends for current user'})
-    @ApiQuery({type: PaginationDto})
-    @ApiResponse({status: 200, description: 'Returns paginated list of friends'})
-    async getFriends(
-        @CurrentUser() user: User,
-        @Query() paginationDto: PaginationDto
-    ): Promise<PaginationResponseInterface<User>> {
-        console.log('Fetching friends for user:', user.id);
-        return await lastValueFrom(
-            this.userClient.send('GetFriendsUserCommand', {
-                userId: user.id,
-                page: paginationDto.page,
-                limit: paginationDto.limit,
-            })
-        );
-    }
-
     @Get('requests')
     @ApiOperation({summary: 'Get paginated friend requests of current user'})
     @ApiQuery({type: PaginationDto})
@@ -48,6 +30,23 @@ export class FriendController {
         return await lastValueFrom(
             this.userClient.send('GetFriendRequestsUserCommand', {
                 userId: user.id,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+    @Get(':id')
+    @ApiOperation({summary: 'Get paginated list of friends for current user'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({status: 200, description: 'Returns paginated list of friends'})
+    async getFriends(
+        @Param('id') id: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<User>> {
+        console.log('Fetching friends for user:', id);
+        return await lastValueFrom(
+            this.userClient.send('GetFriendsUserCommand', {
+                userId: id,
                 page: paginationDto.page,
                 limit: paginationDto.limit,
             })

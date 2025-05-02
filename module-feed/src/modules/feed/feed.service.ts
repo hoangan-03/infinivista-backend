@@ -147,12 +147,13 @@ export class FeedService {
         const userFeed = await this.ensureUserHasNewsFeed(userId);
         const userOwner = await this.userReferenceService.findById(userId);
 
+        console.log('this user owner', userOwner);
+        console.log('this user feed', userFeed);
+
         // Get posts with their reactions and comments
         const [posts, total] = await this.postRepository.findAndCount({
             where: {newsFeed: {id: userFeed.id}},
             relations: ['topics', 'postAttachments', 'comments', 'newsFeed.owner'],
-            skip: 0, // Fetch all posts first to sort by popularity
-            take: undefined,
             order: {createdAt: 'DESC'},
         });
 
@@ -665,9 +666,15 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             take: limit,
             order: {createdAt: 'DESC'},
         });
+        const userFeed = await this.getNewsFeedById(newsFeedId);
 
+        const userOwner = await this.userReferenceService.findById(userFeed.owner.id);
+        const mappedStories = stories.map((post) => ({
+            ...post,
+            userOwner: userOwner,
+        }));
         return {
-            data: stories,
+            data: mappedStories,
             metadata: {
                 total,
                 page,

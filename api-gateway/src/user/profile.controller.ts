@@ -49,38 +49,64 @@ export class ProfileController {
         return await lastValueFrom(this.userClient.send<User>('UpdateUserCommand', {id: currentUser.id, user}));
     }
 
-    @Get('social-links')
-    @ApiOperation({summary: 'Get user social links'})
-    @ApiResponse({status: 200, description: 'Return user social links', type: [SocialLink]})
-    @ApiResponse({status: 401, description: 'Unauthorized - Invalid credentials'})
-    @ApiResponse({status: 404, description: 'Not Found - User not found with the provided ID'})
-    async getSocialLinks(@CurrentUser() currentUser: User): Promise<SocialLink[]> {
-        return await lastValueFrom(
-            this.userClient.send<SocialLink[]>('GetSocialLinksUserCommand', {userId: currentUser.id})
-        );
+    @Get('social-links/:id')
+    @ApiOperation({summary: 'Get user profile by ID'})
+    @ApiResponse({status: 200, description: 'Return user profile by ID', type: SocialLink})
+    @ApiResponse({
+        status: 400,
+        description: 'Bad Request - Invalid input data',
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - User not found with the provided ID',
+    })
+    async getSocialLinks(@Param('id') id: string): Promise<SocialLink[]> {
+        return await lastValueFrom(this.userClient.send<SocialLink[]>('GetSocialLinksUserCommand', {userId: id}));
     }
 
-    @Get('user-events')
+    @Get('user-events/:id')
     @ApiOperation({summary: 'Get user events'})
     @ApiResponse({status: 200, description: 'Return user events', type: [String]})
-    @ApiResponse({status: 401, description: 'Unauthorized - Invalid credentials'})
-    @ApiResponse({status: 404, description: 'Not Found - User not found with the provided ID'})
-    async getUserEvents(@CurrentUser() currentUser: User): Promise<string[]> {
-        return await lastValueFrom(
-            this.userClient.send<string[]>('GetUserEventsUserCommand', {userId: currentUser.id})
-        );
+    @ApiResponse({
+        status: 400,
+        description: 'Bad Request - Invalid input data',
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - User not found with the provided ID',
+    })
+    async getUserEvents(@Param('id') id: string): Promise<string[]> {
+        return await lastValueFrom(this.userClient.send<string[]>('GetUserEventsUserCommand', {userId: id}));
     }
 
-    @Get('biography')
+    @Get('biography/:id')
     @ApiOperation({summary: 'Get user biography'})
     @ApiResponse({status: 200, description: 'Return user biography', type: String})
-    @ApiResponse({status: 401, description: 'Unauthorized - Invalid credentials'})
-    @ApiResponse({status: 404, description: 'Not Found - User not found with the provided ID'})
-    async getBiography(@CurrentUser() currentUser: User): Promise<string> {
-        return await lastValueFrom(this.userClient.send<string>('GetBiographyUserCommand', {userId: currentUser.id}));
+    @ApiResponse({
+        status: 400,
+        description: 'Bad Request - Invalid input data',
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - User not found with the provided ID',
+    })
+    async getBiography(@Param('id') id: string): Promise<string> {
+        return await lastValueFrom(this.userClient.send<string>('GetBiographyUserCommand', {userId: id}));
     }
 
-    @Put('social-links')
+    @Put('social-links/:id')
     @ApiOperation({summary: 'Update user social links'})
     @ApiBody({
         schema: {
@@ -101,12 +127,24 @@ export class ProfileController {
         },
     })
     @ApiResponse({status: 200, description: 'Return user social links', type: [SocialLink]})
+    @ApiResponse({
+        status: 400,
+        description: 'Bad Request - Invalid input data',
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not Found - User not found with the provided ID',
+    })
     async updateSocialLinks(
-        @CurrentUser() currentUser: User,
+        @Param('id') id: string,
         @Body('socialLinks') socialLinks: {id: string; type: SocialLink; link: string}[]
     ): Promise<SocialLink[]> {
         return await lastValueFrom(
-            this.userClient.send<SocialLink[]>('UpdateSocialLinksUserCommand', {userId: currentUser.id, socialLinks})
+            this.userClient.send<SocialLink[]>('UpdateSocialLinksUserCommand', {userId: id, socialLinks})
         );
     }
 
