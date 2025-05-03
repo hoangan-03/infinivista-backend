@@ -18,13 +18,13 @@ export class UserReactStory extends BaseEntity {
     @JoinColumn({name: 'user_id'})
     user: UserReference;
 
-    @Column({type: 'uuid'})
+    @Column({type: 'uuid', nullable: true})
     user_id: string;
 
     @ManyToOne(() => Story, (story) => story.userReactions)
     @JoinColumn({name: 'story_id'})
     story: Story;
 
-    @Column({type: 'uuid'})
+    @Column({type: 'uuid', nullable: true})
     story_id: string;
 }

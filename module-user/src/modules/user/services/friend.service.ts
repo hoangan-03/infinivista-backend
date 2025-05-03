@@ -116,9 +116,6 @@ export class FriendService {
     }
 
     async getFriends(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<User>> {
-        console.log('Fetching friends for user:', userId);
-        this.logger.debug('Fetching friends for user:', userId);
-
         const [friendships, total] = await this.friendRepository.findAndCount({
             where: {user_id: userId},
             relations: ['friend'],

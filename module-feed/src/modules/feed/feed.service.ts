@@ -158,9 +158,6 @@ export class FeedService {
         const userFeed = await this.ensureUserHasNewsFeed(userId);
         const userOwner = await this.userReferenceService.findById(userId);
 
-        console.log('this user owner', userOwner);
-        console.log('this user feed', userFeed);
-
         // Get posts with their reactions and comments
         const [posts, total] = await this.postRepository.findAndCount({
             where: {newsFeed: {id: userFeed.id}},

@@ -43,7 +43,6 @@ export class FriendController {
         @Param('id') id: string,
         @Query() paginationDto: PaginationDto
     ): Promise<PaginationResponseInterface<User>> {
-        console.log('Fetching friends for user:', id);
         return await lastValueFrom(
             this.userClient.send('GetFriendsUserCommand', {
                 userId: id,
