@@ -6,9 +6,7 @@ import * as dotenv from 'dotenv';
 import {firstValueFrom, timeout} from 'rxjs';
 
 import {AppModule} from './app.module';
-import {AttachmentType} from './modules/messaging/enums/attachment-type.enum';
 import {EmoteIcon} from './modules/messaging/enums/emote-icon.enum';
-import {MessageType} from './modules/messaging/enums/message-type.enum';
 
 dotenv.config();
 
@@ -21,6 +19,20 @@ describe('Communication Module Tests', () => {
 
     beforeAll(async () => {
         try {
+            const mockUserReferenceService = {
+                findById: jest.fn().mockImplementation((id) =>
+                    Promise.resolve({
+                        id: process.env.TEST_SENDER_ID,
+                        username: `user_${id}`,
+                        email: `user_${id}@example.com`,
+                        firstName: 'Test',
+                        lastName: 'User',
+                        profileImageUrl: 'https://example.com/profile.jpg',
+                        phoneNumber: '+1234567890',
+                    })
+                ),
+                upsertUserReference: jest.fn().mockImplementation((userData) => Promise.resolve(userData)),
+            };
             // Create a test module with both app and client
             const moduleRef = await Test.createTestingModule({
                 imports: [
@@ -84,6 +96,26 @@ describe('Communication Module Tests', () => {
             throw err;
         }
     }, 30000);
+
+    afterAll(async () => {
+        try {
+            // Give time for any pending operations to complete
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            // Close connections in correct order
+            if (clientProxy) {
+                await clientProxy.close();
+                console.log('Client proxy closed');
+            }
+
+            if (app) {
+                await app.close();
+                console.log('App closed');
+            }
+        } catch (err) {
+            console.error('Error during test cleanup:', err);
+        }
+    }, 15000);
 
     afterAll(async () => {
         try {
@@ -257,6 +289,54 @@ describe('Communication Module Tests', () => {
             expect(callHistory.data).toBeDefined();
             expect(Array.isArray(callHistory.data)).toBe(true);
             expect(callHistory.metadata).toBeDefined();
+        });
+
+        // Note: We don't test actual call initiation as it would require WebSocket connections
+        // and might trigger real call notifications. Instead, we're just testing the history endpoint.
+    });
+
+    describe('Attachment commands', () => {
+        const testSenderId = process.env.TEST_SENDER_ID || '';
+        const testRecipientId = process.env.TEST_RECIPIENT_ID || '';
+
+        // Skip tests if no test user IDs are provided
+        const conditionalIt = testSenderId && testRecipientId ? it : it.skip;
+
+        conditionalIt('should get attachments from a conversation', async () => {
+            const attachments = await callCommand('GetAllAttachmentsFromConversationCommand', {
+                currentId: testSenderId,
+                targetId: testRecipientId,
+                page: 1,
+                limit: 10,
+            });
+
+            expect(attachments).toBeDefined();
+            expect(attachments.data).toBeDefined();
+            expect(Array.isArray(attachments.data)).toBe(true);
+        });
+
+        // Note: We're not testing actual file uploads which would require file buffer handling
+        // Instead we're just testing the query endpoint for attachments
+    });
+
+    describe('Mixed content commands', () => {
+        const testSenderId = process.env.TEST_SENDER_ID || '';
+        const testRecipientId = process.env.TEST_RECIPIENT_ID || '';
+
+        // Skip tests if no test user IDs are provided
+        const conditionalIt = testSenderId && testRecipientId ? it : it.skip;
+
+        conditionalIt('should get mixed conversation content', async () => {
+            const mixedContent = await callCommand('GetMixedConversationContentCommand', {
+                currentId: testSenderId,
+                targetId: testRecipientId,
+                page: 1,
+                limit: 10,
+            });
+
+            expect(mixedContent).toBeDefined();
+            expect(mixedContent.data).toBeDefined();
+            expect(Array.isArray(mixedContent.data)).toBe(true);
         });
     });
 });
