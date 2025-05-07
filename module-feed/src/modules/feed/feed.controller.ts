@@ -3,6 +3,8 @@ import {MessagePattern} from '@nestjs/microservices';
 
 import {UserReference} from '@/entities/external/user-reference.entity';
 import {Comment} from '@/entities/local/comment.entity';
+import {Group} from '@/entities/local/group.entity';
+import {GroupRule} from '@/entities/local/group-rule.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Page} from '@/entities/local/page.entity';
@@ -15,10 +17,12 @@ import {PaginationResponseInterface} from '@/interfaces/pagination-response.inte
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 import {FileUploadService} from '@/services/file-upload.service';
 
+import {CreateGroupDto} from './dto/create-group.dto';
 import {CreatePageDto} from './dto/create-page.dto';
 import {CreatePostDto} from './dto/create-post.dto';
 import {CreateStoryDto} from './dto/create-story.dto';
 import {FileUploadDto, FileUploadResponseDto} from './dto/file-upload.dto';
+import {UpdateGroupDto} from './dto/update-group.dto';
 import {UpdatePageDto} from './dto/update-page.dto';
 import {AttachmentType} from './enum/attachment-type.enum';
 import {FeedService} from './feed.service';
@@ -379,5 +383,109 @@ export class FeedController {
     @MessagePattern('UpdatePageCoverImage')
     async updatePageCoverImage(payload: {userId: string; pageId: string; imageUrl: string}): Promise<Page> {
         return this.feedService.updatePageCoverImage(payload.userId, payload.pageId, payload.imageUrl);
+    }
+
+    // Group management endpoints
+    @MessagePattern('GetAllGroups')
+    async getAllGroups(payload: {page?: number; limit?: number}): Promise<PaginationResponseInterface<Group>> {
+        return this.feedService.getAllGroups(payload.page, payload.limit);
+    }
+
+    @MessagePattern('GetMyGroups')
+    async getMyGroups(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<Group>> {
+        return this.feedService.getMyGroups(payload.userId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('CreateGroup')
+    async createGroup(payload: {ownerId: string; groupData: CreateGroupDto}): Promise<Group> {
+        return this.feedService.createGroup(payload.ownerId, payload.groupData);
+    }
+
+    @MessagePattern('GetGroupById')
+    async getGroupById(payload: {id: string}): Promise<Group> {
+        return this.feedService.getGroupById(payload.id);
+    }
+
+    @MessagePattern('UpdateGroup')
+    async updateGroup(payload: {userId: string; groupId: string; updateData: UpdateGroupDto}): Promise<Group> {
+        return this.feedService.updateGroup(payload.userId, payload.groupId, payload.updateData);
+    }
+
+    @MessagePattern('DeleteGroup')
+    async deleteGroup(payload: {userId: string; groupId: string}): Promise<{success: boolean}> {
+        return this.feedService.deleteGroup(payload.userId, payload.groupId);
+    }
+
+    @MessagePattern('JoinGroup')
+    async joinGroup(payload: {userId: string; groupId: string}): Promise<{success: boolean}> {
+        return this.feedService.joinGroup(payload.userId, payload.groupId);
+    }
+
+    @MessagePattern('LeaveGroup')
+    async leaveGroup(payload: {userId: string; groupId: string}): Promise<{success: boolean}> {
+        return this.feedService.leaveGroup(payload.userId, payload.groupId);
+    }
+
+    @MessagePattern('GetGroupMembers')
+    async getGroupMembers(payload: {
+        groupId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<UserReference>> {
+        return this.feedService.getGroupMembers(payload.groupId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('GetGroupPosts')
+    async getGroupPosts(payload: {
+        groupId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<PostEntity>> {
+        return this.feedService.getGroupPosts(payload.groupId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('CreateGroupPost')
+    async createGroupPost(payload: {
+        userId: string;
+        groupId: string;
+        postData: CreatePostDto;
+        files: Array<{url: string; fileName: string; mimeType: string}>;
+        attachmentType: AttachmentType[];
+    }): Promise<PostEntity> {
+        return this.feedService.createGroupPost(
+            payload.userId,
+            payload.groupId,
+            payload.postData,
+            payload.files,
+            payload.attachmentType
+        );
+    }
+
+    @MessagePattern('UpdateGroupProfileImage')
+    async updateGroupProfileImage(payload: {userId: string; groupId: string; imageUrl: string}): Promise<Group> {
+        return this.feedService.updateGroupProfileImage(payload.userId, payload.groupId, payload.imageUrl);
+    }
+
+    @MessagePattern('UpdateGroupCoverImage')
+    async updateGroupCoverImage(payload: {userId: string; groupId: string; imageUrl: string}): Promise<Group> {
+        return this.feedService.updateGroupCoverImage(payload.userId, payload.groupId, payload.imageUrl);
+    }
+
+    @MessagePattern('AddGroupRule')
+    async addGroupRule(payload: {
+        userId: string;
+        groupId: string;
+        rule: {title: string; description: string};
+    }): Promise<GroupRule> {
+        return this.feedService.addGroupRule(payload.userId, payload.groupId, payload.rule);
+    }
+
+    @MessagePattern('RemoveGroupRule')
+    async removeGroupRule(payload: {userId: string; groupId: string; ruleId: string}): Promise<{success: boolean}> {
+        return this.feedService.removeGroupRule(payload.userId, payload.groupId, payload.ruleId);
     }
 }

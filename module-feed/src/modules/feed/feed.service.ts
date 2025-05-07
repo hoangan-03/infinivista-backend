@@ -6,6 +6,7 @@ import {In, Repository} from 'typeorm';
 import {UserReference} from '@/entities/external/user-reference.entity';
 import {Comment} from '@/entities/local/comment.entity';
 import {Group} from '@/entities/local/group.entity';
+import {GroupRule} from '@/entities/local/group-rule.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
 import {Page} from '@/entities/local/page.entity';
@@ -20,11 +21,14 @@ import {PaginationResponseInterface} from '@/interfaces/pagination-response.inte
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 
 import {UserReferenceService} from '../user-reference/user-reference.service';
+import {CreateGroupDto} from './dto/create-group.dto';
 import {CreatePageDto} from './dto/create-page.dto';
 import {CreatePostDto} from './dto/create-post.dto';
 import {CreateStoryDto} from './dto/create-story.dto';
+import {UpdateGroupDto} from './dto/update-group.dto';
 import {UpdatePageDto} from './dto/update-page.dto';
 import {AttachmentType} from './enum/attachment-type.enum';
+import {groupVisibility} from './enum/group-visibility.enum';
 import {visibilityEnum} from './enum/visibility.enum';
 
 @Injectable()
@@ -57,7 +61,9 @@ export class FeedService {
         @InjectRepository(Page)
         private readonly pageRepository: Repository<Page>,
         @InjectRepository(Group)
-        private readonly groupRepository: Repository<Group>
+        private readonly groupRepository: Repository<Group>,
+        @InjectRepository(GroupRule)
+        private readonly groupRuleRepository: Repository<GroupRule>
     ) {}
 
     /**
@@ -1598,5 +1604,479 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         page.coverImageUrl = imageUrl;
 
         return this.pageRepository.save(page);
+    }
+
+    // Group management methods
+    async getAllGroups(page = 1, limit = 10): Promise<PaginationResponseInterface<Group>> {
+        const [groups, total] = await this.groupRepository.findAndCount({
+            relations: ['owner', 'groupRules'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {
+                createdAt: 'DESC',
+            },
+        });
+
+        return {
+            data: groups,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async getMyGroups(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Group>> {
+        const user = await this.userReferenceService.findById(userId);
+
+        if (!user) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
+        }
+
+        // Find groups where the user is either the owner or a member
+        const [ownedGroups] = await this.groupRepository.findAndCount({
+            where: {owner: {id: userId}},
+            relations: ['owner', 'groupRules'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {
+                createdAt: 'DESC',
+            },
+        });
+
+        const memberGroups = await this.groupRepository
+            .createQueryBuilder('group')
+            .innerJoin('group.members', 'member', 'member.id = :userId', {userId})
+            .leftJoinAndSelect('group.owner', 'owner')
+            .leftJoinAndSelect('group.groupRules', 'groupRules')
+            .skip((page - 1) * limit)
+            .take(limit)
+            .orderBy('group.createdAt', 'DESC')
+            .getMany();
+
+        // Combine and deduplicate
+        const uniqueGroups = [...ownedGroups];
+        for (const group of memberGroups) {
+            if (!uniqueGroups.some((g) => g.id === group.id)) {
+                uniqueGroups.push(group);
+            }
+        }
+
+        // Sort by creation date
+        uniqueGroups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        // Apply pagination manually
+        const paginatedGroups = uniqueGroups.slice(0, limit);
+
+        return {
+            data: paginatedGroups,
+            metadata: {
+                total: uniqueGroups.length,
+                page,
+                limit,
+                totalPages: Math.ceil(uniqueGroups.length / limit),
+            },
+        };
+    }
+
+    async createGroup(ownerId: string, groupData: CreateGroupDto): Promise<Group> {
+        const owner = await this.userReferenceService.findById(ownerId);
+
+        if (!owner) {
+            throw new NotFoundException(`User with ID ${ownerId} not found`);
+        }
+
+        // Create the group with owner
+        const group = this.groupRepository.create({
+            ...groupData,
+            owner,
+        });
+
+        // Save the group and properly cast it to a single Group object
+        const savedGroup = (await this.groupRepository.save(group)) as unknown as Group;
+
+        // Create a news feed for the group
+        const newsFeed = this.newsFeedRepository.create({
+            description: `${savedGroup.name} Group Feed`,
+            visibility:
+                savedGroup.visibility === groupVisibility.PUBLIC ? visibilityEnum.PUBLIC : visibilityEnum.PRIVATE,
+            groupOwner: savedGroup,
+        });
+
+        const savedNewsFeed = await this.newsFeedRepository.save(newsFeed);
+
+        // Update the group with the news feed ID
+        savedGroup.newsFeed = savedNewsFeed;
+        await this.groupRepository.save(savedGroup);
+
+        // Add the owner as a member
+        if (!savedGroup.members) {
+            savedGroup.members = [];
+        }
+        savedGroup.members.push(owner);
+        await this.groupRepository.save(savedGroup);
+
+        return savedGroup;
+    }
+
+    async getGroupById(id: string): Promise<Group> {
+        const group = await this.groupRepository.findOne({
+            where: {id},
+            relations: ['owner', 'newsFeed', 'members', 'groupRules'],
+        });
+
+        if (!group) {
+            throw new NotFoundException(`Group with ID ${id} not found`);
+        }
+
+        return group;
+    }
+
+    async updateGroup(userId: string, groupId: string, updateData: UpdateGroupDto): Promise<Group> {
+        const group = await this.getGroupById(groupId);
+
+        // Check if the user is the owner of the group
+        if (group.owner_id !== userId) {
+            throw new ForbiddenException('Only group owners can update groups');
+        }
+
+        // Update the group with the new data
+        this.groupRepository.merge(group, updateData);
+
+        // Cast the result to Group
+        return (await this.groupRepository.save(group)) as unknown as Group;
+    }
+
+    async deleteGroup(userId: string, groupId: string): Promise<{success: boolean}> {
+        const group = await this.getGroupById(groupId);
+
+        // Check if the user is the owner of the group
+        if (group.owner_id !== userId) {
+            throw new ForbiddenException('Only group owners can delete groups');
+        }
+
+        // Delete the group
+        await this.groupRepository.remove(group);
+
+        return {success: true};
+    }
+
+    async joinGroup(userId: string, groupId: string): Promise<{success: boolean}> {
+        const group = await this.getGroupById(groupId);
+        const user = await this.userReferenceService.findById(userId);
+
+        if (!user) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
+        }
+
+        // Check if user is already a member
+        const isMember = group.members?.some((member) => member.id === userId);
+
+        if (isMember) {
+            throw new BadRequestException('User is already a member'); // Already a member
+        }
+
+        // Public groups can be joined without approval
+        if (group.visibility !== groupVisibility.PUBLIC) {
+            // For private groups, implement approval logic here
+            // For now, allow immediate joining for simplicity
+        }
+
+        // Initialize members array if not present
+        if (!group.members) {
+            group.members = [];
+        }
+
+        // Add user to members
+        group.members.push(user);
+
+        await this.groupRepository.save(group);
+
+        return {success: true};
+    }
+
+    async leaveGroup(userId: string, groupId: string): Promise<{success: boolean}> {
+        const group = await this.getGroupById(groupId);
+
+        // Check if user is the owner
+        if (group.owner_id === userId) {
+            throw new ForbiddenException(
+                'Group owners cannot leave their own groups. Transfer ownership or delete the group.'
+            );
+        }
+
+        // Check if user is a member
+        if (!group.members) {
+            return {success: true}; // No members, nothing to do
+        }
+
+        // Remove user from members
+        group.members = group.members.filter((member) => member.id !== userId);
+
+        await this.groupRepository.save(group);
+
+        return {success: true};
+    }
+
+    async getGroupMembers(groupId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<UserReference>> {
+        // Get the user IDs from the join table
+        const memberIdsResult = await this.groupRepository.query(
+            'SELECT "userReferencesId" FROM "group_members_user_references" WHERE "groupId" = $1',
+            [groupId]
+        );
+
+        // If no members found, return empty result
+        if (!memberIdsResult || memberIdsResult.length === 0) {
+            return {
+                data: [],
+                metadata: {
+                    total: 0,
+                    page,
+                    limit,
+                    totalPages: 0,
+                },
+            };
+        }
+
+        // Extract the user IDs from the result
+        const memberIds = memberIdsResult.map((row) => row.userReferencesId);
+        const total: number = memberIds.length;
+
+        // Calculate pagination
+        const startIdx = (page - 1) * limit;
+        const endIdx = Math.min(startIdx + limit, total);
+        const paginatedMemberIds = memberIds.slice(startIdx, endIdx);
+
+        // Query the user_references table to get full user information
+        const members = await this.userReferenceRepository.find({
+            where: {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                id: In(paginatedMemberIds),
+            },
+            order: {
+                username: 'ASC',
+            },
+        });
+
+        // Ensure members are returned in the same order as the IDs
+        const sortedMembers = paginatedMemberIds
+            .map((id) => members.find((member) => member.id === id))
+            .filter(Boolean) as UserReference[];
+
+        return {
+            data: sortedMembers,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async getGroupPosts(groupId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Post>> {
+        const group = await this.getGroupById(groupId);
+
+        if (!group.newsFeed) {
+            return {
+                data: [],
+                metadata: {
+                    total: 0,
+                    page,
+                    limit,
+                    totalPages: 0,
+                },
+            };
+        }
+
+        // Query posts directly from the repository
+        const [posts, total] = await this.postRepository.findAndCount({
+            where: {newsFeed: {id: group.newsFeed.id}},
+            relations: ['postAttachments', 'topics', 'owner'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {createdAt: 'DESC'},
+        });
+
+        return {
+            data: posts,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async createGroupPost(
+        userId: string,
+        groupId: string,
+        postData: CreatePostDto,
+        files: Array<{url: string; fileName: string; mimeType: string}>,
+        attachmentType: AttachmentType[]
+    ): Promise<Post> {
+        this.logger.log(`Creating post with ${files?.length || 0} attachments for group ${groupId}`);
+
+        const group = await this.getGroupById(groupId);
+
+        // Check if user is a member of the group
+        const isMember = group.members?.some((member) => member.id === userId) || group.owner_id === userId;
+
+        if (!isMember) {
+            throw new ForbiddenException('Only group members can post in groups');
+        }
+
+        if (!group.newsFeed) {
+            throw new NotFoundException('Group newsfeed not found');
+        }
+
+        const user = await this.userReferenceService.findById(userId);
+
+        // Create post
+        const post = this.postRepository.create({
+            content: postData.content,
+            owner: user,
+            newsFeed: group.newsFeed,
+        });
+
+        try {
+            // Call Gemini API to analyze content and classify topics
+            const topicIds = await this.classifyPostContent(postData.content);
+
+            // Find the corresponding topic entities
+            if (topicIds && topicIds.length > 0) {
+                const topics = await this.topicRepository.findBy({
+                    id: In(topicIds),
+                });
+
+                // Associate topics with the post
+                if (topics && topics.length > 0) {
+                    post.topics = topics;
+                    this.logger.log(`Post classified into ${topics.length} topics`);
+                }
+            }
+        } catch (error: any) {
+            this.logger.error(`Error classifying post content: ${error.message}`);
+            // Continue with post creation even if classification fails
+        }
+
+        // Save the post first to get an ID and cast to Post
+        const savedPost = (await this.postRepository.save(post)) as unknown as Post;
+
+        // Now create and link attachments if they exist
+        if (files && files.length > 0) {
+            // Initialize post.postAttachments if not already
+            if (!savedPost.postAttachments) {
+                savedPost.postAttachments = [];
+            }
+
+            // Wait for all attachments to be saved
+            await Promise.all(
+                files.map((file, index) => {
+                    const attachment = new PostAttachment();
+                    attachment.attachment_url = file.url;
+                    attachment.post = savedPost;
+                    attachment.attachmentType =
+                        index < attachmentType.length ? attachmentType[index] : AttachmentType.IMAGE;
+
+                    return this.postAttachmentRepository.save(attachment);
+                })
+            ).then((savedAttachments) => {
+                savedPost.postAttachments = savedAttachments;
+            });
+
+            // Update the post with the attachments
+            await this.postRepository.save(savedPost);
+        }
+
+        // Load the post with attachments to return
+        const finalPost = await this.postRepository.findOne({
+            where: {id: savedPost.id},
+            relations: ['postAttachments', 'topics', 'owner'],
+        });
+
+        if (!finalPost) {
+            throw new NotFoundException(`Post with ID ${savedPost.id} not found after saving`);
+        }
+
+        return finalPost;
+    }
+
+    async updateGroupProfileImage(userId: string, groupId: string, imageUrl: string): Promise<Group> {
+        const group = await this.getGroupById(groupId);
+
+        // Check if the user is the owner of the group
+        if (group.owner_id !== userId) {
+            throw new ForbiddenException('Only group owners can update group profile images');
+        }
+
+        // Update profile image URL
+        group.profileImageUrl = imageUrl;
+
+        // Cast the result to Group
+        return (await this.groupRepository.save(group)) as unknown as Group;
+    }
+
+    async updateGroupCoverImage(userId: string, groupId: string, imageUrl: string): Promise<Group> {
+        const group = await this.getGroupById(groupId);
+
+        // Check if the user is the owner of the group
+        if (group.owner_id !== userId) {
+            throw new ForbiddenException('Only group owners can update group cover images');
+        }
+
+        // Update cover image URL
+        group.coverImageUrl = imageUrl;
+
+        // Cast the result to Group
+        return (await this.groupRepository.save(group)) as unknown as Group;
+    }
+
+    async addGroupRule(
+        userId: string,
+        groupId: string,
+        rule: {title: string; description: string}
+    ): Promise<GroupRule> {
+        const group = await this.getGroupById(groupId);
+
+        // Check if the user is the owner of the group
+        if (group.owner_id !== userId) {
+            throw new ForbiddenException('Only group owners can add group rules');
+        }
+
+        const groupRule = this.groupRuleRepository.create({
+            title: rule.title,
+            description: rule.description,
+            group: group,
+        });
+
+        // Cast to GroupRule if needed
+        return (await this.groupRuleRepository.save(groupRule)) as unknown as GroupRule;
+    }
+
+    async removeGroupRule(userId: string, groupId: string, ruleId: string): Promise<{success: boolean}> {
+        const group = await this.getGroupById(groupId);
+
+        // Check if the user is the owner of the group
+        if (group.owner_id !== userId) {
+            throw new ForbiddenException('Only group owners can remove group rules');
+        }
+
+        // Find the rule
+        const rule = await this.groupRuleRepository.findOne({
+            where: {id: ruleId, group: {id: groupId}},
+        });
+
+        if (!rule) {
+            throw new NotFoundException(`Rule with ID ${ruleId} not found in group ${groupId}`);
+        }
+
+        // Delete the rule
+        await this.groupRuleRepository.remove(rule);
+
+        return {success: true};
     }
 }

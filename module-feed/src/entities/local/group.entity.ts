@@ -61,7 +61,7 @@ export class Group extends BaseEntity {
     @Column({name: 'owner_id', nullable: true})
     owner_id: string;
 
-    @ManyToMany(() => UserReference, (userRef) => userRef.memeberInGroups)
+    @ManyToMany(() => UserReference, (userRef) => userRef.memberInGroups)
     @JoinTable()
     members: UserReference[];
 }

@@ -21,7 +21,7 @@ export class UserReference {
 
     @ManyToMany(() => Group, (group) => group.members, {cascade: true})
     @JoinTable()
-    memeberInGroups: Group[];
+    memberInGroups: Group[];
 
     @OneToMany(() => Comment, (comment) => comment.user)
     comments: Comment[];

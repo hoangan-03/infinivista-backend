@@ -306,25 +306,74 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             'Book Club',
             'Travel Addicts',
             'Music Discussion',
+            'Gaming Community',
+            'Art & Design',
+            'Science & Tech',
+            'Nature Lovers',
+            'Pet Owners Club',
+            'Learning Languages',
+            'Startup Community',
+            'Film Enthusiasts',
+            'Anime & Manga Fans',
+            'Home Cooking',
+            'DIY Projects',
+            'Hiking Adventures',
+            'Cryptocurrency Discussions',
         ];
 
-        // Create groups with admin owners for first two groups
-        for (let i = 0; i < groupNames.length; i++) {
-            const groupOwner =
-                i === 0
-                    ? adminUserRef
-                    : i === 1 && admin2UserRef
-                      ? admin2UserRef
-                      : faker.helpers.arrayElement(userRefs);
+        // Calculate how many groups should have admins (70%)
+        const totalGroups = groupNames.length;
+        const adminGroupsCount = Math.floor(totalGroups * 0.7);
+        const adminOwnedGroupsCount = Math.floor(totalGroups * 0.35);
+        const nonAdminGroupsCount = totalGroups - adminGroupsCount;
+
+        logger.log(
+            `Creating ${totalGroups} groups: ${adminOwnedGroupsCount} admin-owned, ${adminGroupsCount - adminOwnedGroupsCount} admin-member, ${nonAdminGroupsCount} non-admin groups`
+        );
+
+        // Shuffle group names to randomize which ones get admins
+        const shuffledGroupNames = [...groupNames];
+        for (let i = shuffledGroupNames.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledGroupNames[i], shuffledGroupNames[j]] = [shuffledGroupNames[j], shuffledGroupNames[i]];
+        }
+
+        // Create groups based on our categorization
+        for (let i = 0; i < shuffledGroupNames.length; i++) {
+            let groupOwner;
+            let hasAdmin = false;
+
+            // First portion are admin-owned groups
+            if (i < adminOwnedGroupsCount) {
+                groupOwner = i % 2 === 0 ? adminUserRef : admin2UserRef;
+                hasAdmin = true;
+            }
+            // Next portion are groups where admins are members but not owners
+            else if (i < adminGroupsCount) {
+                groupOwner = faker.helpers.arrayElement(
+                    userRefs.filter((u) => u !== adminUserRef && u !== admin2UserRef)
+                );
+                hasAdmin = true;
+            }
+            // Remaining groups don't have admins involved
+            else {
+                groupOwner = faker.helpers.arrayElement(
+                    userRefs.filter((u) => u !== adminUserRef && u !== admin2UserRef)
+                );
+                hasAdmin = false;
+            }
+
+            // Skip if no owner could be assigned
+            if (!groupOwner) continue;
 
             const group = groupRepo.create({
-                name: groupNames[i],
+                name: shuffledGroupNames[i],
                 description: faker.lorem.paragraph(),
                 profileImageUrl: faker.image.url(),
                 coverImageUrl: faker.image.url(),
                 city: faker.location.city(),
                 country: faker.location.country(),
-                visibility: i === 0 ? groupVisibility.PUBLIC : groupVisibility.PRIVATE,
+                visibility: faker.helpers.arrayElement([groupVisibility.PUBLIC, groupVisibility.PRIVATE]),
                 owner: groupOwner,
             });
 
@@ -333,12 +382,46 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
             await groupRepo.save(group);
 
-            // Add members - a random selection of users
-            const memberCount = faker.number.int({min: 5, max: userRefs.length - 1});
-            const members = faker.helpers.arrayElements(userRefs, memberCount);
+            // Create member list - we want 10-20 members per group
+            const memberCount = faker.number.int({min: 10, max: 20});
 
-            // SQL approach for many-to-many - FIX: Change column name from "userReferenceId" to "userReferencesId"
-            for (const member of members) {
+            // Start with members that aren't the owner
+            const potentialMembers = userRefs.filter((user) => user.id !== groupOwner.id);
+
+            // If this is a group that should have admins as members and they're not already the owner
+            if (hasAdmin) {
+                // Add both admins if they're not already the owner
+                if (adminUserRef && adminUserRef.id !== groupOwner.id) {
+                    await dataSource.query(
+                        'INSERT INTO "group_members_user_references" ("groupId", "userReferencesId") VALUES ($1, $2)',
+                        [group.id, adminUserRef.id]
+                    );
+                }
+                if (admin2UserRef && admin2UserRef.id !== groupOwner.id) {
+                    await dataSource.query(
+                        'INSERT INTO "group_members_user_references" ("groupId", "userReferencesId") VALUES ($1, $2)',
+                        [group.id, admin2UserRef.id]
+                    );
+                }
+            }
+
+            // Get remaining members needed (accounting for admins already added)
+            let additionalMembersNeeded = memberCount;
+            if (hasAdmin) {
+                if (adminUserRef && adminUserRef.id !== groupOwner.id) additionalMembersNeeded--;
+                if (admin2UserRef && admin2UserRef.id !== groupOwner.id) additionalMembersNeeded--;
+            }
+
+            // Get random members
+            const regularMembers = faker.helpers.arrayElements(
+                potentialMembers.filter(
+                    (u) => adminUserRef && u.id !== adminUserRef.id && admin2UserRef && u.id !== admin2UserRef.id
+                ),
+                Math.min(additionalMembersNeeded, potentialMembers.length)
+            );
+
+            // Add regular members
+            for (const member of regularMembers) {
                 try {
                     await dataSource.query(
                         'INSERT INTO "group_members_user_references" ("groupId", "userReferencesId") VALUES ($1, $2)',
@@ -347,6 +430,16 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 } catch (error: any) {
                     logger.warn(`Failed to add member ${member.id} to group ${group.id}: ${error.message}`);
                 }
+            }
+
+            // Always add the owner as a member if not already added
+            try {
+                await dataSource.query(
+                    'INSERT INTO "group_members_user_references" ("groupId", "userReferencesId") VALUES ($1, $2)',
+                    [group.id, groupOwner.id]
+                );
+            } catch (error: any) {
+                logger.warn(`Failed to add owner ${groupOwner.id} to group ${group.id}: ${error.message}`);
             }
 
             groups.push(group);
@@ -480,7 +573,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             try {
                 const newsFeed = newsFeedRepo.create({
                     description: `${group.name} Group Feed`,
-                    visibility: groupVisibility.PUBLIC ? visibilityEnum.PUBLIC : visibilityEnum.PRIVATE,
+                    visibility:
+                        group.visibility === groupVisibility.PUBLIC ? visibilityEnum.PUBLIC : visibilityEnum.PRIVATE,
                     groupOwner: group,
                 });
 
@@ -495,7 +589,30 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                 logger.log(`Created news feed for group: ${group.name}`);
 
-                const groupPostCount = faker.number.int({min: 30, max: 50});
+                // Determine if this is a group that has an admin as owner or member
+                let hasAdmin = group.owner_id === adminUserRef?.id || group.owner_id === admin2UserRef?.id;
+
+                if (!hasAdmin) {
+                    // Check if admin is a member
+                    const adminIsMember = await dataSource.query(
+                        'SELECT 1 FROM "group_members_user_references" WHERE "groupId" = $1 AND "userReferencesId" IN ($2, $3) LIMIT 1',
+                        [group.id, adminUserRef?.id || '', admin2UserRef?.id || '']
+                    );
+
+                    if (adminIsMember.length > 0) {
+                        hasAdmin = true;
+                    }
+                }
+
+                // How many posts to create depends on whether admins are involved
+                const groupPostCount = hasAdmin
+                    ? faker.number.int({min: 30, max: 40}) // 30-40 posts for admin groups
+                    : faker.number.int({min: 2, max: 3}); // 2-3 posts for non-admin groups
+
+                logger.log(
+                    `Creating ${groupPostCount} posts for group: ${group.name} (${hasAdmin ? 'admin' : 'non-admin'} group)`
+                );
+
                 for (let i = 0; i < groupPostCount; i++) {
                     const memberIds: {userReferencesId: string}[] = await dataSource.query(
                         'SELECT "userReferencesId" FROM "group_members_user_references" WHERE "groupId" = $1',
