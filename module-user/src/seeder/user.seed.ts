@@ -124,6 +124,43 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
             throw error; // Rethrow to stop the process
         }
 
+        // Second admin user
+        try {
+            logger.log('Creating second admin user...');
+            const admin2User = userRepo.create({
+                email: 'admin2@example.com',
+                username: 'admin2',
+                password: await hashPassword('password123'),
+                firstName: 'Admin',
+                lastName: 'Second',
+                phoneNumber: faker.phone.number({style: 'international'}),
+                dob: faker.date.birthdate({min: 28, max: 45, mode: 'age'}),
+                gender: Gender.OTHER,
+                profileImageUrl: faker.image.avatar(),
+                coverImageUrl: faker.image.url(),
+                address: faker.location.streetAddress(),
+                profilePrivacy: ProfilePrivacy.PUBLIC,
+                biography:
+                    'Second Infinivista administrator. I help with platform operations, content management, and community support. Follow me for platform updates and assistance.',
+                userEvent: [
+                    'Platform Co-administrator',
+                    'Community Manager for East Region',
+                    'Support Team Lead for Technical Issues',
+                    'Content Moderation Expert',
+                    'User Experience Researcher',
+                    'Feature Testing Coordinator',
+                    'User Engagement Specialist',
+                ],
+            });
+            await userRepo.save(admin2User);
+            users.push(admin2User);
+            logger.log('Second admin user created successfully');
+        } catch (error: any) {
+            logger.error(`Error creating second admin user: ${error.message}`);
+            logger.error(error.stack);
+            throw error; // Rethrow to stop the process
+        }
+
         // Regular users - Increased to 30 regular users
         const numberOfRegularUsers = 30;
         for (let i = 1; i <= numberOfRegularUsers; i++) {

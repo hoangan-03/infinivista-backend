@@ -27,7 +27,6 @@ import {Story} from '../entities/local/story.entity';
 import {Topic} from '../entities/local/topic.entity';
 import {UserReactPost} from '../entities/local/user-react-post.entity';
 
-// Interface to match the user data structure from module-user
 interface UserData {
     id: string;
     email: string;
@@ -35,9 +34,30 @@ interface UserData {
     firstName: string;
     lastName: string;
     profileImageUrl: string;
-    phoneNumber: string; // Assuming this field exists in the user module
-    // Add any other fields you need
+    phoneNumber: string;
 }
+const videoLinks = [
+    'https://res.cloudinary.com/dght74v9o/video/upload/v1735408641/samples/cld-sample-video.mp4',
+    'https://res.cloudinary.com/demo/video/upload/dog.mp4',
+    'https://res.cloudinary.com/demo/video/upload/elephants.mp4',
+    'https://res.cloudinary.com/dcb72w5e4/video/upload/v1742292056/samples/sea-turtle.mp4',
+    'https://res.cloudinary.com/dcb72w5e4/video/upload/v1742292058/samples/dance-2.mp4',
+    'https://videos.pexels.com/video-files/31646575/13482899_2560_1440_60fps.mp4',
+    'https://videos.pexels.com/video-files/27729226/12212883_1440_2560_30fps.mp4',
+    'https://videos.pexels.com/video-files/12052148/12052148-uhd_1440_2560_30fps.mp4',
+    'https://videos.pexels.com/video-files/30281926/12981407_2560_1440_25fps.mp4',
+    'https://videos.pexels.com/video-files/31532164/13439846_1920_1080_25fps.mp4',
+    'https://videos.pexels.com/video-files/31828537/13559922_2560_1440_24fps.mp4',
+    'https://videos.pexels.com/video-files/27692822/12206536_1920_1080_30fps.mp4',
+    'https://videos.pexels.com/video-files/31598701/13464386_1080_1920_25fps.mp4',
+    'https://videos.pexels.com/video-files/29792714/12800431_1920_1080_60fps.mp4',
+    'https://videos.pexels.com/video-files/3850436/3850436-hd_1920_1080_24fps.mp4',
+    'https://videos.pexels.com/video-files/30772101/13163067_2560_1440_60fps.mp4',
+    'https://videos.pexels.com/video-files/31775344/13536308_1440_2560_50fps.mp4',
+    'https://videos.pexels.com/video-files/28034501/12288471_2560_1440_30fps.mp4',
+    'https://videos.pexels.com/video-files/3945877/3945877-uhd_2560_1440_30fps.mp4',
+    'https://videos.pexels.com/video-files/30784261/13167552_1440_2560_30fps.mp4',
+];
 
 export const seedFeedDatabase = async (dataSource: DataSource) => {
     const app = await NestFactory.createApplicationContext(AppModule);
@@ -99,25 +119,34 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
         // Get all users from the user module database
         const users: UserData[] = await userModuleConnection.query(`
-            SELECT u.id, u.email, u.username, u."firstName", u."lastName", u."profileImageUrl"
+            SELECT u.id, u.email, u.username, u."firstName", u."lastName", u."profileImageUrl", u."phoneNumber"
             FROM users u
             ORDER BY u.id
         `);
 
         logger.log(`Retrieved ${users.length} users from user module database`);
 
-        // Find admin user
+        // Find admin users
         const adminUser = users.find((user) => user.username === 'admin' || user.email === 'admin@example.com');
+        const admin2User = users.find((user) => user.username === 'admin2' || user.email === 'admin2@example.com');
+
         if (!adminUser) {
-            logger.warn('Admin user not found in the database');
+            logger.warn('First admin user not found in the database');
         } else {
             logger.log(`Found admin user: ${adminUser.username} (${adminUser.id})`);
+        }
+
+        if (!admin2User) {
+            logger.warn('Second admin user not found in the database');
+        } else {
+            logger.log(`Found second admin user: ${admin2User.username} (${admin2User.id})`);
         }
 
         // Create user references with exact IDs and data from user module
         logger.log('Creating user references with actual user data...');
         const userRefs: UserReference[] = [];
         let adminUserRef: UserReference | undefined;
+        let admin2UserRef: UserReference | undefined;
 
         for (const userData of users) {
             const userRef = userReferenceRepo.create({
@@ -132,9 +161,11 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             await userReferenceRepo.save(userRef);
             userRefs.push(userRef);
 
-            // Keep reference to admin user
+            // Keep reference to admin users
             if (userData.username === 'admin' || userData.email === 'admin@example.com') {
                 adminUserRef = userRef;
+            } else if (userData.username === 'admin2' || userData.email === 'admin2@example.com') {
+                admin2UserRef = userRef;
             }
 
             logger.log(`Created user reference for ${userData.username} with ID ${userData.id}`);
@@ -220,9 +251,14 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             'Art & Design Hub',
         ];
 
-        // Create pages with admin as owner and generate random content
+        // Create pages with admins as owners for first two pages and generate random content
         for (let i = 0; i < pageNames.length; i++) {
-            const pageOwner = i === 0 ? adminUserRef : faker.helpers.arrayElement(userRefs);
+            const pageOwner =
+                i === 0
+                    ? adminUserRef
+                    : i === 1 && admin2UserRef
+                      ? admin2UserRef
+                      : faker.helpers.arrayElement(userRefs);
             const page = pageRepo.create({
                 name: pageNames[i],
                 description: faker.lorem.paragraph(),
@@ -272,9 +308,14 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             'Music Discussion',
         ];
 
-        // Create groups with random owners
+        // Create groups with admin owners for first two groups
         for (let i = 0; i < groupNames.length; i++) {
-            const groupOwner = i === 0 ? adminUserRef : faker.helpers.arrayElement(userRefs);
+            const groupOwner =
+                i === 0
+                    ? adminUserRef
+                    : i === 1 && admin2UserRef
+                      ? admin2UserRef
+                      : faker.helpers.arrayElement(userRefs);
 
             const group = groupRepo.create({
                 name: groupNames[i],
@@ -315,6 +356,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         logger.log('Creating news feeds...');
         const newsFeeds: NewsFeed[] = [];
         let adminNewsFeed: NewsFeed | undefined;
+        let admin2NewsFeed: NewsFeed | undefined;
 
         // Create user news feeds
         for (const userRef of userRefs) {
@@ -323,10 +365,12 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     description:
                         userRef === adminUserRef
                             ? 'Official Infinivista Admin Feed'
-                            : `Personal feed for ${userRef.firstName || userRef.username}`,
+                            : userRef === admin2UserRef
+                              ? 'Secondary Infinivista Admin Feed'
+                              : `Personal feed for ${userRef.firstName || userRef.username}`,
                     visibility:
-                        userRef === adminUserRef
-                            ? visibilityEnum.PUBLIC // Admin feed is always public
+                        userRef === adminUserRef || userRef === admin2UserRef
+                            ? visibilityEnum.PUBLIC // Admin feeds are always public
                             : faker.helpers.arrayElement(Object.values(visibilityEnum)),
                 });
 
@@ -349,7 +393,10 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                     if (userRef === adminUserRef) {
                         adminNewsFeed = refreshedFeed;
-                        logger.log(`Created admin news feed for ${userRef.username}`);
+                        logger.log(`Created first admin news feed for ${userRef.username}`);
+                    } else if (userRef === admin2UserRef) {
+                        admin2NewsFeed = refreshedFeed;
+                        logger.log(`Created second admin news feed for ${userRef.username}`);
                     } else {
                         logger.log(`Created news feed for ${userRef.username}`);
                     }
@@ -393,11 +440,15 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     });
                     await postRepo.save(post);
 
-                    const attachmentCount = faker.number.int({min: 1, max: 4});
+                    const attachmentCount = faker.number.int({min: 0, max: 3});
                     for (let j = 0; j < attachmentCount; j++) {
+                        const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
                         const attachment = postAttachmentRepo.create({
-                            attachment_url: faker.image.url(),
-                            attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                            attachment_url:
+                                attachmentType === AttachmentType.VIDEO
+                                    ? faker.helpers.arrayElement(videoLinks)
+                                    : faker.image.url(),
+                            attachmentType,
                             post,
                         });
                         await postAttachmentRepo.save(attachment);
@@ -468,12 +519,19 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                             await postRepo.save(post);
 
                             if (faker.datatype.boolean()) {
-                                const attachment = postAttachmentRepo.create({
-                                    attachment_url: faker.image.url(),
-                                    attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
-                                    post,
-                                });
-                                await postAttachmentRepo.save(attachment);
+                                const attachmentCount = faker.number.int({min: 0, max: 3});
+                                for (let j = 0; j < attachmentCount; j++) {
+                                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                                    const attachment = postAttachmentRepo.create({
+                                        attachment_url:
+                                            attachmentType === AttachmentType.VIDEO
+                                                ? faker.helpers.arrayElement(videoLinks)
+                                                : faker.image.url(),
+                                        attachmentType,
+                                        post,
+                                    });
+                                    await postAttachmentRepo.save(attachment);
+                                }
                             }
 
                             const reactionCount = faker.number.int({min: 3, max: 10});
@@ -497,7 +555,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         // Create posts, comments, attachments, and reactions for regular users
         logger.log('Creating posts with attachments and comments...');
 
-        for (const newsFeed of newsFeeds.filter((feed) => feed !== adminNewsFeed)) {
+        for (const newsFeed of newsFeeds.filter((feed) => feed !== adminNewsFeed && feed !== admin2NewsFeed)) {
             const postCount = faker.number.int({min: 1, max: 2});
             const ownerName = newsFeed.owner?.id || 'unknown user';
             logger.log(`Creating ${postCount} posts for feed of ${ownerName}`);
@@ -516,9 +574,13 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                 const attachmentCount = faker.number.int({min: 0, max: 3});
                 for (let j = 0; j < attachmentCount; j++) {
+                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
                     const attachment = postAttachmentRepo.create({
-                        attachment_url: faker.image.url(),
-                        attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                        attachment_url:
+                            attachmentType === AttachmentType.VIDEO
+                                ? faker.helpers.arrayElement(videoLinks)
+                                : faker.image.url(),
+                        attachmentType,
                         post,
                     });
                     await postAttachmentRepo.save(attachment);
@@ -554,10 +616,14 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             if (faker.datatype.boolean({probability: 0.7})) {
                 const storyCount = faker.number.int({min: 1, max: 3});
                 for (let i = 0; i < storyCount; i++) {
+                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
                     const story = storyRepo.create({
-                        story_url: faker.image.url(),
+                        story_url:
+                            attachmentType === AttachmentType.VIDEO
+                                ? faker.helpers.arrayElement(videoLinks)
+                                : faker.image.url(),
                         duration: faker.number.int({min: 5, max: 30}),
-                        attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                        attachmentType,
                         newsFeed,
                     });
                     await storyRepo.save(story);
@@ -623,11 +689,12 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             }
         }
 
+        // Create enhanced content for admin feeds
         if (adminNewsFeed && adminUserRef) {
-            logger.log('Creating enhanced content for admin user feed...');
+            logger.log('Creating enhanced content for first admin user feed...');
 
             const adminPostCount = faker.number.int({min: 15, max: 25});
-            logger.log(`Creating ${adminPostCount} posts for admin feed`);
+            logger.log(`Creating ${adminPostCount} posts for first admin feed`);
 
             for (let i = 0; i < adminPostCount; i++) {
                 const post = postRepo.create({
@@ -643,9 +710,13 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                 const attachmentCount = faker.number.int({min: 6, max: 12});
                 for (let j = 0; j < attachmentCount; j++) {
+                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
                     const attachment = postAttachmentRepo.create({
-                        attachment_url: faker.image.url(),
-                        attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                        attachment_url:
+                            attachmentType === AttachmentType.VIDEO
+                                ? faker.helpers.arrayElement(videoLinks)
+                                : faker.image.url(),
+                        attachmentType,
                         post,
                     });
                     await postAttachmentRepo.save(attachment);
@@ -679,13 +750,17 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             }
 
             const adminStoryCount = faker.number.int({min: 12, max: 20});
-            logger.log(`Creating ${adminStoryCount} stories for admin feed`);
+            logger.log(`Creating ${adminStoryCount} stories for first admin feed`);
 
             for (let i = 0; i < adminStoryCount; i++) {
+                const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
                 const story = storyRepo.create({
-                    story_url: faker.image.url(),
+                    story_url:
+                        attachmentType === AttachmentType.VIDEO
+                            ? faker.helpers.arrayElement(videoLinks)
+                            : faker.image.url(),
                     duration: faker.number.int({min: 10, max: 30}),
-                    attachmentType: faker.helpers.arrayElement(Object.values(AttachmentType)),
+                    attachmentType,
                     newsFeed: adminNewsFeed,
                 });
                 await storyRepo.save(story);
@@ -721,7 +796,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             }
 
             const adminReelCount = faker.number.int({min: 1, max: 1});
-            logger.log(`Creating ${adminReelCount} reels for admin feed`);
+            logger.log(`Creating ${adminReelCount} reels for first admin feed`);
 
             for (let i = 0; i < adminReelCount; i++) {
                 const reel = reelRepo.create({
@@ -733,7 +808,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             }
 
             const adminLivestreamCount = faker.number.int({min: 1, max: 1});
-            logger.log(`Creating ${adminLivestreamCount} livestreams for admin feed`);
+            logger.log(`Creating ${adminLivestreamCount} livestreams for first admin feed`);
 
             for (let i = 0; i < adminLivestreamCount; i++) {
                 const startDate = faker.date.recent({days: 45});
@@ -746,6 +821,142 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     end_time: endDate,
                     view_count: faker.number.int({min: 50000, max: 5000000}),
                     newsFeed: adminNewsFeed,
+                });
+                await liveStreamRepo.save(livestream);
+            }
+        }
+
+        if (admin2NewsFeed && admin2UserRef) {
+            logger.log('Creating enhanced content for second admin user feed...');
+
+            const admin2PostCount = faker.number.int({min: 10, max: 20});
+            logger.log(`Creating ${admin2PostCount} posts for second admin feed`);
+
+            for (let i = 0; i < admin2PostCount; i++) {
+                const post = postRepo.create({
+                    content: faker.lorem.paragraphs(faker.number.int({min: 3, max: 6})),
+                    newsFeed: admin2NewsFeed,
+                    topics:
+                        topics.length > 0
+                            ? faker.helpers.arrayElements(topics, faker.number.int({min: 3, max: 5}))
+                            : [],
+                    owner: admin2UserRef,
+                });
+                await postRepo.save(post);
+
+                const attachmentCount = faker.number.int({min: 4, max: 8});
+                for (let j = 0; j < attachmentCount; j++) {
+                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                    const attachment = postAttachmentRepo.create({
+                        attachment_url:
+                            attachmentType === AttachmentType.VIDEO
+                                ? faker.helpers.arrayElement(videoLinks)
+                                : faker.image.url(),
+                        attachmentType,
+                        post,
+                    });
+                    await postAttachmentRepo.save(attachment);
+                }
+
+                const commentCount = faker.number.int({min: 10, max: 25});
+                for (let k = 0; k < commentCount; k++) {
+                    const randomUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: 0.4}) ? faker.image.url() : undefined,
+                        user: randomUser,
+                        post,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                const reactionCount = faker.number.int({min: 150, max: 800});
+                const reactionTypes = Object.values(ReactionType);
+
+                const reactingUsers = faker.helpers.arrayElements(userRefs, Math.min(reactionCount, userRefs.length));
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactPostRepo.create({
+                        user_id: user.id,
+                        post_id: post.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactPostRepo.save(reaction);
+                }
+            }
+
+            const admin2StoryCount = faker.number.int({min: 8, max: 15});
+            logger.log(`Creating ${admin2StoryCount} stories for second admin feed`);
+
+            for (let i = 0; i < admin2StoryCount; i++) {
+                const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                const story = storyRepo.create({
+                    story_url:
+                        attachmentType === AttachmentType.VIDEO
+                            ? faker.helpers.arrayElement(videoLinks)
+                            : faker.image.url(),
+                    duration: faker.number.int({min: 10, max: 30}),
+                    attachmentType,
+                    newsFeed: admin2NewsFeed,
+                });
+                await storyRepo.save(story);
+
+                const storyCommentCount = faker.number.int({min: 3, max: 8});
+                for (let c = 0; c < storyCommentCount; c++) {
+                    const randomUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: 0.3}) ? faker.image.url() : undefined,
+                        user: randomUser,
+                        story: story,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                const storyReactionCount = faker.number.int({min: 30, max: 50});
+                const reactionTypes = Object.values(ReactionType);
+
+                const reactingUsers = faker.helpers.arrayElements(
+                    userRefs,
+                    Math.min(storyReactionCount, userRefs.length)
+                );
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactStoryRepo.create({
+                        user_id: user.id,
+                        story_id: story.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactStoryRepo.save(reaction);
+                }
+            }
+
+            const admin2ReelCount = faker.number.int({min: 1, max: 1});
+            logger.log(`Creating ${admin2ReelCount} reels for second admin feed`);
+
+            for (let i = 0; i < admin2ReelCount; i++) {
+                const reel = reelRepo.create({
+                    reel_url: faker.internet.url(),
+                    duration: faker.number.int({min: 20, max: 60}),
+                    newsFeed: admin2NewsFeed,
+                });
+                await reelRepo.save(reel);
+            }
+
+            const admin2LivestreamCount = faker.number.int({min: 1, max: 1});
+            logger.log(`Creating ${admin2LivestreamCount} livestreams for second admin feed`);
+
+            for (let i = 0; i < admin2LivestreamCount; i++) {
+                const startDate = faker.date.recent({days: 30});
+                const streamDuration = faker.number.int({min: 1500000, max: 7200000});
+                const endDate = new Date(startDate.getTime() + streamDuration);
+
+                const livestream = liveStreamRepo.create({
+                    stream_url: faker.internet.url(),
+                    start_time: startDate,
+                    end_time: endDate,
+                    view_count: faker.number.int({min: 30000, max: 3000000}),
+                    newsFeed: admin2NewsFeed,
                 });
                 await liveStreamRepo.save(livestream);
             }
