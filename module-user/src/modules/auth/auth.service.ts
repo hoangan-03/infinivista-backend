@@ -1,4 +1,4 @@
-import {Injectable, Logger, UnauthorizedException} from '@nestjs/common';
+import {Injectable, Logger, NotFoundException, UnauthorizedException} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
 
 import {User} from '@/entities/local/user.entity';
@@ -6,9 +6,8 @@ import {AuthConstant} from '@/modules/auth/constant';
 import {AuthTokenResponseDto} from '@/modules/auth/dto/auth-token-response.dto';
 import {RegisterUserDto} from '@/modules/auth/dto/register-user.dto';
 import {RegisterUserResponseDto} from '@/modules/auth/dto/register-user-response.dto';
-import {FacebookUserData} from '@/modules/auth/interfaces/facebook-user.interface';
-import {GoogleUserData} from '@/modules/auth/interfaces/google-user.interface';
 import {JwtPayload} from '@/modules/auth/interfaces/jwt-payload.interface';
+import {FriendService} from '@/modules/user/services/friend.service';
 import {UserService} from '@/modules/user/services/user.service';
 import {checkPassword, hashPassword} from '@/utils/hash-password';
 
@@ -20,7 +19,7 @@ export class AuthService {
     constructor(
         private readonly userService: UserService,
         private readonly jwtService: JwtService,
-
+        private readonly friendService: FriendService,
         private readonly tokenBlacklistService: TokenBlacklistService
     ) {}
 
@@ -35,11 +34,11 @@ export class AuthService {
 
     async login(user: User): Promise<AuthTokenResponseDto> {
         this.logger.debug(`Logging in user: ${user.username}`);
-        const tokens = this.generateTokens(user);
+        const tokens = await this.generateTokens(user);
         return tokens;
     }
 
-    generateTokens(user: User): AuthTokenResponseDto {
+    async generateTokens(user: User): Promise<AuthTokenResponseDto> {
         const payload: JwtPayload = {
             sub: user.id.toString(),
             username: user.username,
@@ -96,11 +95,25 @@ export class AuthService {
             throw new UnauthorizedException(`Invalid credentials`);
         }
     }
-    getUserProfile(user: User) {
-        const userWithoutPassword = {...user};
-        this.logger.log(`User profile retrieved: ${user.username}`);
-        delete userWithoutPassword.password;
-        return userWithoutPassword;
+
+    async getUserProfile(user: User): Promise<User & {followerCount: number; followingCount: number}> {
+        const userProfile = {...user};
+        delete userProfile.password;
+
+        if (!userProfile) {
+            throw new NotFoundException('User not found');
+        }
+
+        // Get follower and following counts
+        const followerCount = await this.friendService.getFollowerCount(user.id);
+        const followingCount = await this.friendService.getFollowingCount(user.id);
+
+        // Return user with counts
+        return {
+            ...userProfile,
+            followerCount,
+            followingCount,
+        };
     }
 
     async logout(token: string): Promise<{message: string}> {
@@ -110,69 +123,5 @@ export class AuthService {
             await this.tokenBlacklistService.blacklistToken(tokenValue);
         }
         return {message: 'Logged out successfully'};
-    }
-
-    async validateOrCreateFacebookUser(userData: FacebookUserData): Promise<User> {
-        const {email, firstName, lastName} = userData;
-
-        try {
-            const user = await this.userService.getOne({
-                where: {username: email},
-            });
-            return user;
-        } catch (error) {
-            const randomPassword =
-                Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10) + 'A1@';
-
-            const hashedPassword = await hashPassword(randomPassword);
-
-            const newUser = await this.userService.create({
-                email: email,
-                password: hashedPassword,
-                username: `${firstName} ${lastName}`,
-            });
-
-            return newUser;
-        }
-    }
-
-    async googleLogin(user: User): Promise<AuthTokenResponseDto> {
-        if (!user) {
-            throw new UnauthorizedException('No user from Google login');
-        }
-
-        return this.generateTokens(user);
-    }
-
-    async validateOrCreateGoogleUser(userData: GoogleUserData): Promise<User> {
-        const {email, firstName, lastName} = userData;
-
-        try {
-            const user = await this.userService.getOne({
-                where: {username: email},
-            });
-            return user;
-        } catch (error) {
-            const randomPassword =
-                Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10) + 'A1@';
-
-            const hashedPassword = await hashPassword(randomPassword);
-
-            const newUser = await this.userService.create({
-                email: email,
-                password: hashedPassword,
-                username: `${firstName} ${lastName}`,
-            });
-
-            return newUser;
-        }
-    }
-
-    async facebookLogin(user: User): Promise<AuthTokenResponseDto> {
-        if (!user) {
-            throw new UnauthorizedException('No user from Facebook login');
-        }
-
-        return this.generateTokens(user);
     }
 }

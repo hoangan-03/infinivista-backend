@@ -11,6 +11,7 @@ import {SecurityQuestion} from '@/entities/local/security-question.entity';
 import {Setting} from '@/entities/local/setting.entity';
 import {SocialLink} from '@/entities/local/social-link.entity';
 import {User} from '@/entities/local/user.entity';
+import {UserFollow} from '@/entities/local/user-follow.entity';
 import {UserStatus} from '@/entities/local/user-status.entity';
 import {UserController} from '@/modules/user/controllers/user.controller';
 import {UserService} from '@/modules/user/services/user.service';
@@ -30,8 +31,8 @@ import {UserEventsService} from './services/user-events.service';
             SecurityQuestion,
             FriendRequest,
             Friend,
+            UserFollow,
             SocialLink,
-
             NewsFeedReference,
         ]),
         ClientsModule.registerAsync([

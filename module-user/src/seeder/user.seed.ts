@@ -11,6 +11,7 @@ import {SecurityQuestion} from '../entities/local/security-question.entity';
 import {Setting} from '../entities/local/setting.entity';
 import {SocialLink} from '../entities/local/social-link.entity';
 import {User} from '../entities/local/user.entity';
+import {UserFollow} from '../entities/local/user-follow.entity';
 import {UserStatus} from '../entities/local/user-status.entity';
 import {FriendStatus} from '../modules/user/enums/friend-status.enum';
 import {Gender} from '../modules/user/enums/gender.enum';
@@ -18,6 +19,21 @@ import {ProfilePrivacy} from '../modules/user/enums/profile-privacy.enum';
 import {SettingType} from '../modules/user/enums/setting.enum';
 import {SocialLinkType} from '../modules/user/enums/social-link.enum';
 import {hashPassword} from '../utils/hash-password';
+
+// Image links for seeding
+const imageLinks = [
+    'https://images.pexels.com/photos/1223649/pexels-photo-1223649.jpeg',
+    'https://images.pexels.com/photos/1153369/pexels-photo-1153369.jpeg',
+    'https://images.pexels.com/photos/1172253/pexels-photo-1172253.jpeg',
+    'https://images.pexels.com/photos/57690/pexels-photo-57690.jpeg',
+    'https://images.pexels.com/photos/62689/pexels-photo-62689.jpeg',
+    'https://images.pexels.com/photos/237272/pexels-photo-237272.jpeg',
+    'https://images.pexels.com/photos/1034940/pexels-photo-1034940.jpeg',
+    'https://images.pexels.com/photos/610293/pexels-photo-610293.jpeg',
+    'https://images.pexels.com/photos/1019771/pexels-photo-1019771.jpeg',
+    'https://images.pexels.com/photos/1128318/pexels-photo-1128318.jpeg',
+    // Add more if needed
+];
 
 export const seedUserDatabase = async (dataSource: DataSource) => {
     const app = await NestFactory.createApplicationContext(AppModule);
@@ -35,6 +51,7 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
         const securityQuestionRepo = dataSource.getRepository(SecurityQuestion);
         const securityAnswerRepo = dataSource.getRepository(SecurityAnswer);
         const socialLinkRepo = dataSource.getRepository(SocialLink);
+        const userFollowRepo = dataSource.getRepository(UserFollow);
 
         // Check for existing data
         logger.log('Checking for existing data...');
@@ -49,6 +66,7 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
         await securityQuestionRepo.query('TRUNCATE TABLE security_questions CASCADE;');
         await securityAnswerRepo.query('TRUNCATE TABLE security_answers CASCADE;');
         await userRepo.query('TRUNCATE TABLE users CASCADE;');
+        await userFollowRepo.query('TRUNCATE TABLE user_follows CASCADE;');
 
         // Create or get security questions
         logger.log('Creating security questions...');
@@ -96,10 +114,10 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
                 lastName: 'User',
                 phoneNumber: faker.phone.number({style: 'international'}),
                 dob: faker.date.birthdate({min: 25, max: 40, mode: 'age'}),
-                gender: Gender.OTHER,
+                gender: Gender.MALE,
                 profileImageUrl: faker.image.avatar(),
-                coverImageUrl: faker.image.url(),
-                address: faker.location.streetAddress(),
+                coverImageUrl: faker.helpers.arrayElement(imageLinks),
+                address: faker.location.streetAddress({useFullAddress: true}),
                 profilePrivacy: ProfilePrivacy.PUBLIC,
                 biography:
                     'Official Infinivista administrator. I manage platform operations, user support, content moderation, and feature development. Follow me for official announcements, platform updates, and community guidelines.',
@@ -135,10 +153,10 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
                 lastName: 'Second',
                 phoneNumber: faker.phone.number({style: 'international'}),
                 dob: faker.date.birthdate({min: 28, max: 45, mode: 'age'}),
-                gender: Gender.OTHER,
+                gender: Gender.FEMALE,
                 profileImageUrl: faker.image.avatar(),
-                coverImageUrl: faker.image.url(),
-                address: faker.location.streetAddress(),
+                coverImageUrl: faker.helpers.arrayElement(imageLinks),
+                address: faker.location.streetAddress({useFullAddress: true}),
                 profilePrivacy: ProfilePrivacy.PUBLIC,
                 biography:
                     'Second Infinivista administrator. I help with platform operations, content management, and community support. Follow me for platform updates and assistance.',
@@ -188,15 +206,15 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
                 const user = userRepo.create({
                     email: `user${i}@example.com`,
                     username: `user${i}`,
-                    password: await hashPassword('password123'),
+                    password: await hashPassword(faker.internet.password()),
                     firstName,
                     lastName,
                     phoneNumber: faker.phone.number({style: 'international'}),
                     dob: faker.date.birthdate({min: 18, max: 70, mode: 'age'}),
                     gender: faker.helpers.arrayElement(Object.values(Gender)),
                     profileImageUrl: faker.image.avatar(),
-                    coverImageUrl: faker.image.url(),
-                    address: faker.location.streetAddress(),
+                    coverImageUrl: faker.helpers.arrayElement(imageLinks),
+                    address: faker.location.streetAddress({useFullAddress: true}),
                     profilePrivacy: faker.helpers.arrayElement(Object.values(ProfilePrivacy)),
                     biography: faker.lorem.paragraph(faker.number.int({min: 1, max: 3})),
                     userEvent: userEvents,
@@ -484,6 +502,67 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
             }
         } catch (error: any) {
             logger.error(`Error creating friendships: ${error.message}`);
+            logger.error(error.stack);
+            throw error;
+        }
+
+        // Create follower/following relationships
+        logger.log('Creating follower/following relationships...');
+        try {
+            // Create followers for each user (20-30 followers per user)
+            for (const user of users) {
+                // Determine number of followers (20-30)
+                const numFollowers = faker.number.int({min: 20, max: 30});
+                logger.log(`Creating ${numFollowers} followers for user ${user.username}...`);
+
+                // Get potential followers (excluding the user themselves)
+                const potentialFollowers = users.filter((u) => u.id !== user.id);
+
+                // Select random followers
+                const selectedFollowers = faker.helpers.arrayElements(
+                    potentialFollowers,
+                    Math.min(numFollowers, potentialFollowers.length)
+                );
+
+                // Create follow relationships
+                for (const follower of selectedFollowers) {
+                    const userFollow = userFollowRepo.create({
+                        follower_id: follower.id, // follower
+                        following_id: user.id, // being followed
+                    });
+                    await userFollowRepo.save(userFollow);
+                }
+                logger.log(`Created ${selectedFollowers.length} followers for user ${user.username}`);
+
+                // Determine number of users to follow (10-12)
+                const numFollowing = faker.number.int({min: 10, max: 12});
+                logger.log(`Creating ${numFollowing} following relationships for user ${user.username}...`);
+
+                // Get potential users to follow (excluding the user themselves and those already following them)
+                const potentialToFollow = users.filter(
+                    (u) => u.id !== user.id && !selectedFollowers.some((f) => f.id === u.id)
+                );
+
+                // Select random users to follow
+                const selectedToFollow = faker.helpers.arrayElements(
+                    potentialToFollow,
+                    Math.min(numFollowing, potentialToFollow.length)
+                );
+
+                // Create follow relationships
+                for (const toFollow of selectedToFollow) {
+                    const userFollow = userFollowRepo.create({
+                        follower_id: user.id, // follower
+                        following_id: toFollow.id, // being followed
+                    });
+                    await userFollowRepo.save(userFollow);
+                }
+                logger.log(`Created ${selectedToFollow.length} following relationships for user ${user.username}`);
+            }
+
+            logger.log('Follower/following relationships created successfully');
+        } catch (error: any) {
+            logger.error(`Error creating follower/following relationships: ${error.message}`);
             logger.error(error.stack);
             throw error;
         }

@@ -76,6 +76,7 @@ const dropDatabase = async () => {
         const queryRunner = dataSource.createQueryRunner();
 
         console.log('Dropping database tables...');
+        await queryRunner.query('DROP TABLE IF EXISTS user_follows CASCADE');
 
         // Drop tables with foreign keys first
         await queryRunner.query('DROP TABLE IF EXISTS settings CASCADE');

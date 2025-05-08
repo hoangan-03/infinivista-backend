@@ -120,49 +120,4 @@ export class AuthController {
 
         return await lastValueFrom(this.userClient.send('LogoutAuthCommand', {token}));
     }
-
-    // // Add these to your AuthController
-    // @Get('google')
-    // @UseGuards(GoogleAuthGuard)
-    // @ApiOperation({summary: 'Login with Google'})
-    // async googleAuth() {
-    //     // This is handled by the guard
-    //     // The guard redirects to Google
-    // }
-
-    // @Get('facebook')
-    // @UseGuards(FacebookAuthGuard)
-    // @ApiOperation({summary: 'Login with Facebook'})
-    // async facebookAuth() {
-    //     // This is handled by the guard
-    //     // The guard redirects to Facebook
-    // }
-
-    // @Get('google/callback')
-    // @UseGuards(JwtBlacklistGuard, GoogleAuthGuard)
-    // @UseInterceptors(TokenInterceptor)
-    // @ApiOperation({summary: 'Handle Google OAuth callback'})
-    // @ApiResponse({
-    //     status: 200,
-    //     description: 'User successfully logged in with Google',
-    //     type: AuthTokenResponseDto,
-    // })
-    // async googleAuthCallback(@CurrentUser() userData: any): Promise<AuthTokenResponseDto> {
-    //     console.log('Google callback userData:', JSON.stringify(userData));
-    //     return await lastValueFrom(this.userClient.send('GoogleAuthCommand', {userData}));
-    // }
-
-    // @Get('facebook/callback')
-    // @UseGuards(JwtBlacklistGuard, FacebookAuthGuard)
-    // @UseInterceptors(TokenInterceptor)
-    // @ApiOperation({summary: 'Handle Facebook OAuth callback'})
-    // @ApiResponse({
-    //     status: 200,
-    //     description: 'User successfully logged in with Facebook',
-    //     type: AuthTokenResponseDto,
-    // })
-    // async facebookAuthCallback(@CurrentUser() userData: any): Promise<AuthTokenResponseDto> {
-    //     console.log('Facebook callback userData:', JSON.stringify(userData));
-    //     return await lastValueFrom(this.userClient.send('FacebookAuthCommand', {userData}));
-    // }
 }

@@ -13,6 +13,7 @@ import {FriendRequest} from './friend-request.entity';
 import {SecurityAnswer} from './security-answer.entity';
 import {Setting} from './setting.entity';
 import {SocialLink} from './social-link.entity';
+import {UserFollow} from './user-follow.entity';
 import {UserStatus} from './user-status.entity';
 
 @Entity({name: 'users'})
@@ -110,6 +111,12 @@ export class User extends BaseEntity {
         cascade: true,
     })
     socialLinks: SocialLink[];
+
+    @OneToMany(() => UserFollow, (userFollow) => userFollow.follower)
+    following: UserFollow[];
+
+    @OneToMany(() => UserFollow, (userFollow) => userFollow.following)
+    followers: UserFollow[];
 
     constructor(data: Partial<User> = {}) {
         super();

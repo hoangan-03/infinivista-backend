@@ -9,6 +9,7 @@ import {Comment} from './comment.entity';
 import {PostAttachment} from './post-attachment';
 import {Topic} from './topic.entity';
 import {UserReactPost} from './user-react-post.entity';
+import {UserSharePost} from './user-share-post.entity';
 
 @Entity()
 export class Post extends BaseEntity {
@@ -39,6 +40,9 @@ export class Post extends BaseEntity {
 
     @OneToMany(() => UserReactPost, (userReaction) => userReaction.post)
     userReactions: UserReactPost[];
+
+    @OneToMany(() => UserSharePost, (userShare) => userShare.post)
+    userShares: UserSharePost[];
 
     @ManyToMany(() => Topic)
     @JoinTable({

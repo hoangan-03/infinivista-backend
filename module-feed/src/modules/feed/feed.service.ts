@@ -17,6 +17,7 @@ import {Story} from '@/entities/local/story.entity';
 import {Topic} from '@/entities/local/topic.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
 import {UserReactStory} from '@/entities/local/user-react-story.entity';
+import {UserSharePost} from '@/entities/local/user-share-post.entity';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 
@@ -63,7 +64,9 @@ export class FeedService {
         @InjectRepository(Group)
         private readonly groupRepository: Repository<Group>,
         @InjectRepository(GroupRule)
-        private readonly groupRuleRepository: Repository<GroupRule>
+        private readonly groupRuleRepository: Repository<GroupRule>,
+        @InjectRepository(UserSharePost)
+        private readonly userSharePostRepository: Repository<UserSharePost>
     ) {}
 
     /**
@@ -139,17 +142,23 @@ export class FeedService {
         });
 
         // Map posts to include only topic name and description
-        const mappedPosts = userPosts.map((post) => ({
-            ...post,
-            userOwner: userOwner,
-            topics: post.topics.map((topic) => ({
-                name: topic.topicName,
-                description: topic.topicDescription,
-            })),
-        }));
+        const postsWithShareCounts = await Promise.all(
+            userPosts.map(async (post) => {
+                const shareCount = await this.getShareCount(post.id);
+                return {
+                    ...post,
+                    userOwner: userOwner,
+                    share_count: shareCount,
+                    topics: post.topics.map((topic) => ({
+                        name: topic.topicName,
+                        description: topic.topicDescription,
+                    })),
+                };
+            })
+        );
 
         return {
-            data: mappedPosts,
+            data: postsWithShareCounts,
             metadata: {
                 total,
                 page,
@@ -190,16 +199,22 @@ export class FeedService {
         const REACTION_WEIGHT = 1;
         const COMMENT_WEIGHT = 2;
 
-        const postsWithScores = posts.map((post) => {
-            const reactionCount = reactionsByPostId[post.id] || 0;
-            const commentCount = post.comments?.length || 0;
-            const popularityScore = reactionCount * REACTION_WEIGHT + commentCount * COMMENT_WEIGHT;
+        const postsWithScores = await Promise.all(
+            posts.map(async (post) => {
+                const reactionCount = reactionsByPostId[post.id] || 0;
+                const commentCount = post.comments?.length || 0;
+                const popularityScore = reactionCount * REACTION_WEIGHT + commentCount * COMMENT_WEIGHT;
+                const shareCount = await this.getShareCount(post.id);
 
-            return {
-                post,
-                popularityScore,
-            };
-        });
+                return {
+                    post: {
+                        ...post,
+                        share_count: shareCount,
+                    },
+                    popularityScore,
+                };
+            })
+        );
 
         // Sort by popularity score (highest first)
         postsWithScores.sort((a, b) => b.popularityScore - a.popularityScore);
@@ -259,14 +274,20 @@ export class FeedService {
         const paginatedPosts = friendPosts.slice(startIndex, endIndex);
 
         // Map posts to include only topic name and description
-        const mappedPosts = paginatedPosts.map((post) => ({
-            ...post,
-            userOwner: userOwner,
-            topics: post.topics.map((topic) => ({
-                name: topic.topicName,
-                description: topic.topicDescription,
-            })),
-        }));
+        const mappedPosts = await Promise.all(
+            paginatedPosts.map(async (post) => {
+                const shareCount = await this.getShareCount(post.id);
+                return {
+                    ...post,
+                    userOwner: userOwner,
+                    share_count: shareCount,
+                    topics: post.topics.map((topic) => ({
+                        name: topic.topicName,
+                        description: topic.topicDescription,
+                    })),
+                };
+            })
+        );
 
         return {
             data: mappedPosts,
@@ -291,7 +312,7 @@ export class FeedService {
         });
 
         // Filter out posts that belong to the current user
-        const filteredPublicPosts = publicPosts.filter((post) => post.newsFeed.owner.id !== userId);
+        const filteredPublicPosts = publicPosts.filter((post) => post.newsFeed?.owner?.id !== userId);
 
         const postWithFriendVisibility = await this.postRepository.find({
             where: {newsFeed: {visibility: visibilityEnum.FRIENDS_ONLY}},
@@ -301,9 +322,11 @@ export class FeedService {
         // CHECK OWNER ID OF THESE POST AND CHECK FRIENDSHIP WITH the owner
         const friendIds = await this.userReferenceService.getFriends(userId || '');
         const friendPost = postWithFriendVisibility.filter((post) => {
+            // Add null checks to prevent accessing properties of null
+            if (!post.newsFeed?.owner) return false;
             const ownerId = post.newsFeed.owner.id;
             // Exclude user's own posts and only include friends' posts
-            return ownerId !== userId && friendIds.some((friend) => friend.id === ownerId);
+            return ownerId !== userId && friendIds.some((friend) => friend?.id === ownerId);
         });
 
         try {
@@ -313,16 +336,30 @@ export class FeedService {
             // Combine filtered public posts and friend posts
             const combinedPosts = [...filteredPublicPosts, ...friendPost];
 
+            // Get share counts for all posts
+            const postsWithShareCounts = await Promise.all(
+                combinedPosts.map(async (post) => {
+                    const shareCount = await this.getShareCount(post.id);
+                    return {
+                        ...post,
+                        share_count: shareCount,
+                    };
+                })
+            );
+
             if (preferredTopics.length === 0) {
                 // No preferences found, return random posts
-                for (let i = combinedPosts.length - 1; i > 0; i--) {
+                for (let i = postsWithShareCounts.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
-                    [combinedPosts[i], combinedPosts[j]] = [combinedPosts[j], combinedPosts[i]];
+                    [postsWithShareCounts[i], postsWithShareCounts[j]] = [
+                        postsWithShareCounts[j],
+                        postsWithShareCounts[i],
+                    ];
                 }
 
                 const startIndex = (page - 1) * limit;
-                const endIndex = Math.min(page * limit, combinedPosts.length);
-                const paginatedPosts = combinedPosts.slice(startIndex, endIndex);
+                const endIndex = Math.min(page * limit, postsWithShareCounts.length);
+                const paginatedPosts = postsWithShareCounts.slice(startIndex, endIndex);
 
                 // Add userOwner to each post
                 const mappedPosts = paginatedPosts.map((post) => ({
@@ -342,7 +379,7 @@ export class FeedService {
             }
 
             // Calculate relevance score for each post and sort by relevance
-            const postsWithScores = combinedPosts.map((post) => {
+            const postsWithScores = postsWithShareCounts.map((post) => {
                 const score = this.calculatePostRelevance(post, preferredTopics);
                 return {post, score};
             });
@@ -377,13 +414,25 @@ export class FeedService {
 
             // Fallback to random combined posts (still excluding user's own posts)
             const combinedPosts = [...filteredPublicPosts, ...friendPost];
-            for (let i = combinedPosts.length - 1; i > 0; i--) {
+
+            // Get share counts for all posts
+            const postsWithShareCounts = await Promise.all(
+                combinedPosts.map(async (post) => {
+                    const shareCount = await this.getShareCount(post.id);
+                    return {
+                        ...post,
+                        share_count: shareCount,
+                    };
+                })
+            );
+
+            for (let i = postsWithShareCounts.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [combinedPosts[i], combinedPosts[j]] = [combinedPosts[j], combinedPosts[i]];
+                [postsWithShareCounts[i], postsWithShareCounts[j]] = [postsWithShareCounts[j], postsWithShareCounts[i]];
             }
 
             // Add userOwner to each post
-            const mappedPosts = combinedPosts.slice(0, limit).map((post) => ({
+            const mappedPosts = postsWithShareCounts.slice(0, limit).map((post) => ({
                 ...post,
                 userOwner: userOwner,
             }));
@@ -624,6 +673,13 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         return post;
     }
 
+    // Helper method to get share count for a post
+    private async getShareCount(postId: string): Promise<number> {
+        return this.userSharePostRepository.count({
+            where: {post_id: postId},
+        });
+    }
+
     async getPostById(postId: string): Promise<Post> {
         const post = await this.postRepository.findOne({
             where: {id: postId},
@@ -634,11 +690,13 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             throw new NotFoundException(`Post with ID ${postId} not found`);
         }
         const userOwner = await this.userReferenceService.findById(post.newsFeed.owner.id);
+        const shareCount = await this.getShareCount(postId);
 
-        // Add userOwner property
+        // Add userOwner property and share count
         const enhancedPost = {
             ...post,
             userOwner: userOwner,
+            share_count: shareCount,
         };
 
         return enhancedPost;
@@ -1561,14 +1619,20 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             order: {createdAt: 'DESC'},
         });
 
-        // Add page owner information to posts if needed
-        const postsWithOwner = posts.map((post) => ({
-            ...post,
-            userOwner: foundPage.owner,
-        }));
+        // Add page owner information to posts and get share counts
+        const postsWithOwnerAndShareCounts = await Promise.all(
+            posts.map(async (post) => {
+                const shareCount = await this.getShareCount(post.id);
+                return {
+                    ...post,
+                    userOwner: foundPage.owner,
+                    share_count: shareCount,
+                };
+            })
+        );
 
         return {
-            data: postsWithOwner,
+            data: postsWithOwnerAndShareCounts,
             metadata: {
                 total,
                 page,
@@ -1900,8 +1964,19 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             order: {createdAt: 'DESC'},
         });
 
+        // Add share counts to posts
+        const postsWithShareCounts = await Promise.all(
+            posts.map(async (post) => {
+                const shareCount = await this.getShareCount(post.id);
+                return {
+                    ...post,
+                    share_count: shareCount,
+                };
+            })
+        );
+
         return {
-            data: posts,
+            data: postsWithShareCounts,
             metadata: {
                 total,
                 page,
@@ -2078,5 +2153,80 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         await this.groupRuleRepository.remove(rule);
 
         return {success: true};
+    }
+
+    async sharePost(userId: string, postId: string): Promise<Post> {
+        // Find the post to be shared
+        const originalPost = await this.postRepository.findOne({
+            where: {id: postId},
+            relations: ['postAttachments', 'topics', 'newsFeed', 'owner'],
+        });
+
+        if (!originalPost) {
+            throw new NotFoundException(`Post with ID ${postId} not found`);
+        }
+
+        // Get user's newsfeed
+        const userNewsFeed = await this.ensureUserHasNewsFeed(userId);
+        const user = await this.userReferenceService.findById(userId);
+
+        if (!user) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
+        }
+
+        // Create a duplicate post with the same content
+        const duplicatePost = this.postRepository.create({
+            content: originalPost.content, // Use the original post content
+            newsFeed: userNewsFeed,
+            owner: user,
+            topics: originalPost.topics, // Inherit topics from original post
+        });
+
+        const savedPost = await this.postRepository.save(duplicatePost);
+
+        // Duplicate attachments if any
+        if (originalPost.postAttachments && originalPost.postAttachments.length > 0) {
+            for (const attachment of originalPost.postAttachments) {
+                const duplicateAttachment = this.postAttachmentRepository.create({
+                    attachment_url: attachment.attachment_url,
+                    attachmentType: attachment.attachmentType,
+                    post: savedPost,
+                });
+                await this.postAttachmentRepository.save(duplicateAttachment);
+            }
+        }
+
+        // Create record in UserSharePost to track the share
+        const userSharePost = this.userSharePostRepository.create({
+            user_id: userId,
+            post_id: originalPost.id,
+        });
+        await this.userSharePostRepository.save(userSharePost);
+
+        return savedPost;
+    }
+
+    async getSharedPostsByUser(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Post>> {
+        // Get the records of posts shared by this user
+        const [shares, total] = await this.userSharePostRepository.findAndCount({
+            where: {user_id: userId},
+            relations: ['post', 'post.owner', 'post.topics', 'post.postAttachments'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {createdAt: 'DESC'},
+        });
+
+        // Extract the posts from the shares
+        const posts = shares.map((share) => share.post);
+
+        return {
+            data: posts,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     }
 }

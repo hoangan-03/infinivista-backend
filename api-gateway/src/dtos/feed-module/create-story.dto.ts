@@ -20,6 +20,14 @@ export class CreateStoryDto {
     duration: number;
 
     @ApiProperty({
+        description: 'Story thumbnail url',
+        example: 'https://storage.infinivista.com/stories/thumbnail123.jpg',
+    })
+    @IsString()
+    @IsNotEmpty()
+    thumbnail_url: string;
+
+    @ApiProperty({
         description: 'Story type',
         example: AttachmentType.VIDEO,
         enum: AttachmentType,

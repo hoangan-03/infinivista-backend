@@ -1,6 +1,7 @@
 import {faker} from '@faker-js/faker';
 import {Logger} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
+import axios from 'axios';
 import {DataSource} from 'typeorm';
 
 import {UserReference} from '@/entities/external/user-reference.entity';
@@ -26,6 +27,199 @@ import {Reel} from '../entities/local/reel.entity';
 import {Story} from '../entities/local/story.entity';
 import {Topic} from '../entities/local/topic.entity';
 import {UserReactPost} from '../entities/local/user-react-post.entity';
+import {UserSharePost} from '../entities/local/user-share-post.entity';
+import {imageLinks, videoLinks} from './self-seeder';
+
+/**
+ * Extracts potential interests from a user's text content
+ * @param text Text to analyze for interests
+ * @returns Array of likely interests based on text
+ */
+function extractInterestsFromText(text: string): string[] {
+    // Common interests to look for in text
+    const commonInterests = [
+        'technology',
+        'travel',
+        'food',
+        'fitness',
+        'art',
+        'music',
+        'photography',
+        'nature',
+        'books',
+        'fashion',
+        'education',
+        'business',
+        'gaming',
+        'sports',
+        'science',
+        'health',
+        'movies',
+        'design',
+        'cooking',
+        'pets',
+    ];
+
+    // Check which interests appear in the text
+    const foundInterests = commonInterests.filter((interest) => text.toLowerCase().includes(interest.toLowerCase()));
+
+    // If none found, return random selection
+    if (foundInterests.length === 0) {
+        return faker.helpers.arrayElements(commonInterests, faker.number.int({min: 1, max: 3}));
+    }
+
+    return foundInterests;
+}
+
+/**
+ * Determines appropriate topics for a page based on its name and category
+ * @param pageName The name of the page
+ * @param pageCategory The category of the page
+ * @returns Array of relevant topics
+ */
+function determinePageTopics(pageName: string, pageCategory?: string): string[] {
+    // Default topics that could apply to any page
+    const defaultTopics = ['business', 'community', 'updates', 'news', 'events'];
+
+    // Extract topics from page name and category
+    const extractedTopics = extractInterestsFromText(pageName);
+
+    if (pageCategory) {
+        extractedTopics.push(pageCategory.toLowerCase());
+    }
+
+    // Combine with default topics and ensure uniqueness
+    const allTopics = [...new Set([...extractedTopics, ...defaultTopics])];
+
+    // Return 2-4 topics
+    return faker.helpers.arrayElements(allTopics, faker.number.int({min: 2, max: 4}));
+}
+
+/**
+ * Determines appropriate topics for a group based on its name
+ * @param groupName The name of the group
+ * @returns Array of relevant topics
+ */
+function determineGroupTopics(groupName: string): string[] {
+    // Default group topics
+    const defaultTopics = ['community', 'discussion', 'sharing', 'help', 'support'];
+
+    // Extract topics from group name
+    const extractedTopics = extractInterestsFromText(groupName);
+
+    // Combine with default topics and ensure uniqueness
+    const allTopics = [...new Set([...extractedTopics, ...defaultTopics])];
+
+    // Return 2-3 topics
+    return faker.helpers.arrayElements(allTopics, faker.number.int({min: 2, max: 3}));
+}
+
+/**
+ * Generates meaningful post content using Gemini AI
+ * @param context Optional context information to guide content generation
+ * @returns Generated post content or fallback content if API call fails
+ */
+async function generateMeaningfulPostContent(
+    logger: Logger,
+    context?: {
+        topic?: string;
+        mood?: string;
+        user?: {firstName?: string; lastName?: string; interests?: string[]};
+    }
+): Promise<string> {
+    try {
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        const GEMINI_API_URL = process.env.GEMINI_API_URL;
+
+        if (!GEMINI_API_KEY) {
+            logger.warn('GEMINI_API_KEY not set in environment variables');
+            return getFallbackPostContent(context);
+        }
+
+        // Build prompt based on provided context
+        let prompt = 'Generate a realistic social media post';
+        if (context?.topic) prompt += ` about ${context.topic}`;
+        if (context?.mood) prompt += ` with a ${context.mood} tone`;
+        if (context?.user?.firstName) {
+            const fullName = context.user.lastName
+                ? `${context.user.firstName} ${context.user.lastName}`
+                : context.user.firstName;
+            prompt += ` as if written by ${fullName}`;
+        }
+        if (context?.user?.interests?.length) {
+            prompt += ` who is interested in ${context.user.interests.join(', ')}`;
+        }
+
+        prompt += '. Make it sound natural, engaging, and 1-3 sentences long.';
+
+        const response = await axios.post(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            contents: [
+                {
+                    parts: [
+                        {
+                            text: prompt,
+                        },
+                    ],
+                },
+            ],
+        });
+
+        // Extract the generated text
+        const generatedText = response.data.candidates[0].content.parts[0].text.trim();
+        return generatedText;
+    } catch (error: any) {
+        logger.error(`Error generating post content with Gemini: ${error.message}`);
+        return getFallbackPostContent(context);
+    }
+}
+
+/**
+ * Provides fallback content when Gemini API is unavailable
+ */
+function getFallbackPostContent(context?: {topic?: string; mood?: string; user?: any}): string {
+    const topics = {
+        technology: [
+            "Just got my hands on the latest tech gadget! Can't wait to try it out.",
+            'Technology keeps evolving so fast. What innovations are you most excited about?',
+            'Working on a new coding project today. Sometimes the best solutions are the simplest ones.',
+        ],
+        travel: [
+            'Missing those beautiful sunsets in Thailand. Where should I travel next?',
+            'Nothing beats the feeling of exploring a new city for the first time.',
+            'Just booked my next adventure! Counting down the days.',
+        ],
+        food: [
+            'Made this incredible pasta dish tonight. Simple ingredients, amazing flavors!',
+            'Found this hidden gem restaurant yesterday. Their desserts are to die for!',
+            'Anyone else feel like cooking is the perfect way to unwind after a long day?',
+        ],
+        fitness: [
+            'Personal best on my 5K today! Consistency really does pay off.',
+            "Morning workouts set the tone for the entire day. What's your favorite exercise routine?",
+            "Switched up my fitness routine this week and I'm feeling stronger already.",
+        ],
+        art: [
+            'Art speaks where words fail. Visited an incredible exhibition today.',
+            'Finding inspiration in the smallest details today. Beauty is everywhere if you look for it.',
+            "Started a new creative project this weekend. It's messy, imperfect, and I'm loving every minute of it.",
+        ],
+        default: [
+            'What a beautiful day to be alive!',
+            'Grateful for all the amazing people in my life.',
+            'Sometimes the smallest moments bring the greatest joy.',
+            'Taking time to appreciate the little things today.',
+            'Life is full of unexpected adventures.',
+        ],
+    };
+
+    const selectedTopic =
+        context?.topic && topics[context.topic as keyof typeof topics]
+            ? (context.topic as keyof typeof topics)
+            : 'default';
+
+    const availablePosts = topics[selectedTopic];
+    return faker.helpers.arrayElement(availablePosts);
+}
 
 interface UserData {
     id: string;
@@ -36,28 +230,6 @@ interface UserData {
     profileImageUrl: string;
     phoneNumber: string;
 }
-const videoLinks = [
-    'https://res.cloudinary.com/dght74v9o/video/upload/v1735408641/samples/cld-sample-video.mp4',
-    'https://res.cloudinary.com/demo/video/upload/dog.mp4',
-    'https://res.cloudinary.com/demo/video/upload/elephants.mp4',
-    'https://res.cloudinary.com/dcb72w5e4/video/upload/v1742292056/samples/sea-turtle.mp4',
-    'https://res.cloudinary.com/dcb72w5e4/video/upload/v1742292058/samples/dance-2.mp4',
-    'https://videos.pexels.com/video-files/31646575/13482899_2560_1440_60fps.mp4',
-    'https://videos.pexels.com/video-files/27729226/12212883_1440_2560_30fps.mp4',
-    'https://videos.pexels.com/video-files/12052148/12052148-uhd_1440_2560_30fps.mp4',
-    'https://videos.pexels.com/video-files/30281926/12981407_2560_1440_25fps.mp4',
-    'https://videos.pexels.com/video-files/31532164/13439846_1920_1080_25fps.mp4',
-    'https://videos.pexels.com/video-files/31828537/13559922_2560_1440_24fps.mp4',
-    'https://videos.pexels.com/video-files/27692822/12206536_1920_1080_30fps.mp4',
-    'https://videos.pexels.com/video-files/31598701/13464386_1080_1920_25fps.mp4',
-    'https://videos.pexels.com/video-files/29792714/12800431_1920_1080_60fps.mp4',
-    'https://videos.pexels.com/video-files/3850436/3850436-hd_1920_1080_24fps.mp4',
-    'https://videos.pexels.com/video-files/30772101/13163067_2560_1440_60fps.mp4',
-    'https://videos.pexels.com/video-files/31775344/13536308_1440_2560_50fps.mp4',
-    'https://videos.pexels.com/video-files/28034501/12288471_2560_1440_30fps.mp4',
-    'https://videos.pexels.com/video-files/3945877/3945877-uhd_2560_1440_30fps.mp4',
-    'https://videos.pexels.com/video-files/30784261/13167552_1440_2560_30fps.mp4',
-];
 
 export const seedFeedDatabase = async (dataSource: DataSource) => {
     const app = await NestFactory.createApplicationContext(AppModule);
@@ -83,6 +255,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         const pageRepo = dataSource.getRepository(Page);
         const groupRepo = dataSource.getRepository(Group);
         const groupRuleRepo = dataSource.getRepository(GroupRule);
+        const userSharePostRepo = dataSource.getRepository(UserSharePost);
 
         logger.log('Clearing existing data...');
         await userReactPostRepo.query('TRUNCATE TABLE "user_react_post" CASCADE');
@@ -100,6 +273,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         await groupRuleRepo.query('TRUNCATE TABLE "group_rule" CASCADE');
         await groupRepo.query('TRUNCATE TABLE "group" CASCADE');
         await pageRepo.query('TRUNCATE TABLE "page" CASCADE');
+        await userSharePostRepo.query('TRUNCATE TABLE "user_share_post" CASCADE');
 
         // Connect to the user module database to get real user data
         logger.log('Connecting to user module database...');
@@ -369,8 +543,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             const group = groupRepo.create({
                 name: shuffledGroupNames[i],
                 description: faker.lorem.paragraph(),
-                profileImageUrl: faker.image.url(),
-                coverImageUrl: faker.image.url(),
+                profileImageUrl: faker.helpers.arrayElement(imageLinks),
+                coverImageUrl: faker.helpers.arrayElement(imageLinks),
                 city: faker.location.city(),
                 country: faker.location.country(),
                 visibility: faker.helpers.arrayElement([groupVisibility.PUBLIC, groupVisibility.PRIVATE]),
@@ -522,8 +696,21 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                 const pagePostCount = faker.number.int({min: 10, max: 20});
                 for (let i = 0; i < pagePostCount; i++) {
+                    // Determine appropriate topics for this page based on its category/name
+                    const pageTopics = determinePageTopics(page.name, page.category);
+
+                    // Generate AI content for this page post
+                    const postContent = await generateMeaningfulPostContent(logger, {
+                        topic: faker.helpers.arrayElement(pageTopics),
+                        mood: 'professional',
+                        user: {
+                            firstName: page.name,
+                            interests: pageTopics,
+                        },
+                    });
+
                     const post = postRepo.create({
-                        content: faker.lorem.paragraphs(faker.number.int({min: 1, max: 3})),
+                        content: postContent,
                         newsFeed,
                         topics:
                             topics.length > 0
@@ -540,7 +727,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                             attachment_url:
                                 attachmentType === AttachmentType.VIDEO
                                     ? faker.helpers.arrayElement(videoLinks)
-                                    : faker.image.url(),
+                                    : faker.helpers.arrayElement(imageLinks),
                             attachmentType,
                             post,
                         });
@@ -606,7 +793,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                 // How many posts to create depends on whether admins are involved
                 const groupPostCount = hasAdmin
-                    ? faker.number.int({min: 30, max: 40}) // 30-40 posts for admin groups
+                    ? faker.number.int({min: 11, max: 15}) // 30-40 posts for admin groups
                     : faker.number.int({min: 2, max: 3}); // 2-3 posts for non-admin groups
 
                 logger.log(
@@ -624,8 +811,21 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         const memberUser = await userReferenceRepo.findOne({where: {id: randomMemberId}});
 
                         if (memberUser) {
+                            // Determine topics relevant to this group
+                            const groupTopics = determineGroupTopics(group.name);
+
+                            // Generate AI content for this group post
+                            const postContent = await generateMeaningfulPostContent(logger, {
+                                topic: faker.helpers.arrayElement(groupTopics),
+                                user: {
+                                    firstName: memberUser.firstName,
+                                    lastName: memberUser.lastName,
+                                    interests: groupTopics,
+                                },
+                            });
+
                             const post = postRepo.create({
-                                content: faker.lorem.paragraphs(faker.number.int({min: 1, max: 2})),
+                                content: postContent,
                                 newsFeed,
                                 topics:
                                     topics.length > 0
@@ -643,7 +843,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                                         attachment_url:
                                             attachmentType === AttachmentType.VIDEO
                                                 ? faker.helpers.arrayElement(videoLinks)
-                                                : faker.image.url(),
+                                                : faker.helpers.arrayElement(imageLinks),
                                         attachmentType,
                                         post,
                                     });
@@ -678,8 +878,37 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             logger.log(`Creating ${postCount} posts for feed of ${ownerName}`);
 
             for (let i = 0; i < postCount; i++) {
+                // Get the user's interests based on username instead of biography
+                const userInterests = newsFeed.owner?.username
+                    ? extractInterestsFromText(newsFeed.owner.username)
+                    : ['social media', 'friends'];
+
+                // Determine post topic from available topics or generate a random one
+                const randomTopic = faker.helpers.arrayElement([
+                    'technology',
+                    'travel',
+                    'food',
+                    'fitness',
+                    'art',
+                    'music',
+                    'books',
+                    'movies',
+                    'fashion',
+                    'sports',
+                ]);
+
+                // Generate AI content or fallback based on user data
+                const postContent = await generateMeaningfulPostContent(logger, {
+                    topic: randomTopic,
+                    user: {
+                        firstName: newsFeed.owner?.firstName,
+                        lastName: newsFeed.owner?.lastName,
+                        interests: userInterests,
+                    },
+                });
+
                 const post = postRepo.create({
-                    content: faker.lorem.paragraphs(faker.number.int({min: 1, max: 3})),
+                    content: postContent,
                     newsFeed,
                     topics:
                         topics.length > 0
@@ -696,7 +925,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         attachment_url:
                             attachmentType === AttachmentType.VIDEO
                                 ? faker.helpers.arrayElement(videoLinks)
-                                : faker.image.url(),
+                                : faker.helpers.arrayElement(imageLinks),
                         attachmentType,
                         post,
                     });
@@ -730,6 +959,69 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 }
             }
 
+            // Create shared posts
+            if (faker.datatype.boolean({probability: 0.3})) {
+                // Get posts from this newsfeed to potentially share
+                const newsFeedPosts = await postRepo.find({
+                    where: {newsFeed: {id: newsFeed.id}},
+                    relations: ['postAttachments', 'topics'],
+                });
+
+                // Skip if no posts to share
+                if (newsFeedPosts.length === 0) continue;
+
+                const sharersCount = faker.number.int({min: 1, max: 3});
+                const potentialSharers = userRefs.filter((u) => u.id !== newsFeed.owner?.id);
+                const sharers = faker.helpers.arrayElements(potentialSharers, sharersCount);
+
+                for (const sharer of sharers) {
+                    // Get the sharer's feed
+                    const sharerFeed = await newsFeedRepo.findOne({
+                        where: {owner: {id: sharer.id}},
+                        relations: ['owner'],
+                    });
+
+                    if (!sharerFeed) continue;
+
+                    try {
+                        // Pick a random post to share
+                        const postToShare = faker.helpers.arrayElement(newsFeedPosts);
+
+                        // Create a duplicate post in the sharer's feed
+                        const sharedPost = postRepo.create({
+                            content: postToShare.content,
+                            newsFeed: sharerFeed,
+                            owner: sharer,
+                            topics: postToShare.topics || [],
+                        });
+                        await postRepo.save(sharedPost);
+
+                        // Duplicate attachments if any
+                        if (postToShare.postAttachments && postToShare.postAttachments.length > 0) {
+                            for (const attachment of postToShare.postAttachments) {
+                                const duplicateAttachment = postAttachmentRepo.create({
+                                    attachment_url: attachment.attachment_url,
+                                    attachmentType: attachment.attachmentType,
+                                    post: sharedPost,
+                                });
+                                await postAttachmentRepo.save(duplicateAttachment);
+                            }
+                        }
+
+                        // Track the share in UserSharePost table
+                        const shareRecord = userSharePostRepo.create({
+                            user_id: sharer.id,
+                            post_id: postToShare.id,
+                        });
+                        await userSharePostRepo.save(shareRecord);
+
+                        logger.log(`Created shared post by ${sharer.username}`);
+                    } catch (error: any) {
+                        logger.error(`Error creating shared post: ${error.message}`);
+                    }
+                }
+            }
+
             if (faker.datatype.boolean({probability: 0.7})) {
                 const storyCount = faker.number.int({min: 1, max: 3});
                 for (let i = 0; i < storyCount; i++) {
@@ -739,6 +1031,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                             attachmentType === AttachmentType.VIDEO
                                 ? faker.helpers.arrayElement(videoLinks)
                                 : faker.image.url(),
+                        thumbnail_url: faker.image.url(),
                         duration: faker.number.int({min: 5, max: 30}),
                         attachmentType,
                         newsFeed,
@@ -832,7 +1125,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         attachment_url:
                             attachmentType === AttachmentType.VIDEO
                                 ? faker.helpers.arrayElement(videoLinks)
-                                : faker.image.url(),
+                                : faker.helpers.arrayElement(imageLinks),
                         attachmentType,
                         post,
                     });
@@ -876,6 +1169,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         attachmentType === AttachmentType.VIDEO
                             ? faker.helpers.arrayElement(videoLinks)
                             : faker.image.url(),
+                    thumbnail_url: faker.image.url(),
                     duration: faker.number.int({min: 10, max: 30}),
                     attachmentType,
                     newsFeed: adminNewsFeed,
@@ -968,7 +1262,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         attachment_url:
                             attachmentType === AttachmentType.VIDEO
                                 ? faker.helpers.arrayElement(videoLinks)
-                                : faker.image.url(),
+                                : faker.helpers.arrayElement(imageLinks),
                         attachmentType,
                         post,
                     });
@@ -1012,6 +1306,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         attachmentType === AttachmentType.VIDEO
                             ? faker.helpers.arrayElement(videoLinks)
                             : faker.image.url(),
+                    thumbnail_url: faker.image.url(),
                     duration: faker.number.int({min: 10, max: 30}),
                     attachmentType,
                     newsFeed: admin2NewsFeed,

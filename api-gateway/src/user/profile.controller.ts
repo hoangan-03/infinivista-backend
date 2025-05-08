@@ -7,6 +7,7 @@ import {
     Patch,
     Post,
     Put,
+    Query,
     UploadedFile,
     UseGuards,
     UseInterceptors,
@@ -311,5 +312,75 @@ export class ProfileController {
     })
     async getById(@Param('id') id: string): Promise<User> {
         return await lastValueFrom(this.userClient.send<User>('GetByIdUserCommand', {id}));
+    }
+
+    @Post('follow/:id')
+    @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({summary: 'Follow a user'})
+    @ApiResponse({
+        status: 200,
+        description: 'User followed successfully',
+    })
+    async followUser(@CurrentUser() user: User, @Param('id') followingId: string): Promise<any> {
+        return lastValueFrom(
+            this.userClient.send('FollowUserCommand', {
+                userId: user.id,
+                followingId,
+            })
+        );
+    }
+
+    @Post('unfollow/:id')
+    @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({summary: 'Unfollow a user'})
+    @ApiResponse({
+        status: 200,
+        description: 'User unfollowed successfully',
+    })
+    async unfollowUser(@CurrentUser() user: User, @Param('id') followingId: string): Promise<any> {
+        return lastValueFrom(
+            this.userClient.send('UnfollowUserCommand', {
+                userId: user.id,
+                followingId,
+            })
+        );
+    }
+
+    @Get('followers/:id')
+    @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({summary: 'Get user followers'})
+    @ApiResponse({
+        status: 200,
+        description: 'User followers retrieved successfully',
+    })
+    async getFollowers(@Param('id') userId: string, @Query('page') page = 1, @Query('limit') limit = 10): Promise<any> {
+        return lastValueFrom(
+            this.userClient.send('GetFollowersCommand', {
+                userId,
+                page,
+                limit,
+            })
+        );
+    }
+
+    @Get('following/:id')
+    @UseGuards(JwtBlacklistGuard, JWTAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({summary: 'Get users followed by the user'})
+    @ApiResponse({
+        status: 200,
+        description: 'User following retrieved successfully',
+    })
+    async getFollowing(@Param('id') userId: string, @Query('page') page = 1, @Query('limit') limit = 10): Promise<any> {
+        return lastValueFrom(
+            this.userClient.send('GetFollowingCommand', {
+                userId,
+                page,
+                limit,
+            })
+        );
     }
 }

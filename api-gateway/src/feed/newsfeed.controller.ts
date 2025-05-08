@@ -130,6 +130,10 @@ export class NewsFeedController {
                     type: 'string',
                     format: 'binary',
                 },
+                thumbnail_file: {
+                    type: 'string',
+                    format: 'binary',
+                },
                 attachmentType: {
                     type: 'string',
                     enum: Object.values(AttachmentType),
@@ -144,15 +148,27 @@ export class NewsFeedController {
         @Body('newsFeedId') newsFeedId: string,
         @Body('duration') duration: number,
         @Body('attachmentType') attachmentType: AttachmentType,
-        @UploadedFile() file: Express.Multer.File
+        @UploadedFile() file: Express.Multer.File,
+        @UploadedFile() thumbnailFile: Express.Multer.File
     ): Promise<Story> {
         // Upload file to Google Drive
-        const storyUrl = await this.fileUploadService.uploadFile(file.buffer, file.originalname, file.mimetype, 'feed');
-
+        const story_url = await this.fileUploadService.uploadFile(
+            file.buffer,
+            file.originalname,
+            file.mimetype,
+            'feed'
+        );
+        const thumbnail_url = await this.fileUploadService.uploadFile(
+            thumbnailFile.buffer,
+            thumbnailFile.originalname,
+            thumbnailFile.mimetype,
+            'feed'
+        );
         // Create story DTO
         const storyData: CreateStoryDto = {
-            story_url: storyUrl,
-            duration: duration || 15, // Default to 15 seconds if not specified
+            story_url,
+            thumbnail_url,
+            duration,
             attachmentType,
         };
 

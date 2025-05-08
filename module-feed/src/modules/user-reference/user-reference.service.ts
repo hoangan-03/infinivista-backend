@@ -95,4 +95,32 @@ export class UserReferenceService {
             return [];
         }
     }
+
+    async isFollowing(followerId: string, followingId: string): Promise<boolean> {
+        try {
+            const response = await lastValueFrom(this.userClient.send('IsFollowingCommand', {followerId, followingId}));
+            return response;
+        } catch (error: any) {
+            this.logger.error(`Failed to check following status: ${error.message}`);
+            return false;
+        }
+    }
+
+    async getFollowerCount(userId: string): Promise<number> {
+        try {
+            return await lastValueFrom(this.userClient.send('GetFollowerCountCommand', {userId}));
+        } catch (error: any) {
+            this.logger.error(`Failed to get follower count: ${error.message}`);
+            return 0;
+        }
+    }
+
+    async getFollowingCount(userId: string): Promise<number> {
+        try {
+            return await lastValueFrom(this.userClient.send('GetFollowingCountCommand', {userId}));
+        } catch (error: any) {
+            this.logger.error(`Failed to get following count: ${error.message}`);
+            return 0;
+        }
+    }
 }

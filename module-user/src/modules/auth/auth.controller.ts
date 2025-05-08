@@ -6,8 +6,6 @@ import {AuthService} from '@/modules/auth/auth.service';
 import {AuthTokenResponseDto} from '@/modules/auth/dto/auth-token-response.dto';
 import {RegisterUserDto} from '@/modules/auth/dto/register-user.dto';
 import {RegisterUserResponseDto} from '@/modules/auth/dto/register-user-response.dto';
-import {FacebookUserData} from '@/modules/auth/interfaces/facebook-user.interface';
-import {GoogleUserData} from '@/modules/auth/interfaces/google-user.interface';
 
 import {JwtPayload} from './interfaces/jwt-payload.interface';
 import {TokenBlacklistService} from './token-blacklist/token-blacklist.service';
@@ -43,18 +41,6 @@ export class AuthController {
     async logout(payload: {token: string}): Promise<{message: string}> {
         return this.authService.logout(payload.token);
     }
-
-    // @MessagePattern('GoogleAuthCommand')
-    // async googleAuth(payload: {userData: GoogleUserData}): Promise<AuthTokenResponseDto> {
-    //     const user = await this.authService.validateOrCreateGoogleUser(payload.userData);
-    //     return this.authService.googleLogin(user);
-    // }
-
-    // @MessagePattern('FacebookAuthCommand')
-    // async facebookAuth(payload: {userData: FacebookUserData}): Promise<AuthTokenResponseDto> {
-    //     const user = await this.authService.validateOrCreateFacebookUser(payload.userData);
-    //     return this.authService.facebookLogin(user);
-    // }
 
     @MessagePattern('ValidateUserAuthCommand')
     async validateUser(payload: {identifier: string; password: string}): Promise<User> {

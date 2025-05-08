@@ -1,10 +1,12 @@
 import {BadRequestException, Injectable, Logger, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
+import {In} from 'typeorm';
 
 import {Friend} from '@/entities/local/friend.entity';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
 import {User} from '@/entities/local/user.entity';
+import {UserFollow} from '@/entities/local/user-follow.entity';
 import {PaginationResponseInterface} from '@/interfaces/pagination-response.interface';
 
 import {FriendStatus} from '../enums/friend-status.enum';
@@ -16,7 +18,9 @@ export class FriendService {
         @InjectRepository(Friend)
         private readonly friendRepository: Repository<Friend>,
         @InjectRepository(FriendRequest)
-        private readonly friendRequestRepository: Repository<FriendRequest>
+        private readonly friendRequestRepository: Repository<FriendRequest>,
+        @InjectRepository(UserFollow)
+        private readonly userFollowRepository: Repository<UserFollow>
     ) {}
 
     async sendFriendRequest(senderId: string, recipientId: string): Promise<FriendRequest> {
@@ -115,6 +119,63 @@ export class FriendService {
         }
     }
 
+    async getSuggestedFriends(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<User>> {
+        // Get all of the user's friends
+        const userFriendships = await this.friendRepository.find({
+            where: {user_id: userId},
+            relations: ['friend'],
+        });
+
+        // Get IDs of user's friends
+        const userFriendIds = userFriendships.map((f) => f.friend_id);
+
+        // Get all friends of these friends (potential suggestions)
+        const friendsOfFriends = await this.friendRepository.find({
+            where: {user_id: In(userFriendIds)},
+            relations: ['friend'],
+        });
+
+        // Count common friends for each potential suggestion
+        const commonFriendsCount: Record<string, {user: User; count: number}> = {};
+
+        for (const fof of friendsOfFriends) {
+            // Skip if this is the original user or already a direct friend
+            if (fof.friend_id === userId || userFriendIds.includes(fof.friend_id)) {
+                continue;
+            }
+
+            if (!commonFriendsCount[fof.friend_id]) {
+                commonFriendsCount[fof.friend_id] = {
+                    user: fof.friend,
+                    count: 0,
+                };
+            }
+
+            commonFriendsCount[fof.friend_id].count++;
+        }
+
+        // Convert to array, filter by minimum threshold (6 common friends), and sort
+        const MIN_COMMON_FRIENDS = 6;
+        const suggestionsArray = Object.values(commonFriendsCount)
+            .filter((item) => item.count >= MIN_COMMON_FRIENDS)
+            .sort((a, b) => b.count - a.count);
+
+        // Apply pagination
+        const startIdx = (page - 1) * limit;
+        const endIdx = startIdx + limit;
+        const paginatedSuggestions = suggestionsArray.slice(startIdx, endIdx);
+
+        return {
+            data: paginatedSuggestions.map((item) => item.user),
+            metadata: {
+                total: suggestionsArray.length,
+                page,
+                limit,
+                totalPages: Math.ceil(suggestionsArray.length / limit),
+            },
+        };
+    }
+
     async getFriends(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<User>> {
         const [friendships, total] = await this.friendRepository.findAndCount({
             where: {user_id: userId},
@@ -175,6 +236,122 @@ export class FriendService {
         });
 
         return !!friendship;
+    }
+
+    async followUser(followerId: string, followingId: string): Promise<UserFollow> {
+        // Can't follow yourself
+        if (followerId === followingId) {
+            throw new BadRequestException('Cannot follow yourself');
+        }
+
+        // Check if already following
+        const existingFollow = await this.userFollowRepository.findOne({
+            where: {
+                follower_id: followerId,
+                following_id: followingId,
+            },
+        });
+
+        if (existingFollow) {
+            return existingFollow; // Already following
+        }
+
+        // Create new follow relationship
+        const follow = this.userFollowRepository.create({
+            follower_id: followerId,
+            following_id: followingId,
+        });
+
+        return this.userFollowRepository.save(follow);
+    }
+
+    async unfollowUser(followerId: string, followingId: string): Promise<{success: boolean}> {
+        const follow = await this.userFollowRepository.findOne({
+            where: {
+                follower_id: followerId,
+                following_id: followingId,
+            },
+        });
+
+        if (!follow) {
+            return {success: true}; // Not following, so no need to unfollow
+        }
+
+        await this.userFollowRepository.remove(follow);
+        return {success: true};
+    }
+
+    async getFollowers(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<User>> {
+        const [followers, total] = await this.userFollowRepository.findAndCount({
+            where: {following_id: userId},
+            relations: ['follower'],
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+
+        const users = followers.map((f) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const {password, ...userWithoutPassword} = f.follower;
+            return userWithoutPassword as User;
+        });
+
+        return {
+            data: users,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async getFollowing(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<User>> {
+        const [following, total] = await this.userFollowRepository.findAndCount({
+            where: {follower_id: userId},
+            relations: ['following'],
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+
+        const users = following.map((f) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const {password, ...userWithoutPassword} = f.following;
+            return userWithoutPassword as User;
+        });
+
+        return {
+            data: users,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async getFollowerCount(userId: string): Promise<number> {
+        return this.userFollowRepository.count({
+            where: {following_id: userId},
+        });
+    }
+
+    async getFollowingCount(userId: string): Promise<number> {
+        return this.userFollowRepository.count({
+            where: {follower_id: userId},
+        });
+    }
+
+    async isFollowing(followerId: string, followingId: string): Promise<boolean> {
+        const follow = await this.userFollowRepository.findOne({
+            where: {
+                follower_id: followerId,
+                following_id: followingId,
+            },
+        });
+
+        return !!follow;
     }
 
     // async updateFriendGroup(userId: string, friendId: string, group: string): Promise<Friend> {

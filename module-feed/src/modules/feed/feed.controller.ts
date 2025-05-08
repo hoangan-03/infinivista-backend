@@ -488,4 +488,19 @@ export class FeedController {
     async removeGroupRule(payload: {userId: string; groupId: string; ruleId: string}): Promise<{success: boolean}> {
         return this.feedService.removeGroupRule(payload.userId, payload.groupId, payload.ruleId);
     }
+
+    // Share post endpoints
+    @MessagePattern('SharePostCommand')
+    async sharePost(payload: {userId: string; postId: string}): Promise<PostEntity> {
+        return this.feedService.sharePost(payload.userId, payload.postId);
+    }
+
+    @MessagePattern('GetSharedPostsByUserCommand')
+    async getSharedPostsByUser(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<PostEntity>> {
+        return this.feedService.getSharedPostsByUser(payload.userId, payload.page, payload.limit);
+    }
 }

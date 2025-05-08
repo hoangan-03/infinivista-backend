@@ -16,6 +16,7 @@ import {Story} from '@/entities/local/story.entity';
 import {Topic} from '@/entities/local/topic.entity';
 import {UserReactPost} from '@/entities/local/user-react-post.entity';
 import {UserReactStory} from '@/entities/local/user-react-story.entity';
+import {UserSharePost} from '@/entities/local/user-share-post.entity';
 
 export const AppDataSource = new DataSource({
     type: 'postgres',
@@ -36,6 +37,7 @@ export const AppDataSource = new DataSource({
         Story,
         UserReference,
         UserReactPost,
+        UserSharePost,
         UserReactStory,
         Topic,
         Page,

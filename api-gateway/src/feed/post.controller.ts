@@ -238,4 +238,37 @@ export class PostController {
     async getReactionCountByType(@Param('postId') postId: string): Promise<Record<ReactionType, number>> {
         return await lastValueFrom(this.feedClient.send('GetReactionCountByTypeCommand', {postId}));
     }
+
+    // Share post endpoints
+    @Post(':postId/share')
+    @ApiOperation({summary: "Share a post to user's newsfeed"})
+    @ApiParam({name: 'postId', description: 'ID of the post to share'})
+    @ApiResponse({status: 201, description: 'Post shared successfully'})
+    @ApiResponse({status: 404, description: 'Post not found'})
+    async sharePost(@CurrentUser() user, @Param('postId') postId: string): Promise<any> {
+        return await lastValueFrom(
+            this.feedClient.send('SharePostCommand', {
+                userId: user.id,
+                postId,
+            })
+        );
+    }
+
+    @Get('shared/by-user/:userId')
+    @ApiOperation({summary: 'Get posts shared by a specific user'})
+    @ApiParam({name: 'userId', description: 'ID of the user'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({status: 200, description: 'List of shared posts'})
+    async getSharedPostsByUser(
+        @Param('userId') userId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<any>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetSharedPostsByUserCommand', {
+                userId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
 }

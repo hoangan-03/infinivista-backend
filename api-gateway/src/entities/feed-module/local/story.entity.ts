@@ -22,6 +22,12 @@ export class Story extends BaseEntity {
     story_url: string;
 
     @ApiProperty({
+        description: 'URL to the story thumbnail',
+        example: 'https://storage.infinivista.com/stories/thumbnail123.jpg',
+    })
+    thumbnail_url: string;
+
+    @ApiProperty({
         description: 'Duration in seconds that the story should be displayed',
         example: 15,
         minimum: 1,

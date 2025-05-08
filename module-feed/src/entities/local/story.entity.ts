@@ -16,6 +16,9 @@ export class Story extends BaseEntity {
     story_url: string;
 
     @Column()
+    thumbnail_url: string;
+
+    @Column()
     duration: number;
 
     @Column({type: 'enum', enum: AttachmentType, nullable: false})

@@ -1,6 +1,7 @@
 import {faker} from '@faker-js/faker';
 import {Logger} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
+import axios from 'axios';
 import {DataSource} from 'typeorm';
 
 import {CallHistory} from '@/entities/internal/call-history.entity';
@@ -17,29 +18,145 @@ import {GroupChatMessage} from '../entities/internal/group-chat-message.entity';
 import {Message} from '../entities/internal/message.entity';
 import {MessageAttachment} from '../entities/internal/message-attachment.entity';
 import {MessageStatus} from '../modules/messaging/enums/message-status.enum';
+import {imageLinks, videoLinks} from './self-seeder';
 
-const videoLinks = [
-    'https://res.cloudinary.com/dght74v9o/video/upload/v1735408641/samples/cld-sample-video.mp4',
-    'https://res.cloudinary.com/demo/video/upload/dog.mp4',
-    'https://res.cloudinary.com/demo/video/upload/elephants.mp4',
-    'https://res.cloudinary.com/dcb72w5e4/video/upload/v1742292056/samples/sea-turtle.mp4',
-    'https://res.cloudinary.com/dcb72w5e4/video/upload/v1742292058/samples/dance-2.mp4',
-    'https://videos.pexels.com/video-files/31646575/13482899_2560_1440_60fps.mp4',
-    'https://videos.pexels.com/video-files/27729226/12212883_1440_2560_30fps.mp4',
-    'https://videos.pexels.com/video-files/12052148/12052148-uhd_1440_2560_30fps.mp4',
-    'https://videos.pexels.com/video-files/30281926/12981407_2560_1440_25fps.mp4',
-    'https://videos.pexels.com/video-files/31532164/13439846_1920_1080_25fps.mp4',
-    'https://videos.pexels.com/video-files/31828537/13559922_2560_1440_24fps.mp4',
-    'https://videos.pexels.com/video-files/27692822/12206536_1920_1080_30fps.mp4',
-    'https://videos.pexels.com/video-files/31598701/13464386_1080_1920_25fps.mp4',
-    'https://videos.pexels.com/video-files/29792714/12800431_1920_1080_60fps.mp4',
-    'https://videos.pexels.com/video-files/3850436/3850436-hd_1920_1080_24fps.mp4',
-    'https://videos.pexels.com/video-files/30772101/13163067_2560_1440_60fps.mp4',
-    'https://videos.pexels.com/video-files/31775344/13536308_1440_2560_50fps.mp4',
-    'https://videos.pexels.com/video-files/28034501/12288471_2560_1440_30fps.mp4',
-    'https://videos.pexels.com/video-files/3945877/3945877-uhd_2560_1440_30fps.mp4',
-    'https://videos.pexels.com/video-files/30784261/13167552_1440_2560_30fps.mp4',
-];
+/**
+ * Generates meaningful message content using Gemini AI
+ * @param context Context information to guide message generation
+ * @returns Generated message text or fallback content if API call fails
+ */
+async function generateMeaningfulMessageContent(
+    logger: Logger,
+    context?: {
+        relationship?: 'friend' | 'acquaintance' | 'family' | 'professional';
+        previousMessage?: string;
+        sender?: {firstName?: string; lastName?: string; username?: string};
+        recipient?: {firstName?: string; lastName?: string; username?: string};
+        isGroupChat?: boolean;
+    }
+): Promise<string> {
+    try {
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        const GEMINI_API_URL = process.env.GEMINI_API_URL;
+
+        if (!GEMINI_API_KEY) {
+            logger.warn('GEMINI_API_KEY not set in environment variables');
+            return getFallbackMessageContent(context);
+        }
+
+        // Build prompt based on provided context
+        let prompt = context?.isGroupChat
+            ? 'Generate a realistic group chat message'
+            : 'Generate a realistic direct message';
+
+        if (context?.relationship) prompt += ` between ${context.relationship}s`;
+
+        if (context?.sender) {
+            const senderName = getSenderName(context.sender);
+            prompt += ` from ${senderName}`;
+        }
+
+        if (context?.recipient && !context.isGroupChat) {
+            const recipientName = getSenderName(context.recipient);
+            prompt += ` to ${recipientName}`;
+        }
+
+        if (context?.previousMessage) {
+            prompt += ` in response to: "${context.previousMessage}"`;
+        }
+
+        prompt += '. Make it sound natural, concise, and conversational. Maximum 20 words.';
+
+        const response = await axios.post(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            contents: [
+                {
+                    parts: [
+                        {
+                            text: prompt,
+                        },
+                    ],
+                },
+            ],
+        });
+
+        // Extract the generated text
+        const generatedText = response.data.candidates[0].content.parts[0].text.trim();
+        return generatedText;
+    } catch (error: any) {
+        logger.error(`Error generating message content with Gemini: ${error.message}`);
+        return getFallbackMessageContent(context);
+    }
+}
+
+/**
+ * Helper function to get sender name from available fields
+ */
+function getSenderName(person: {firstName?: string; lastName?: string; username?: string}): string {
+    if (person.firstName && person.lastName) {
+        return `${person.firstName} ${person.lastName}`;
+    } else if (person.firstName) {
+        return person.firstName;
+    } else if (person.username) {
+        return person.username;
+    }
+    return 'User';
+}
+
+/**
+ * Provides fallback message content when Gemini API is unavailable
+ */
+function getFallbackMessageContent(context?: any): string {
+    const messageTypes = {
+        friend: [
+            "Hey! How's it going?",
+            'What are you up to today?',
+            "Did you see that new movie everyone's talking about?",
+            'Got plans for the weekend?',
+            "Miss you! Let's catch up soon.",
+        ],
+        family: [
+            'Have you eaten yet?',
+            'Call me when you get a chance.',
+            "Don't forget about Sunday dinner!",
+            'Can you pick up some groceries on your way?',
+            'Love you! Stay safe.',
+        ],
+        professional: [
+            'Just following up on our meeting yesterday.',
+            'Could you share those files when you get a chance?',
+            'Are we still on for 3pm?',
+            'Great work on the presentation!',
+            'Let me know if you need any clarification.',
+        ],
+        acquaintance: [
+            'Nice to connect with you!',
+            'How have you been since we last talked?',
+            'Remember me from the conference?',
+            'Thought you might find this interesting.',
+            "Let's grab coffee sometime.",
+        ],
+        group: [
+            "Who's free this weekend?",
+            'Did everyone see the announcement?',
+            "I'm sharing this with all of you.",
+            'Can someone help me with something?',
+            'Great discussion everyone!',
+        ],
+        default: ['Hey there!', 'How are you?', 'Just checking in.', "What's new?", "Hope you're doing well!"],
+    };
+
+    // Determine the appropriate category based on context
+    let category: keyof typeof messageTypes = 'default';
+
+    if (context?.isGroupChat) {
+        category = 'group';
+    } else if (context?.relationship && messageTypes[context.relationship as keyof typeof messageTypes]) {
+        category = context.relationship as keyof typeof messageTypes;
+    }
+
+    const availableMessages = messageTypes[category];
+    return faker.helpers.arrayElement(availableMessages);
+}
 
 interface UserData {
     id: string;
@@ -150,14 +267,33 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             // Create 35-50 messages between admin users
             const messageCount = faker.number.int({min: 35, max: 50});
 
+            // Store previous message to provide context for the next one
+            let previousMessage: string | undefined = undefined;
+
             for (let i = 0; i < messageCount; i++) {
                 // Roughly equal number of messages from each admin
                 const isAdmin1Sender = faker.datatype.boolean();
                 const sender = isAdmin1Sender ? adminUserRef : admin2UserRef;
                 const receiver = isAdmin1Sender ? admin2UserRef : adminUserRef;
 
+                // Generate AI message content
+                const messageText = await generateMeaningfulMessageContent(logger, {
+                    relationship: 'professional',
+                    previousMessage,
+                    sender: {
+                        firstName: sender.firstName,
+                        lastName: sender.lastName,
+                        username: sender.username,
+                    },
+                    recipient: {
+                        firstName: receiver.firstName,
+                        lastName: receiver.lastName,
+                        username: receiver.username,
+                    },
+                });
+
                 const message = messageRepo.create({
-                    messageText: faker.lorem.sentence(),
+                    messageText: messageText,
                     sent_at: faker.date.recent({days: 21}),
                     status: faker.helpers.arrayElement(Object.values(MessageStatus)),
                     sender,
@@ -168,6 +304,9 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 });
                 await messageRepo.save(message);
 
+                // Save for context in next message
+                previousMessage = messageText;
+
                 // Admin messages often contain attachments (50% probability)
                 if (faker.datatype.boolean()) {
                     const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
@@ -175,7 +314,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                         attachment_url:
                             attachmentType === AttachmentType.VIDEO
                                 ? faker.helpers.arrayElement(videoLinks)
-                                : faker.image.url(),
+                                : faker.helpers.arrayElement(imageLinks),
                         attachment_name: `admin-doc-${i}.${faker.helpers.arrayElement(['jpg', 'pdf', 'xlsx', 'docx', 'png'])}`,
                         attachmentType,
                         sent_at: message.sent_at,
@@ -223,7 +362,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                         attachment_url:
                             attachmentType === AttachmentType.VIDEO
                                 ? faker.helpers.arrayElement(videoLinks)
-                                : faker.image.url(),
+                                : faker.helpers.arrayElement(imageLinks),
                         attachment_name: `file${i}_${faker.lorem.word()}.${faker.helpers.arrayElement(['jpg', 'pdf', 'doc', 'png'])}`,
                         attachmentType,
                         sent_at: message.sent_at,
@@ -268,7 +407,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                             attachment_url:
                                 attachmentType === AttachmentType.VIDEO
                                     ? faker.helpers.arrayElement(videoLinks)
-                                    : faker.image.url(),
+                                    : faker.helpers.arrayElement(imageLinks),
                             attachment_name: `file${i}_${faker.lorem.word()}.${faker.helpers.arrayElement(['jpg', 'pdf', 'doc', 'png'])}`,
                             attachmentType,
                             sent_at: message.sent_at,
@@ -321,108 +460,88 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
         // Create group chats with admin always included
         logger.log('Creating group chats with admin as a prominent member...');
 
-        // Create 3 different group chats
-        const groupChatNames = ['Project Team', 'Marketing Strategy', 'Tech Support'];
+        // Create 5-8 group chats
+        const groupChatCount = faker.number.int({min: 5, max: 8});
 
-        for (let chatIndex = 0; chatIndex < groupChatNames.length; chatIndex++) {
+        for (let i = 0; i < groupChatCount; i++) {
+            // Create the group chat
+            const isAdmin1Creator = faker.datatype.boolean();
+            const creator: UserReference | undefined = isAdmin1Creator ? adminUserRef : admin2UserRef;
+            if (!creator) {
+                logger.error('No admin user reference found. Skipping group chat creation.');
+                continue;
+            }
+
+            // Add 5-12 members to the group
+            const memberCount = faker.number.int({min: 5, max: 12});
+            const members = faker.helpers.arrayElements(userRefs, memberCount);
+
+            // Ensure creator is in the member list
+            if (!members.includes(creator)) {
+                members.push(creator);
+            }
+
             const groupChat = groupChatRepo.create({
-                group_name: groupChatNames[chatIndex],
+                group_name: faker.word.sample() + ' ' + faker.word.adjective({length: {min: 3, max: 10}}) + ' Group',
+                users,
             });
+
             await groupChatRepo.save(groupChat);
 
-            // Clear and prepare join table as in original code
-            try {
-                await dataSource.query('TRUNCATE TABLE "group_chat_users" CASCADE;');
-            } catch (error: any) {
-                logger.warn(
-                    `Could not clear join table: ${error.message}. This may be normal if it doesn't exist yet.`
-                );
-            }
+            // Create 10-25 messages in the group
+            const messageCount = faker.number.int({min: 10, max: 25});
+            let previousGroupMessage: string | undefined = undefined;
 
-            // Always add admin to each group
-            try {
-                await dataSource.query(
-                    'INSERT INTO "group_chat_users" ("groupChatGroupChatId", "userReferenceId") VALUES ($1, $2)',
-                    [groupChat.group_chat_id, adminUserRef.id]
-                );
-                logger.log(`Added admin to group chat ${groupChat.group_name}`);
+            for (let j = 0; j < messageCount; j++) {
+                // Random member sends the message
+                const sender = faker.helpers.arrayElement(members);
 
-                // Add 3-8 random other users to the group
-                const memberCount = faker.number.int({min: 3, max: Math.min(8, otherUserRefs.length)});
-                const shuffledUsers = faker.helpers.shuffle([...otherUserRefs]);
+                // Generate AI message content for group chat
+                const messageText = await generateMeaningfulMessageContent(logger, {
+                    relationship: 'friend',
+                    previousMessage: previousGroupMessage,
+                    sender: {
+                        firstName: sender.firstName,
+                        lastName: sender.lastName,
+                        username: sender.username,
+                    },
+                    isGroupChat: true,
+                });
 
-                for (let i = 0; i < memberCount; i++) {
-                    const user = shuffledUsers[i];
-                    await dataSource.query(
-                        'INSERT INTO "group_chat_users" ("groupChatGroupChatId", "userReferenceId") VALUES ($1, $2)',
-                        [groupChat.group_chat_id, user.id]
-                    );
-                }
-            } catch (error: any) {
-                // Same error handling as original code
-                logger.error(`Failed to add user to group: ${error.message}`);
-                if (error.message.includes('does not exist')) {
-                    // Create table and retry as in original code
-                    logger.log('Attempting to create the join table and retry...');
-
-                    await dataSource.query(`
-                        CREATE TABLE IF NOT EXISTS "group_chat_users" (
-                            "groupChatGroupChatId" uuid NOT NULL,
-                            "userReferenceId" uuid NOT NULL,
-                            CONSTRAINT "PK_group_chat_users" PRIMARY KEY ("groupChatGroupChatId", "userReferenceId")
-                        )
-                    `);
-
-                    // Retry insertion for admin
-                    await dataSource.query(
-                        'INSERT INTO "group_chat_users" ("groupChatGroupChatId", "userReferenceId") VALUES ($1, $2)',
-                        [groupChat.group_chat_id, adminUserRef.id]
-                    );
-                }
-            }
-
-            // Create group messages - admin sends 60% of messages
-            const messageCount = faker.number.int({min: 30, max: 60});
-            for (let i = 0; i < messageCount; i++) {
-                const isAdminMessage = faker.datatype.boolean({probability: 0.6});
-                const sender = isAdminMessage ? adminUserRef : faker.helpers.arrayElement(otherUserRefs);
-
-                const groupMessage = groupChatMessageRepo.create({
-                    textMessage: faker.lorem.sentence(),
-                    sent_at: faker.date.recent({days: 10}),
-                    last_modified_at: new Date(),
-                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
-                    emotion: faker.helpers.maybe(
-                        () => faker.helpers.arrayElements(Object.values(EmoteIcon), {min: 1, max: 3}),
-                        {probability: 0.4}
-                    ),
+                const message = groupChatMessageRepo.create({
+                    textMessage: messageText,
+                    sent_at: faker.date.recent({days: 14}),
                     sender,
+                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
                     groupChat,
                 });
-                await groupChatMessageRepo.save(groupMessage);
+
+                await groupChatMessageRepo.save(message);
+                previousGroupMessage = messageText;
+
+                // 30% chance of having an attachment
+                if (faker.datatype.boolean({probability: 0.3})) {
+                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                    const attachment = groupChatAttachmentRepo.create({
+                        attachment_url:
+                            attachmentType === AttachmentType.VIDEO
+                                ? faker.helpers.arrayElement(videoLinks)
+                                : faker.helpers.arrayElement(imageLinks),
+                        attachment_name: `group-file-${j}.${faker.helpers.arrayElement(['jpg', 'pdf', 'doc', 'png'])}`,
+                        attachmentType,
+                        sent_at: message.sent_at,
+                        status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                        sender,
+                        groupChat,
+                    });
+
+                    await groupChatAttachmentRepo.save(attachment);
+                }
             }
 
-            // Add 1-3 attachments per group, mostly from admin
-            const attachmentCount = faker.number.int({min: 1, max: 3});
-            for (let i = 0; i < attachmentCount; i++) {
-                const isAdminAttachment = faker.datatype.boolean({probability: 0.7});
-                const sender = isAdminAttachment ? adminUserRef : faker.helpers.arrayElement(otherUserRefs);
-                const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
-
-                const attachment = groupChatAttachmentRepo.create({
-                    attachment_url:
-                        attachmentType === AttachmentType.VIDEO
-                            ? faker.helpers.arrayElement(videoLinks)
-                            : faker.image.url(),
-                    attachment_name: `group-${chatIndex}-doc${i}.${faker.helpers.arrayElement(['pdf', 'xlsx', 'docx', 'png'])}`,
-                    attachmentType,
-                    sent_at: faker.date.recent({days: 7}),
-                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
-                    sender,
-                    groupChat,
-                });
-                await groupChatAttachmentRepo.save(attachment);
-            }
+            logger.log(
+                `Created group chat "${groupChat.group_name}" with ${messageCount} messages and ${members.length} members`
+            );
         }
 
         // Create call history records with focus on admins

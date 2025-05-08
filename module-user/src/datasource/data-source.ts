@@ -8,6 +8,7 @@ import {SecurityQuestion} from '@/entities/local/security-question.entity';
 import {Setting} from '@/entities/local/setting.entity';
 import {SocialLink} from '@/entities/local/social-link.entity';
 import {User} from '@/entities/local/user.entity';
+import {UserFollow} from '@/entities/local/user-follow.entity';
 import {UserStatus} from '@/entities/local/user-status.entity';
 
 export const AppDataSource = new DataSource({
@@ -27,6 +28,7 @@ export const AppDataSource = new DataSource({
         FriendRequest,
         Friend,
         NewsFeedReference,
+        UserFollow,
     ],
     migrations: ['migrations/*.ts'],
     synchronize: false,
