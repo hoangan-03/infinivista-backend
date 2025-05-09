@@ -94,6 +94,15 @@ export class FriendController {
         return this.friendService.isFollowing(payload.followerId, payload.followingId);
     }
 
+    @MessagePattern('GetSuggestedFriendsCommand')
+    async getSuggestedFriends(payload: {
+        userId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<User>> {
+        return this.friendService.getSuggestedFriends(payload.userId, payload.page, payload.limit);
+    }
+
     // @Put(':friendId/group')
     // @UseGuards(JWTAuthGuard)
     // @MessagePattern('UpdateGroupFriendCommand')

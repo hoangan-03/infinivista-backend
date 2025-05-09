@@ -72,50 +72,149 @@ function extractInterestsFromText(text: string): string[] {
 }
 
 /**
- * Determines appropriate topics for a page based on its name and category
- * @param pageName The name of the page
- * @param pageCategory The category of the page
- * @returns Array of relevant topics
+ * Current real-world data for more realistic content generation
  */
-function determinePageTopics(pageName: string, pageCategory?: string): string[] {
-    // Default topics that could apply to any page
-    const defaultTopics = ['business', 'community', 'updates', 'news', 'events'];
+const realWorldData = {
+    // Notable events (past, ongoing, and upcoming in 2024-2025)
+    events: [
+        'Paris Olympics 2024',
+        'US Presidential Election 2024',
+        'Artemis Moon Mission',
+        'Eurovision Song Contest 2024',
+        'COP30 Climate Summit',
+        'FIFA Club World Cup 2025',
+        'World Expo 2025 in Osaka',
+        '2024 Summer Paralympics',
+        'UEFA Euro 2024',
+        'SpaceX Starship orbital tests',
+        'Grand Egyptian Museum opening',
+        'Tokyo Game Show 2024',
+        'Expo 2025 in Japan',
+        'Venice Biennale 2024',
+        'WWDC 2024',
+        'CES 2025 in Las Vegas',
+        'British general election',
+    ],
 
-    // Extract topics from page name and category
-    const extractedTopics = extractInterestsFromText(pageName);
+    // Real geographical locations and cities
+    locations: [
+        'New York City',
+        'Tokyo',
+        'Paris',
+        'London',
+        'Berlin',
+        'Singapore',
+        'Sydney',
+        'Toronto',
+        'Dubai',
+        'Seoul',
+        'Reykjavik',
+        'San Francisco',
+        'Venice',
+        'Cape Town',
+        'Amsterdam',
+        'Kyoto',
+        'Barcelona',
+        'Marrakech',
+        'Istanbul',
+        'Stockholm',
+        'Oslo',
+        'Helsinki',
+        'Mumbai',
+        'Bangkok',
+        'Shanghai',
+        'Lisbon',
+        'Athens',
+        'Vienna',
+        'Prague',
+        'Budapest',
+    ],
 
-    if (pageCategory) {
-        extractedTopics.push(pageCategory.toLowerCase());
-    }
+    // Real venues, spaces, and landmarks
+    venues: [
+        'Louvre Museum',
+        'London Science Museum',
+        'Central Park',
+        'Golden Gate Park',
+        'Shibuya Crossing',
+        'Grand Central Terminal',
+        'Empire State Building',
+        'Gardens by the Bay',
+        'British Museum',
+        'Tate Modern',
+        'Eiffel Tower',
+        'Tokyo Skytree',
+        'Brooklyn Bridge',
+        'Sydney Opera House',
+        'Guggenheim Museum',
+        'CERN',
+        'Silicon Valley',
+        'Machu Picchu',
+        'Great Barrier Reef',
+        'Yosemite National Park',
+        'Grand Canyon',
+    ],
 
-    // Combine with default topics and ensure uniqueness
-    const allTopics = [...new Set([...extractedTopics, ...defaultTopics])];
+    // Technology companies and products
+    techEntities: [
+        'Apple Vision Pro',
+        'Microsoft Copilot',
+        'Google Gemini',
+        'Tesla Cybertruck',
+        'SpaceX Starship',
+        'OpenAI GPT-5',
+        'Meta Quest 3',
+        'Boston Dynamics robots',
+        'Amazon Luna',
+        'Nintendo Switch 2',
+        'PlayStation VR2',
+        'Rivian electric trucks',
+        'Samsung Galaxy foldables',
+        'Apple Intelligence',
+        'Microsoft Surface',
+        'Spotify AI DJ',
+        'TikTok creative tools',
+        'YouTube Shorts',
+        'Netflix interactive shows',
+    ],
 
-    // Return 2-4 topics
-    return faker.helpers.arrayElements(allTopics, faker.number.int({min: 2, max: 4}));
-}
+    // Sustainability initiatives
+    sustainability: [
+        'carbon-neutral buildings',
+        'vertical farming projects',
+        'ocean cleanup initiatives',
+        'renewable energy microgrids',
+        'circular economy marketplaces',
+        'electric public transportation',
+        'regenerative agriculture',
+        'carbon capture technology',
+        'plant-based alternatives',
+        'zero-waste stores',
+        'sustainable fashion brands',
+        'community solar projects',
+        'plastic-free packaging',
+        'reforestation efforts',
+    ],
+
+    // Health and wellness trends
+    healthTrends: [
+        'digital mental health platforms',
+        'sleep optimization technology',
+        'personalized nutrition',
+        'longevity research',
+        'wellness tourism',
+        'fitness metaverse experiences',
+        'preventative healthcare AI',
+        'genetic wellness profiles',
+        'mindfulness apps',
+        'remote healthcare solutions',
+        'wearable health monitors',
+        'community wellness centers',
+    ],
+};
 
 /**
- * Determines appropriate topics for a group based on its name
- * @param groupName The name of the group
- * @returns Array of relevant topics
- */
-function determineGroupTopics(groupName: string): string[] {
-    // Default group topics
-    const defaultTopics = ['community', 'discussion', 'sharing', 'help', 'support'];
-
-    // Extract topics from group name
-    const extractedTopics = extractInterestsFromText(groupName);
-
-    // Combine with default topics and ensure uniqueness
-    const allTopics = [...new Set([...extractedTopics, ...defaultTopics])];
-
-    // Return 2-3 topics
-    return faker.helpers.arrayElements(allTopics, faker.number.int({min: 2, max: 3}));
-}
-
-/**
- * Generates meaningful post content using Gemini AI
+ * Generates meaningful post content using Gemini AI with real-world references
  * @param context Optional context information to guide content generation
  * @returns Generated post content or fallback content if API call fails
  */
@@ -136,18 +235,70 @@ async function generateMeaningfulPostContent(
             return getFallbackPostContent(context);
         }
 
+        // Select real-world references to potentially include
+        const realEvent = faker.helpers.arrayElement(realWorldData.events);
+        const realLocation = faker.helpers.arrayElement(realWorldData.locations);
+        const realVenue = faker.helpers.arrayElement(realWorldData.venues);
+        const realTech = faker.helpers.arrayElement(realWorldData.techEntities);
+        const realSustainability = faker.helpers.arrayElement(realWorldData.sustainability);
+        const realHealth = faker.helpers.arrayElement(realWorldData.healthTrends);
+
         // Build prompt based on provided context
-        let prompt = 'Generate a realistic social media post';
-        if (context?.topic) prompt += ` about ${context.topic}`;
-        if (context?.mood) prompt += ` with a ${context.mood} tone`;
+        let prompt =
+            'Generate a realistic social media post that makes specific references to real-world entities from 2024-2025 timeframe';
+
+        // Include topic if provided
+        if (context?.topic) {
+            prompt += ` about ${context.topic}`;
+        }
+
+        // Add mood if specified
+        if (context?.mood) {
+            prompt += ` with a ${context.mood} tone`;
+        }
+
+        // Add user context if provided
         if (context?.user?.firstName) {
             const fullName = context.user.lastName
                 ? `${context.user.firstName} ${context.user.lastName}`
                 : context.user.firstName;
             prompt += ` as if written by ${fullName}`;
         }
+
         if (context?.user?.interests?.length) {
             prompt += ` who is interested in ${context.user.interests.join(', ')}`;
+        }
+
+        // Add real-world context with a higher probability for certain categories based on the topic
+        if (context?.topic?.toLowerCase().includes('tech') || context?.topic?.toLowerCase().includes('technology')) {
+            prompt += `. Include a specific reference to ${realTech}`;
+        } else if (
+            context?.topic?.toLowerCase().includes('travel') ||
+            context?.topic?.toLowerCase().includes('tourism')
+        ) {
+            prompt += `. Include a specific reference to ${realLocation} or ${realVenue}`;
+        } else if (
+            context?.topic?.toLowerCase().includes('environment') ||
+            context?.topic?.toLowerCase().includes('sustainable') ||
+            context?.topic?.toLowerCase().includes('climate')
+        ) {
+            prompt += `. Include a specific reference to ${realSustainability}`;
+        } else if (
+            context?.topic?.toLowerCase().includes('health') ||
+            context?.topic?.toLowerCase().includes('wellness')
+        ) {
+            prompt += `. Include a specific reference to ${realHealth}`;
+        } else {
+            // For other topics, randomly select a real-world element to reference
+            const realWorldElements = [
+                `the ${realEvent}`,
+                realLocation,
+                realVenue,
+                realTech,
+                realSustainability,
+                realHealth,
+            ];
+            prompt += `. Include a specific reference to ${faker.helpers.arrayElement(realWorldElements)}`;
         }
 
         prompt += '. Make it sound natural, engaging, and 1-3 sentences long.';
@@ -177,38 +328,74 @@ async function generateMeaningfulPostContent(
  * Provides fallback content when Gemini API is unavailable
  */
 function getFallbackPostContent(context?: {topic?: string; mood?: string; user?: any}): string {
+    // Updated fallback content with real-world references (2024-2025)
     const topics = {
         technology: [
-            "Just got my hands on the latest tech gadget! Can't wait to try it out.",
-            'Technology keeps evolving so fast. What innovations are you most excited about?',
-            'Working on a new coding project today. Sometimes the best solutions are the simplest ones.',
+            `Just got my hands on the Apple Vision Pro and it's a complete game-changer for my workflow. The mixed reality capabilities are even better than I expected!`,
+            `Watching the SpaceX Starship launch live was absolutely breathtaking. Another giant leap for space exploration and Mars colonization feels closer than ever.`,
+            `Testing Google Gemini's coding capabilities and I'm impressed by how it handles complex software architecture. AI assistants have become indispensable tools.`,
+            `Exploring the new immersive exhibits at the Tokyo Game Show 2024. The gaming industry's innovation is at an all-time high with these new haptic technologies.`,
         ],
         travel: [
-            'Missing those beautiful sunsets in Thailand. Where should I travel next?',
-            'Nothing beats the feeling of exploring a new city for the first time.',
-            'Just booked my next adventure! Counting down the days.',
+            `Just landed in Paris for the 2024 Olympics and the city's transformation is spectacular. Can't wait to attend the opening ceremony along the Seine!`,
+            `The cherry blossoms in Kyoto this spring were absolutely magical. Philosophers Path was crowded but Arashiyama was surprisingly peaceful and just as beautiful.`,
+            `Finally visited the Grand Egyptian Museum and it exceeded all expectations. The new Tutankhamun gallery is a masterpiece of modern museum design.`,
+            `Working remotely from Lisbon this month. The city's digital nomad infrastructure is impressive, and the Time Out Market has the best working lunch options.`,
         ],
         food: [
-            'Made this incredible pasta dish tonight. Simple ingredients, amazing flavors!',
-            'Found this hidden gem restaurant yesterday. Their desserts are to die for!',
-            'Anyone else feel like cooking is the perfect way to unwind after a long day?',
+            `Tried Impossible Foods' new seafood alternative at the San Francisco Food Innovation Expo. The texture and flavor are remarkably close to the real thing!`,
+            `The vertical farming restaurant in Singapore serves the freshest salads I've ever tasted. You can literally see your food growing while you dine!`,
+            `Reservations for Barcelona's new zero-waste restaurant are nearly impossible to get. After three months of waiting, I can confirm it's worth the hype.`,
+            `Amazon's automated grocery store just opened in my neighborhood in Toronto. The checkout-free experience is seamless, though I miss chatting with cashiers.`,
         ],
         fitness: [
-            'Personal best on my 5K today! Consistency really does pay off.',
-            "Morning workouts set the tone for the entire day. What's your favorite exercise routine?",
-            "Switched up my fitness routine this week and I'm feeling stronger already.",
+            `My new Apple Fitness+ meditation series with spatial audio is tremendously effective. The added biofeedback features in watchOS 11 really enhance the experience.`,
+            `Training for the London Marathon using the new Nike adaptive running shoes. Their real-time gait adjustment technology has significantly improved my pace.`,
+            `The Tokyo Olympic climbing wall design has inspired a whole new approach to climbing gym layouts. My local gym just got renovated with the same specifications!`,
+            `Just finished a month with the Peloton AI Coach. The personalized training adjustments based on sleep and HRV data made a noticeable difference in my performance.`,
         ],
         art: [
-            'Art speaks where words fail. Visited an incredible exhibition today.',
-            'Finding inspiration in the smallest details today. Beauty is everywhere if you look for it.',
-            "Started a new creative project this weekend. It's messy, imperfect, and I'm loving every minute of it.",
+            `The Venice Biennale 2024 is showcasing the most innovative blend of traditional art and AI collaboration I've ever seen. The Japanese pavilion especially blew me away.`,
+            `Visited the new immersive Van Gogh exhibition at the Louvre that uses breakthrough holographic technology. The way you can step inside the paintings is revolutionary.`,
+            `The NFT gallery at Art Basel Miami is finally bringing digital art into conversation with traditional mediums in a thoughtful way. The hybrid installations are outstanding.`,
+            `The augmented reality street art tour in Berlin transforms the entire city into a canvas. The Brandenburg Gate installation is particularly moving with its historical context.`,
+        ],
+        environment: [
+            `Just installed solar tiles from Tesla's new residential energy line. The efficiency is impressive, and the app integration with our home battery is seamless.`,
+            `Attended COP30 in Brazil and was encouraged by the binding commitments from major economies. The indigenous-led reforestation initiative is particularly promising.`,
+            `Our community joined the worldwide coastal cleanup initiative yesterday. The new biodegradable collection tools developed at MIT made a huge difference in efficiency.`,
+            `Visited Singapore's latest addition to Gardens by the Bay that showcases drought-resistant landscaping techniques. Critical innovation as climate challenges intensify.`,
+        ],
+        sports: [
+            `The atmosphere at UEFA Euro 2024 in Berlin was electric! The semi-automated offside technology made such a difference to the flow of the game.`,
+            `Just witnessed history at the Paris Olympics as the world record in the 100m was broken again! The track technology at Stade de France is clearly making a difference.`,
+            `The integration of player biometrics in the NBA app this season has completely transformed how I watch basketball. The real-time performance insights are fascinating.`,
+            `The new FC Barcelona stadium is a masterpiece of sustainable architecture. Watching El Clásico there yesterday with 100% renewable energy powering the venue felt special.`,
+        ],
+        politics: [
+            `The presidential debate's new fact-checking system was a game-changer. Real-time information validation should be standard for all political discourse going forward.`,
+            `Attending the climate policy summit in Stockholm where leaders are finalizing the comprehensive carbon pricing framework. The economic modeling looks promising.`,
+            `The digital voting system being tested for the British general election seems remarkably secure. The blockchain verification adds an important layer of transparency.`,
+            `Just finished reading the newly released global cooperation framework coming out of the G20 summit in New Delhi. The technology sharing provisions are particularly bold.`,
+        ],
+        health: [
+            `The mRNA vaccine technology is now being successfully applied to malaria treatment with impressive early results from the Lagos trial. Medical innovation at its best.`,
+            `My hospital just implemented the new AI diagnostic system that caught my friend's early-stage condition that traditional screenings missed. Literally life-changing technology.`,
+            `The mental health app developed in collaboration with the WHO has transformed accessible care. The personalized therapy sessions use remarkably effective AI adaptation.`,
+            `The wearable health monitor approved last month by the FDA provides unprecedented early warning for cardiac issues. Peace of mind in a simple skin patch.`,
+        ],
+        education: [
+            `My daughter's school just implemented the Finnish-developed hybrid learning system. The balance between digital and tactile learning feels exactly right.`,
+            `The MIT free online quantum computing course is impressively accessible for non-physicists. The interactive simulations make complex concepts much clearer.`,
+            `The AR language learning app that uses London street signs and menus for real-world practice has accelerated my Portuguese progress dramatically.`,
+            `Harvard's new approach to virtual exchange programs lets students collaborate with peers in Tokyo and Lagos simultaneously. Global education at its best.`,
         ],
         default: [
-            'What a beautiful day to be alive!',
-            'Grateful for all the amazing people in my life.',
-            'Sometimes the smallest moments bring the greatest joy.',
-            'Taking time to appreciate the little things today.',
-            'Life is full of unexpected adventures.',
+            `The sunset over Central Park yesterday with the new architectural skyline was absolutely breathtaking. New York keeps reinventing its beauty.`,
+            `Just experienced the immersive concert at the Sydney Opera House using the new spatial sound technology. Music will never be the same after this.`,
+            `Working from the new carbon-negative coworking space in Helsinki has been inspiring. Their commitment to measurable sustainability sets a new standard.`,
+            `The community garden project in Barcelona is bringing neighbors together while addressing local food security. Urban transformation at its finest.`,
+            `The Paris Olympics opening ceremony along the Seine exceeded all expectations. A powerful celebration of athleticism, culture, and human connection.`,
         ],
     };
 
@@ -696,16 +883,36 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                 const pagePostCount = faker.number.int({min: 10, max: 20});
                 for (let i = 0; i < pagePostCount; i++) {
-                    // Determine appropriate topics for this page based on its category/name
-                    const pageTopics = determinePageTopics(page.name, page.category);
+                    // Get the user's interests based on username instead of biography
+                    const userInterests = page.name ? extractInterestsFromText(page.name) : ['social media', 'friends'];
 
-                    // Generate AI content for this page post
+                    // Determine post topic from available topics or generate a random one
+                    const randomTopic = faker.helpers.arrayElement([
+                        'technology',
+                        'travel',
+                        'food',
+                        'fitness',
+                        'art',
+                        'music',
+                        'books',
+                        'movies',
+                        'fashion',
+                        'sports',
+                        'environment',
+                        'education',
+                        'politics',
+                        'health',
+                    ]);
+
+                    // Select relevant real-world elements based on the chosen topic
+
+                    // Generate AI content with real-world references
                     const postContent = await generateMeaningfulPostContent(logger, {
-                        topic: faker.helpers.arrayElement(pageTopics),
-                        mood: 'professional',
+                        topic: randomTopic,
                         user: {
                             firstName: page.name,
-                            interests: pageTopics,
+                            lastName: '',
+                            interests: userInterests,
                         },
                     });
 
@@ -734,7 +941,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         await postAttachmentRepo.save(attachment);
                     }
 
-                    const reactionCount = faker.number.int({min: 10, max: 30});
+                    const reactionCount = faker.number.int({min: 5, max: 15});
+                    const reactionTypes = Object.values(ReactionType);
+
                     const reactingUsers = faker.helpers.arrayElements(
                         userRefs,
                         Math.min(reactionCount, userRefs.length)
@@ -744,7 +953,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         const reaction = userReactPostRepo.create({
                             user_id: user.id,
                             post_id: post.id,
-                            reactionType: faker.helpers.arrayElement(Object.values(ReactionType)),
+                            reactionType: faker.helpers.arrayElement(reactionTypes),
                         });
                         await userReactPostRepo.save(reaction);
                     }
@@ -812,15 +1021,39 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                         if (memberUser) {
                             // Determine topics relevant to this group
-                            const groupTopics = determineGroupTopics(group.name);
 
-                            // Generate AI content for this group post
+                            // Get the user's interests based on username instead of biography
+                            const userInterests = group.name
+                                ? extractInterestsFromText(group.name)
+                                : ['social media', 'friends'];
+
+                            // Determine post topic from available topics or generate a random one
+                            const randomTopic = faker.helpers.arrayElement([
+                                'technology',
+                                'travel',
+                                'food',
+                                'fitness',
+                                'art',
+                                'music',
+                                'books',
+                                'movies',
+                                'fashion',
+                                'sports',
+                                'environment',
+                                'education',
+                                'politics',
+                                'health',
+                            ]);
+
+                            // Select relevant real-world elements based on the chosen topic
+
+                            // Generate AI content with real-world references
                             const postContent = await generateMeaningfulPostContent(logger, {
-                                topic: faker.helpers.arrayElement(groupTopics),
+                                topic: randomTopic,
                                 user: {
                                     firstName: memberUser.firstName,
                                     lastName: memberUser.lastName,
-                                    interests: groupTopics,
+                                    interests: userInterests,
                                 },
                             });
 
@@ -895,9 +1128,15 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     'movies',
                     'fashion',
                     'sports',
+                    'environment',
+                    'education',
+                    'politics',
+                    'health',
                 ]);
 
-                // Generate AI content or fallback based on user data
+                // Select relevant real-world elements based on the chosen topic
+
+                // Generate AI content with real-world references
                 const postContent = await generateMeaningfulPostContent(logger, {
                     topic: randomTopic,
                     user: {
@@ -1026,12 +1265,11 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                 const storyCount = faker.number.int({min: 1, max: 3});
                 for (let i = 0; i < storyCount; i++) {
                     const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                    const imageUrl = faker.helpers.arrayElement(imageLinks);
                     const story = storyRepo.create({
                         story_url:
-                            attachmentType === AttachmentType.VIDEO
-                                ? faker.helpers.arrayElement(videoLinks)
-                                : faker.image.url(),
-                        thumbnail_url: faker.image.url(),
+                            attachmentType === AttachmentType.VIDEO ? faker.helpers.arrayElement(videoLinks) : imageUrl,
+                        thumbnail_url: imageUrl,
                         duration: faker.number.int({min: 5, max: 30}),
                         attachmentType,
                         newsFeed,
@@ -1106,9 +1344,34 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             const adminPostCount = faker.number.int({min: 15, max: 25});
             logger.log(`Creating ${adminPostCount} posts for first admin feed`);
 
+            // Admin-focused current events and topics
+
             for (let i = 0; i < adminPostCount; i++) {
+                // Select topics that would be appropriate for the platform admin
+                const adminTopics = [
+                    'technology',
+                    'digital transformation',
+                    'innovation',
+                    'sustainability',
+                    'community',
+                    'future of social media',
+                ];
+                const selectedTopic = faker.helpers.arrayElement(adminTopics);
+
+                // Admin posts should reference significant events and developments
+
+                // Generate meaningful content with explicit real-world references
+                const postContent = await generateMeaningfulPostContent(logger, {
+                    topic: selectedTopic,
+                    user: {
+                        firstName: adminUserRef.firstName,
+                        lastName: adminUserRef.lastName,
+                        interests: ['technology', 'innovation', 'leadership', 'sustainability'],
+                    },
+                });
+
                 const post = postRepo.create({
-                    content: faker.lorem.paragraphs(faker.number.int({min: 4, max: 8})),
+                    content: postContent,
                     newsFeed: adminNewsFeed,
                     topics:
                         topics.length > 0
@@ -1164,12 +1427,11 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
             for (let i = 0; i < adminStoryCount; i++) {
                 const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                const imageUrl = faker.helpers.arrayElement(imageLinks);
                 const story = storyRepo.create({
                     story_url:
-                        attachmentType === AttachmentType.VIDEO
-                            ? faker.helpers.arrayElement(videoLinks)
-                            : faker.image.url(),
-                    thumbnail_url: faker.image.url(),
+                        attachmentType === AttachmentType.VIDEO ? faker.helpers.arrayElement(videoLinks) : imageUrl,
+                    thumbnail_url: imageUrl,
                     duration: faker.number.int({min: 10, max: 30}),
                     attachmentType,
                     newsFeed: adminNewsFeed,
@@ -1244,8 +1506,30 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             logger.log(`Creating ${admin2PostCount} posts for second admin feed`);
 
             for (let i = 0; i < admin2PostCount; i++) {
+                // Focus areas for the second admin
+                const admin2Topics = [
+                    'community guidelines',
+                    'user experience',
+                    'platform safety',
+                    'digital wellbeing',
+                    'online community',
+                ];
+                const selectedTopic = faker.helpers.arrayElement(admin2Topics);
+
+                // Get relevant real-world references for the chosen topic
+
+                // Generate meaningful content using real-world references
+                const postContent = await generateMeaningfulPostContent(logger, {
+                    topic: selectedTopic,
+                    user: {
+                        firstName: admin2UserRef.firstName,
+                        lastName: admin2UserRef.lastName,
+                        interests: ['community', 'digital wellbeing', 'user experience', 'platform safety'],
+                    },
+                });
+
                 const post = postRepo.create({
-                    content: faker.lorem.paragraphs(faker.number.int({min: 3, max: 6})),
+                    content: postContent,
                     newsFeed: admin2NewsFeed,
                     topics:
                         topics.length > 0
@@ -1301,12 +1585,11 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
             for (let i = 0; i < admin2StoryCount; i++) {
                 const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                const imageUrl = faker.helpers.arrayElement(imageLinks);
                 const story = storyRepo.create({
                     story_url:
-                        attachmentType === AttachmentType.VIDEO
-                            ? faker.helpers.arrayElement(videoLinks)
-                            : faker.image.url(),
-                    thumbnail_url: faker.image.url(),
+                        attachmentType === AttachmentType.VIDEO ? faker.helpers.arrayElement(videoLinks) : imageUrl,
+                    thumbnail_url: imageUrl,
                     duration: faker.number.int({min: 10, max: 30}),
                     attachmentType,
                     newsFeed: admin2NewsFeed,

@@ -35,6 +35,25 @@ export class FriendController {
             })
         );
     }
+
+    @Get('suggested')
+    @ApiOperation({summary: 'Get suggested friends based on mutual connections'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({status: 200, description: 'Returns paginated list of suggested friends'})
+    @ApiResponse({status: 401, description: 'Unauthorized - Invalid or missing token'})
+    async getSuggestedFriends(
+        @CurrentUser() user: User,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<User>> {
+        return await lastValueFrom(
+            this.userClient.send('GetSuggestedFriendsCommand', {
+                userId: user.id,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
     @Get(':id')
     @ApiOperation({summary: 'Get paginated list of friends for a user'})
     @ApiQuery({type: PaginationDto})

@@ -271,4 +271,19 @@ export class PostController {
             })
         );
     }
+
+    @Get('trending/tags')
+    @ApiOperation({summary: 'Get trending tags across all posts'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({status: 200, description: 'List of trending tags with popularity counts'})
+    async getTrendingTags(
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<{trending: string; popularity: number}>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetTrendingTagsCommand', {
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
 }

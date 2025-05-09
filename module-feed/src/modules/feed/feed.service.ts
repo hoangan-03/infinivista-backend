@@ -258,7 +258,7 @@ export class FeedService {
         const friendIds = await this.userReferenceService.getFriends(userId || '');
         const friendPosts = await this.postRepository.find({
             where: {newsFeed: {owner: {id: In(friendIds.map((friend) => friend.id))}}},
-            relations: ['newsFeed.owner', 'topics'],
+            relations: ['topics', 'postAttachments', 'comments', 'newsFeed.owner'],
             // Removed the ordering to apply random sorting after fetching
         });
 
@@ -308,7 +308,7 @@ export class FeedService {
         // Get all public posts with their topics
         const publicPosts = await this.postRepository.find({
             where: {newsFeed: {visibility: visibilityEnum.PUBLIC || visibilityEnum.FRIENDS_ONLY}},
-            relations: ['newsFeed.owner', 'topics'],
+            relations: ['topics', 'postAttachments', 'comments', 'newsFeed.owner'],
         });
 
         // Filter out posts that belong to the current user
@@ -316,7 +316,7 @@ export class FeedService {
 
         const postWithFriendVisibility = await this.postRepository.find({
             where: {newsFeed: {visibility: visibilityEnum.FRIENDS_ONLY}},
-            relations: ['newsFeed.owner', 'topics'],
+            relations: ['topics', 'postAttachments', 'comments', 'newsFeed.owner'],
         });
 
         // CHECK OWNER ID OF THESE POST AND CHECK FRIENDSHIP WITH the owner
@@ -2228,5 +2228,136 @@ Return only the topic IDs as a JSON array with no explanations. For example:
                 totalPages: Math.ceil(total / limit),
             },
         };
+    }
+
+    async getTrendingTag(
+        page = 1,
+        limit = 10
+    ): Promise<PaginationResponseInterface<{trending: string; popularity: number}>> {
+        try {
+            // Get a sample of recent posts (limit to a reasonable number to avoid overwhelming Gemini API)
+            const recentPosts = await this.postRepository.find({
+                order: {
+                    createdAt: 'DESC',
+                },
+                take: 200, // Analyze recent 200 posts
+                select: ['id', 'content'],
+            });
+
+            // Collect all post content
+            const allPostContent = recentPosts.map((post) => post.content).join('\n\n');
+
+            if (!allPostContent.trim()) {
+                return {
+                    data: [],
+                    metadata: {
+                        total: 0,
+                        page,
+                        limit,
+                        totalPages: 0,
+                    },
+                };
+            }
+
+            const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+            const GEMINI_API_URL = process.env.GEMINI_API_URL;
+
+            if (!GEMINI_API_KEY) {
+                this.logger.warn('GEMINI_API_KEY not set in environment variables');
+                return {
+                    data: [],
+                    metadata: {
+                        total: 0,
+                        page,
+                        limit,
+                        totalPages: 0,
+                    },
+                };
+            }
+
+            // Create the Gemini API request for trend analysis
+            const response = await axios.post(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: `Analyze the following post content and identify trending topics, keywords, or hashtags. For each trending term, count how many posts it appears to be relevant to or mentioned in.
+
+Here's a sample of recent posts:
+
+${allPostContent}
+
+Return ONLY a JSON array of objects with the format: 
+[{"trending": "keyword1", "popularity": number}, {"trending": "keyword2", "popularity": number}, ...]
+
+Make sure to:
+1. Focus on specific trending words, hashtags, or short phrases (1-3 words)
+2. Include the popularity count (estimated number of posts relevant to that trend)
+3. Sort from most popular to least popular
+4. Return at least 20 trending items if possible
+5. Only return the JSON array, no additional text`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            // Extract and parse the response to get trending tags
+            let responseText: string = response.data.candidates[0].content.parts[0].text.trim();
+
+            // Handle Markdown formatted responses
+            if (responseText.includes('```')) {
+                const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (codeBlockMatch && codeBlockMatch[1]) {
+                    responseText = codeBlockMatch[1].trim();
+                }
+            }
+
+            try {
+                // Parse the JSON response
+                const trendingTags = JSON.parse(responseText) as {trending: string; popularity: number}[];
+
+                // Ensure array is sorted by popularity (highest first)
+                trendingTags.sort((a, b) => b.popularity - a.popularity);
+
+                // Apply pagination
+                const startIndex = (page - 1) * limit;
+                const endIndex = Math.min(startIndex + limit, trendingTags.length);
+                const paginatedTags = trendingTags.slice(startIndex, endIndex);
+
+                return {
+                    data: paginatedTags,
+                    metadata: {
+                        total: trendingTags.length,
+                        page,
+                        limit,
+                        totalPages: Math.ceil(trendingTags.length / limit),
+                    },
+                };
+            } catch (jsonError: any) {
+                this.logger.error(`Error parsing JSON response from Gemini: ${jsonError.message}`);
+                this.logger.debug(`Raw response received: ${responseText}`);
+                return {
+                    data: [],
+                    metadata: {
+                        total: 0,
+                        page,
+                        limit,
+                        totalPages: 0,
+                    },
+                };
+            }
+        } catch (error: any) {
+            this.logger.error(`Error analyzing trending tags: ${error.message}`);
+            return {
+                data: [],
+                metadata: {
+                    total: 0,
+                    page,
+                    limit,
+                    totalPages: 0,
+                },
+            };
+        }
     }
 }

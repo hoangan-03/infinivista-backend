@@ -154,19 +154,23 @@ export class FriendService {
             commonFriendsCount[fof.friend_id].count++;
         }
 
-        // Convert to array, filter by minimum threshold (6 common friends), and sort
         const MIN_COMMON_FRIENDS = 6;
         const suggestionsArray = Object.values(commonFriendsCount)
             .filter((item) => item.count >= MIN_COMMON_FRIENDS)
             .sort((a, b) => b.count - a.count);
 
-        // Apply pagination
         const startIdx = (page - 1) * limit;
         const endIdx = startIdx + limit;
         const paginatedSuggestions = suggestionsArray.slice(startIdx, endIdx);
 
+        const users = paginatedSuggestions.map((item) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const {password, ...userWithoutPassword} = item.user;
+            return userWithoutPassword as User;
+        });
+
         return {
-            data: paginatedSuggestions.map((item) => item.user),
+            data: users,
             metadata: {
                 total: suggestionsArray.length,
                 page,

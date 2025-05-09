@@ -503,4 +503,12 @@ export class FeedController {
     }): Promise<PaginationResponseInterface<PostEntity>> {
         return this.feedService.getSharedPostsByUser(payload.userId, payload.page, payload.limit);
     }
+
+    @MessagePattern('GetTrendingTagsCommand')
+    async getTrendingTags(payload: {
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<{trending: string; popularity: number}>> {
+        return this.feedService.getTrendingTag(payload.page, payload.limit);
+    }
 }
