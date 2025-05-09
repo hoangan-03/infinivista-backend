@@ -14,6 +14,7 @@ import {BaseEntity} from '@/entities/base/base-class';
 import {groupVisibility} from '@/modules/feed/enum/group-visibility.enum';
 
 import {UserReference} from '../external/user-reference.entity';
+import {GroupApplicant} from './group-applicant.entity';
 import {GroupRule} from './group-rule.entity';
 import {NewsFeed} from './newsfeed.entity';
 
@@ -64,4 +65,7 @@ export class Group extends BaseEntity {
     @ManyToMany(() => UserReference, (userRef) => userRef.memberInGroups)
     @JoinTable()
     members: UserReference[];
+
+    @OneToMany(() => GroupApplicant, (applicant) => applicant.group)
+    applicants: GroupApplicant[];
 }

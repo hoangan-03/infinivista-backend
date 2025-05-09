@@ -381,4 +381,79 @@ export class GroupController {
             })
         );
     }
+
+    @Post(':id/apply')
+    @ApiOperation({summary: 'Apply to join a group'})
+    @ApiParam({name: 'id', description: 'Group ID'})
+    @ApiResponse({status: 200, description: 'Application submitted successfully'})
+    async applyToGroup(
+        @CurrentUser() user,
+        @Param('id') groupId: string,
+        @Body() application: {message?: string}
+    ): Promise<{success: boolean}> {
+        return await lastValueFrom(
+            this.feedClient.send('ApplyToGroup', {
+                userId: user.id,
+                groupId,
+                message: application.message,
+            })
+        );
+    }
+
+    @Get(':id/applicants')
+    @ApiOperation({summary: 'Get applicants for a group'})
+    @ApiParam({name: 'id', description: 'Group ID'})
+    @ApiQuery({name: 'page', required: false, description: 'Page number'})
+    @ApiQuery({name: 'limit', required: false, description: 'Items per page'})
+    @ApiResponse({status: 200, description: 'Return list of applicants'})
+    async getGroupApplicants(
+        @CurrentUser() user,
+        @Param('id') groupId: string,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number
+    ) {
+        return await lastValueFrom(
+            this.feedClient.send('GetGroupApplicants', {
+                groupId,
+                page: page ? Number(page) : 1,
+                limit: limit ? Number(limit) : 10,
+            })
+        );
+    }
+
+    @Post(':id/applicants/:applicantId/verify')
+    @ApiOperation({summary: 'Verify a group applicant'})
+    @ApiParam({name: 'id', description: 'Group ID'})
+    @ApiParam({name: 'applicantId', description: 'Applicant ID'})
+    @ApiResponse({status: 200, description: 'Applicant verified successfully'})
+    async verifyGroupApplicant(
+        @CurrentUser() user,
+        @Param('id') groupId: string,
+        @Param('applicantId') applicantId: string
+    ): Promise<{success: boolean}> {
+        return await lastValueFrom(
+            this.feedClient.send('VerifyGroupApplicant', {
+                userId: user.id,
+                applicationId: applicantId,
+            })
+        );
+    }
+
+    @Post(':id/applicants/:applicantId/reject')
+    @ApiOperation({summary: 'Reject a group applicant'})
+    @ApiParam({name: 'id', description: 'Group ID'})
+    @ApiParam({name: 'applicantId', description: 'Applicant ID'})
+    @ApiResponse({status: 200, description: 'Applicant rejected successfully'})
+    async rejectGroupApplicant(
+        @CurrentUser() user,
+        @Param('id') groupId: string,
+        @Param('applicantId') applicantId: string
+    ): Promise<{success: boolean}> {
+        return await lastValueFrom(
+            this.feedClient.send('RejectGroupApplicant', {
+                userId: user.id,
+                applicationId: applicantId,
+            })
+        );
+    }
 }

@@ -5,6 +5,7 @@ import {UserReference} from '@/entities/external/user-reference.entity';
 import {Advertisement} from '@/entities/local/advertisement.entity';
 import {Comment} from '@/entities/local/comment.entity';
 import {Group} from '@/entities/local/group.entity';
+import {GroupApplicant} from '@/entities/local/group-applicant.entity';
 import {GroupRule} from '@/entities/local/group-rule.entity';
 import {HashTag} from '@/entities/local/hashtag.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
@@ -43,6 +44,7 @@ import {FeedService} from './feed.service';
             Page,
             Group,
             GroupRule,
+            GroupApplicant,
         ]),
         UserReferenceModule,
     ],

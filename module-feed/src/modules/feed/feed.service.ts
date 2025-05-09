@@ -1,4 +1,11 @@
-import {BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException} from '@nestjs/common';
+import {
+    BadRequestException,
+    ForbiddenException,
+    Injectable,
+    Logger,
+    NotFoundException,
+    UnauthorizedException,
+} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import axios from 'axios';
 import {In, Repository} from 'typeorm';
@@ -6,6 +13,7 @@ import {In, Repository} from 'typeorm';
 import {UserReference} from '@/entities/external/user-reference.entity';
 import {Comment} from '@/entities/local/comment.entity';
 import {Group} from '@/entities/local/group.entity';
+import {GroupApplicant} from '@/entities/local/group-applicant.entity';
 import {GroupRule} from '@/entities/local/group-rule.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
@@ -66,7 +74,9 @@ export class FeedService {
         @InjectRepository(GroupRule)
         private readonly groupRuleRepository: Repository<GroupRule>,
         @InjectRepository(UserSharePost)
-        private readonly userSharePostRepository: Repository<UserSharePost>
+        private readonly userSharePostRepository: Repository<UserSharePost>,
+        @InjectRepository(GroupApplicant)
+        private readonly groupApplicantRepository: Repository<GroupApplicant>
     ) {}
 
     /**
@@ -1828,35 +1838,177 @@ Return only the topic IDs as a JSON array with no explanations. For example:
     }
 
     async joinGroup(userId: string, groupId: string): Promise<{success: boolean}> {
-        const group = await this.getGroupById(groupId);
         const user = await this.userReferenceService.findById(userId);
+        const group = await this.groupRepository.findOne({
+            where: {id: groupId},
+            relations: ['members'],
+        });
 
-        if (!user) {
-            throw new NotFoundException(`User with ID ${userId} not found`);
+        if (!group) {
+            throw new NotFoundException(`Group with ID ${groupId} not found`);
         }
 
         // Check if user is already a member
-        const isMember = group.members?.some((member) => member.id === userId);
-
+        const isMember = group.members.some((member) => member.id === userId);
         if (isMember) {
-            throw new BadRequestException('User is already a member'); // Already a member
+            return {success: true};
         }
 
-        // Public groups can be joined without approval
-        if (group.visibility !== groupVisibility.PUBLIC) {
-            // For private groups, implement approval logic here
-            // For now, allow immediate joining for simplicity
+        if (group.visibility === groupVisibility.PUBLIC) {
+            group.members.push(user);
+            await this.groupRepository.save(group);
+            return {success: true};
+        } else {
+            return this.applyToGroup(userId, groupId);
+        }
+    }
+
+    async applyToGroup(userId: string, groupId: string, message?: string): Promise<{success: boolean}> {
+        const user = await this.userReferenceService.findById(userId);
+        const group = await this.groupRepository.findOne({
+            where: {id: groupId},
+            relations: ['members'],
+        });
+
+        if (!group) {
+            throw new NotFoundException(`Group with ID ${groupId} not found`);
         }
 
-        // Initialize members array if not present
-        if (!group.members) {
-            group.members = [];
+        // Check if user is already a member
+        const isMember = group.members.some((member) => member.id === userId);
+        if (isMember) {
+            return {success: true};
         }
 
-        // Add user to members
-        group.members.push(user);
+        // Check if user already has a pending application
+        const existingApplication = await this.groupApplicantRepository.findOne({
+            where: {
+                user_id: userId,
+                group_id: groupId,
+            },
+        });
 
-        await this.groupRepository.save(group);
+        if (existingApplication) {
+            return {success: true}; // Application already exists
+        }
+
+        // Create a new application
+        const newApplication = this.groupApplicantRepository.create({
+            user,
+            group,
+            user_id: userId,
+            group_id: groupId,
+            isVerified: false,
+            message,
+        });
+
+        await this.groupApplicantRepository.save(newApplication);
+        return {success: true};
+    }
+
+    async getGroupApplicants(
+        groupId: string,
+        page = 1,
+        limit = 10
+    ): Promise<PaginationResponseInterface<GroupApplicant>> {
+        const group = await this.groupRepository.findOne({
+            where: {id: groupId},
+        });
+
+        if (!group) {
+            throw new NotFoundException(`Group with ID ${groupId} not found`);
+        }
+
+        const [applicants, total] = await this.groupApplicantRepository.findAndCount({
+            where: {
+                group_id: groupId,
+                isVerified: false,
+            },
+            relations: ['user'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {createdAt: 'DESC'},
+        });
+
+        return {
+            data: applicants,
+            metadata: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    async verifyGroupApplicant(userId: string, applicationId: string): Promise<{success: boolean}> {
+        // Find the application
+        const application = await this.groupApplicantRepository.findOne({
+            where: {id: applicationId},
+            relations: ['group', 'user'],
+        });
+
+        if (!application) {
+            throw new NotFoundException(`Application with ID ${applicationId} not found`);
+        }
+
+        // Verify the user is the group owner
+        const group = await this.groupRepository.findOne({
+            where: {id: application.group_id},
+            relations: ['owner', 'members'],
+        });
+
+        if (!group) {
+            throw new NotFoundException(`Group not found`);
+        }
+
+        if (group.owner_id !== userId) {
+            throw new UnauthorizedException('Only the group owner can verify applications');
+        }
+
+        // Update application to verified
+        application.isVerified = true;
+        await this.groupApplicantRepository.save(application);
+
+        // Add the user to group members
+        const applicantUser = await this.userReferenceService.findById(application.user_id);
+        const isAlreadyMember = group.members.some((member) => member.id === applicantUser.id);
+
+        if (!isAlreadyMember) {
+            group.members.push(applicantUser);
+            await this.groupRepository.save(group);
+        }
+
+        return {success: true};
+    }
+
+    async rejectGroupApplicant(userId: string, applicationId: string): Promise<{success: boolean}> {
+        // Find the application
+        const application = await this.groupApplicantRepository.findOne({
+            where: {id: applicationId},
+            relations: ['group'],
+        });
+
+        if (!application) {
+            throw new NotFoundException(`Application with ID ${applicationId} not found`);
+        }
+
+        // Verify the user is the group owner
+        const group = await this.groupRepository.findOne({
+            where: {id: application.group_id},
+            relations: ['owner'],
+        });
+
+        if (!group) {
+            throw new NotFoundException(`Group not found`);
+        }
+
+        if (group.owner_id !== userId) {
+            throw new UnauthorizedException('Only the group owner can reject applications');
+        }
+
+        // Delete the application
+        await this.groupApplicantRepository.delete(applicationId);
 
         return {success: true};
     }

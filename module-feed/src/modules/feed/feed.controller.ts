@@ -4,6 +4,7 @@ import {MessagePattern} from '@nestjs/microservices';
 import {UserReference} from '@/entities/external/user-reference.entity';
 import {Comment} from '@/entities/local/comment.entity';
 import {Group} from '@/entities/local/group.entity';
+import {GroupApplicant} from '@/entities/local/group-applicant.entity';
 import {GroupRule} from '@/entities/local/group-rule.entity';
 import {LiveStreamHistory} from '@/entities/local/live-stream-history.entity';
 import {NewsFeed} from '@/entities/local/newsfeed.entity';
@@ -504,11 +505,35 @@ export class FeedController {
         return this.feedService.getSharedPostsByUser(payload.userId, payload.page, payload.limit);
     }
 
-    @MessagePattern('GetTrendingTagsCommand')
+    @MessagePattern('GetTrendingTags')
     async getTrendingTags(payload: {
         page?: number;
         limit?: number;
     }): Promise<PaginationResponseInterface<{trending: string; popularity: number}>> {
         return this.feedService.getTrendingTag(payload.page, payload.limit);
+    }
+
+    @MessagePattern('ApplyToGroup')
+    async applyToGroup(payload: {userId: string; groupId: string; message?: string}): Promise<{success: boolean}> {
+        return this.feedService.applyToGroup(payload.userId, payload.groupId, payload.message);
+    }
+
+    @MessagePattern('GetGroupApplicants')
+    async getGroupApplicants(payload: {
+        groupId: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<GroupApplicant>> {
+        return this.feedService.getGroupApplicants(payload.groupId, payload.page, payload.limit);
+    }
+
+    @MessagePattern('VerifyGroupApplicant')
+    async verifyGroupApplicant(payload: {userId: string; applicationId: string}): Promise<{success: boolean}> {
+        return this.feedService.verifyGroupApplicant(payload.userId, payload.applicationId);
+    }
+
+    @MessagePattern('RejectGroupApplicant')
+    async rejectGroupApplicant(payload: {userId: string; applicationId: string}): Promise<{success: boolean}> {
+        return this.feedService.rejectGroupApplicant(payload.userId, payload.applicationId);
     }
 }
