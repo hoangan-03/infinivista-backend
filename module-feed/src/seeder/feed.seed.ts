@@ -623,8 +623,8 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             const page = pageRepo.create({
                 name: pageNames[i],
                 description: faker.lorem.paragraph(),
-                profileImageUrl: faker.image.url(),
-                coverImageUrl: faker.image.url(),
+                profileImageUrl: faker.helpers.arrayElement(imageLinks),
+                coverImageUrl: faker.helpers.arrayElement(imageLinks),
                 category: faker.helpers.arrayElement(pageCategories),
                 website: faker.internet.url(),
                 email: faker.internet.email(),
@@ -1176,7 +1176,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     const randomUser = faker.helpers.arrayElement(userRefs);
                     const comment = commentRepo.create({
                         text: faker.lorem.sentence(),
-                        attachment_url: faker.datatype.boolean({probability: 0.3}) ? faker.image.url() : undefined,
+                        attachment_url: faker.datatype.boolean({probability: 0.3})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
                         user: randomUser,
                         post,
                     });
@@ -1281,7 +1283,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         const randomUser = faker.helpers.arrayElement(userRefs);
                         const comment = commentRepo.create({
                             text: faker.lorem.sentence(),
-                            attachment_url: faker.datatype.boolean({probability: 0.2}) ? faker.image.url() : undefined,
+                            attachment_url: faker.datatype.boolean({probability: 0.2})
+                                ? faker.helpers.arrayElement(imageLinks)
+                                : undefined,
                             user: randomUser,
                             story: story,
                         });
@@ -1400,7 +1404,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     const randomUser = faker.helpers.arrayElement(userRefs);
                     const comment = commentRepo.create({
                         text: faker.lorem.sentence(),
-                        attachment_url: faker.datatype.boolean({probability: 0.4}) ? faker.image.url() : undefined,
+                        attachment_url: faker.datatype.boolean({probability: 0.4})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
                         user: randomUser,
                         post,
                     });
@@ -1443,7 +1449,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     const randomUser = faker.helpers.arrayElement(userRefs);
                     const comment = commentRepo.create({
                         text: faker.lorem.sentence(),
-                        attachment_url: faker.datatype.boolean({probability: 0.3}) ? faker.image.url() : undefined,
+                        attachment_url: faker.datatype.boolean({probability: 0.3})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
                         user: randomUser,
                         story: story,
                     });
@@ -1558,7 +1566,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     const randomUser = faker.helpers.arrayElement(userRefs);
                     const comment = commentRepo.create({
                         text: faker.lorem.sentence(),
-                        attachment_url: faker.datatype.boolean({probability: 0.4}) ? faker.image.url() : undefined,
+                        attachment_url: faker.datatype.boolean({probability: 0.4})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
                         user: randomUser,
                         post,
                     });
@@ -1601,7 +1611,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     const randomUser = faker.helpers.arrayElement(userRefs);
                     const comment = commentRepo.create({
                         text: faker.lorem.sentence(),
-                        attachment_url: faker.datatype.boolean({probability: 0.3}) ? faker.image.url() : undefined,
+                        attachment_url: faker.datatype.boolean({probability: 0.3})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
                         user: randomUser,
                         story: story,
                     });
