@@ -135,7 +135,7 @@ export class FeedService {
         const userOwner = await this.userReferenceService.findById(userFeed.owner.id);
         const [userPosts, total] = await this.postRepository.findAndCount({
             where: {newsFeed: {id: userFeed.id}},
-            relations: ['topics', 'postAttachments', 'newsFeed.owner'],
+            relations: ['topics', 'postAttachments', 'newsFeed.owner', 'comments'],
             skip: (page - 1) * limit,
             take: limit,
             order: {createdAt: 'DESC'},
