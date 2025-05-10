@@ -37,6 +37,7 @@ import {UpdateMessageDto} from '@/dtos/communication-module/update-message.dto';
 import {Message} from '@/entities/communication-module/internal/message.entity';
 import {MessageAttachment} from '@/entities/communication-module/internal/message-attachment.entity';
 import {AttachmentType} from '@/enums/communication-module/attachment-type.enum';
+import {EmoteIcon} from '@/enums/communication-module/emote-icon.enum';
 import {JWTAuthGuard} from '@/guards/jwt-auth.guard';
 import {JwtBlacklistGuard} from '@/guards/jwt-blacklist.guard';
 import {PaginationResponseInterface} from '@/interfaces/common/pagination-response.interface';
@@ -372,6 +373,27 @@ export class MessageController {
     @ApiParam({name: 'id', description: 'Message ID'})
     async markMessageAsSeen(@Param('id') id: string, @CurrentUser() user): Promise<Message> {
         return await lastValueFrom(this.communicationClient.send('MarkMessageAsSeenCommand', {id, currentId: user.id}));
+    }
+
+    /**
+     * Get all emote icons
+     */
+    @Get(':id/reaction')
+    @ApiOperation({summary: 'Get reaction of a message'})
+    @ApiResponse({
+        status: 200,
+        description: 'Reaction found',
+    })
+    @ApiParam({name: 'id', description: 'Message ID'})
+    async getMessageReaction(@Param('id') id: string): Promise<EmoteIcon | undefined> {
+        try {
+            return await lastValueFrom(this.communicationClient.send('GetMessageReactionCommand', {id}));
+        } catch (error: any) {
+            if (error.name === 'EmptyError') {
+                return undefined; // Return undefined when no reaction exists
+            }
+            throw error; // Re-throw any other errors
+        }
     }
 
     /**

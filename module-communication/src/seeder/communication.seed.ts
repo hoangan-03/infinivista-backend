@@ -336,14 +336,33 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             // Reduce to 10-15 messages between admin and each user (previously 20-30)
             const messageCount = faker.number.int({min: 10, max: 15});
 
+            // Store previous message to provide context for the next one
+            let previousMessage: string | undefined = undefined;
+
             for (let i = 0; i < messageCount; i++) {
                 // Admin sends 70% of messages, other user sends 30%
                 const isAdminSender = faker.datatype.boolean({probability: 0.7});
                 const sender = isAdminSender ? adminUserRef : otherUser;
                 const receiver = isAdminSender ? otherUser : adminUserRef;
 
+                // Use Gemini AI for meaningful message content
+                const messageText = await generateMeaningfulMessageContent(logger, {
+                    relationship: 'professional',
+                    previousMessage,
+                    sender: {
+                        firstName: sender.firstName,
+                        lastName: sender.lastName,
+                        username: sender.username,
+                    },
+                    recipient: {
+                        firstName: receiver.firstName,
+                        lastName: receiver.lastName,
+                        username: receiver.username,
+                    },
+                });
+
                 const message = messageRepo.create({
-                    messageText: faker.lorem.sentence(),
+                    messageText: messageText,
                     sent_at: faker.date.recent({days: 14}),
                     status: faker.helpers.arrayElement(Object.values(MessageStatus)),
                     sender,
@@ -354,6 +373,9 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 });
                 await messageRepo.save(message);
 
+                // Save for context in next message
+                previousMessage = messageText;
+
                 // Occasionally add an attachment (40% for admin-sent messages, 20% for user-sent)
                 const attachmentProbability = isAdminSender ? 0.4 : 0.2;
                 if (faker.datatype.boolean({probability: attachmentProbability})) {
@@ -363,7 +385,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                             attachmentType === AttachmentType.VIDEO
                                 ? faker.helpers.arrayElement(videoLinks)
                                 : faker.helpers.arrayElement(imageLinks),
-                        attachment_name: `file${i}_${faker.lorem.word()}.${faker.helpers.arrayElement(['jpg', 'pdf', 'doc', 'png'])}`,
+                        attachment_name: `file${i}_${faker.lorem.word()}.${faker.helpers.arrayElement(['jpg'])}`,
                         attachmentType,
                         sent_at: message.sent_at,
                         status: faker.helpers.arrayElement(Object.values(MessageStatus)),
@@ -381,14 +403,33 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 // Reduce to 8-12 messages between admin2 and each user (previously 15-25)
                 const messageCount = faker.number.int({min: 8, max: 12});
 
+                // Store previous message to provide context for the next one
+                let previousMessage: string | undefined = undefined;
+
                 for (let i = 0; i < messageCount; i++) {
                     // Admin2 sends 65% of messages, other user sends 35%
                     const isAdminSender = faker.datatype.boolean({probability: 0.65});
                     const sender = isAdminSender ? admin2UserRef : otherUser;
                     const receiver = isAdminSender ? otherUser : admin2UserRef;
 
+                    // Use Gemini AI for meaningful message content
+                    const messageText = await generateMeaningfulMessageContent(logger, {
+                        relationship: 'professional',
+                        previousMessage,
+                        sender: {
+                            firstName: sender.firstName,
+                            lastName: sender.lastName,
+                            username: sender.username,
+                        },
+                        recipient: {
+                            firstName: receiver.firstName,
+                            lastName: receiver.lastName,
+                            username: receiver.username,
+                        },
+                    });
+
                     const message = messageRepo.create({
-                        messageText: faker.lorem.sentence(),
+                        messageText: messageText,
                         sent_at: faker.date.recent({days: 10}),
                         status: faker.helpers.arrayElement(Object.values(MessageStatus)),
                         sender,
@@ -398,6 +439,9 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                         }),
                     });
                     await messageRepo.save(message);
+
+                    // Save for context in next message
+                    previousMessage = messageText;
 
                     // Occasionally add an attachment (35% for admin2-sent messages, 20% for user-sent)
                     const attachmentProbability = isAdminSender ? 0.35 : 0.2;
@@ -421,42 +465,6 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             }
         }
 
-        // Create minimal direct messages between non-admin users
-        logger.log('Creating minimal direct messages between non-admin users...');
-        // Get just 3 random pairs of users for conversations (previously 5)
-        const userPairs: [UserReference, UserReference][] = [];
-        for (let i = 0; i < Math.min(3, otherUserRefs.length); i++) {
-            const user1Index = faker.number.int({min: 0, max: otherUserRefs.length - 1});
-            let user2Index;
-            do {
-                user2Index = faker.number.int({min: 0, max: otherUserRefs.length - 1});
-            } while (user2Index === user1Index);
-
-            userPairs.push([otherUserRefs[user1Index], otherUserRefs[user2Index]]);
-        }
-
-        // Create 2-5 messages for each pair (previously 3-8)
-        for (const [user1, user2] of userPairs) {
-            const messageCount = faker.number.int({min: 2, max: 5});
-
-            for (let i = 0; i < messageCount; i++) {
-                const sender = i % 2 === 0 ? user1 : user2;
-                const receiver = i % 2 === 0 ? user2 : user1;
-
-                const message = messageRepo.create({
-                    messageText: faker.lorem.sentence(),
-                    sent_at: faker.date.recent({days: 5}),
-                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
-                    emotion: faker.helpers.maybe(() => faker.helpers.arrayElement(Object.values(EmoteIcon)), {
-                        probability: 0.2,
-                    }),
-                    sender,
-                    receiver,
-                });
-                await messageRepo.save(message);
-            }
-        }
-
         // Create group chats with admin always included
         logger.log('Creating group chats with admin as a prominent member...');
 
@@ -464,7 +472,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
         const groupChatCount = faker.number.int({min: 5, max: 8});
 
         for (let i = 0; i < groupChatCount; i++) {
-            // Create the group chat
+            // Always include at least one admin user as the creator
             const isAdmin1Creator = faker.datatype.boolean();
             const creator: UserReference | undefined = isAdmin1Creator ? adminUserRef : admin2UserRef;
             if (!creator) {
@@ -474,16 +482,34 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
 
             // Add 5-12 members to the group
             const memberCount = faker.number.int({min: 5, max: 12});
-            const members = faker.helpers.arrayElements(userRefs, memberCount);
+            const members = faker.helpers.arrayElements(otherUserRefs, memberCount - 2); // Leave space for admins
 
-            // Ensure creator is in the member list
-            if (!members.includes(creator)) {
-                members.push(creator);
-            }
+            // Ensure both admins are always in the group chat if they exist
+            if (adminUserRef) members.push(adminUserRef);
+            if (admin2UserRef) members.push(admin2UserRef);
+
+            // Create a meaningful group chat name that reflects real usage patterns
+            const groupChatNameTypes = [
+                // Project/team style names
+                `${faker.company.buzzNoun()} ${faker.company.buzzAdjective()} Team`,
+                `${faker.commerce.department()} Project`,
+                `${faker.company.name()} Planning`,
+
+                // Friend/social group style names
+                `${faker.location.city()} Trip ${faker.date.future().getFullYear()}`,
+                `Weekend ${faker.word.adjective()} Group`,
+                `${faker.music.genre()} Fans`,
+
+                // Casual/fun group names with emoji
+                `🎉 ${faker.word.adjective({length: {min: 3, max: 8}})} Squad`,
+                `🔥 ${faker.commerce.productAdjective()} Friends`,
+                `${faker.animal.type()} ${faker.helpers.arrayElement(['Lovers', 'Group', 'Chat'])} 🌟`,
+            ];
 
             const groupChat = groupChatRepo.create({
-                group_name: faker.word.sample() + ' ' + faker.word.adjective({length: {min: 3, max: 10}}) + ' Group',
-                users,
+                group_name: faker.helpers.arrayElement(groupChatNameTypes),
+                users: members,
+                group_image_url: faker.helpers.arrayElement(imageLinks),
             });
 
             await groupChatRepo.save(groupChat);

@@ -17,6 +17,7 @@ import {EmoteReactionDto} from './dto/emote-reaction.dto';
 import {FileUploadDto, FileUploadResponseDto} from './dto/file-upload.dto';
 import {UpdateMessageDto} from './dto/update-message.dto';
 import {AttachmentType} from './enums/attachment-type.enum';
+import {EmoteIcon} from './enums/emote-icon.enum';
 import {MessagingService} from './messaging.service';
 
 @Controller()
@@ -80,6 +81,11 @@ export class MessagingController {
         {
             return await this.messageService.markMessageAsSeen(payload.id, payload.currentId);
         }
+    }
+
+    @MessagePattern('GetMessageReactionCommand')
+    async getMessageReactions(payload: {id: string}): Promise<EmoteIcon | undefined> {
+        return await this.messageService.getReactionsByMessageId(payload.id);
     }
 
     /**

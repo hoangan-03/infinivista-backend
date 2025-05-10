@@ -1,6 +1,6 @@
 import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
-import {Repository} from 'typeorm';
+import {Not, Repository} from 'typeorm';
 
 import {UserReference} from '@/entities/external/user-reference.entity';
 import {GroupChat} from '@/entities/internal/group-chat.entity';
@@ -16,6 +16,7 @@ import {CreateMessageDto} from './dto/create-message.dto';
 import {EmoteReactionDto} from './dto/emote-reaction.dto';
 import {UpdateMessageDto} from './dto/update-message.dto';
 import {AttachmentType} from './enums/attachment-type.enum';
+import {EmoteIcon} from './enums/emote-icon.enum';
 import {MessageStatus} from './enums/message-status.enum';
 
 @Injectable()
@@ -50,17 +51,28 @@ export class MessagingService {
         };
     }
 
-    async getMessageById(messageId: string): Promise<Message> {
+    async getMessageById(messageId: string): Promise<any> {
         const message = await this.messageRepository.findOne({
             where: {id: messageId},
             relations: ['sender', 'receiver'],
         });
 
         if (!message) {
-            throw new NotFoundException(`Message with ID ${messageId} not found`);
+            const attachment = await this.messageAttachmentRepository.findOne({
+                where: {id: messageId},
+                relations: ['sender', 'receiver'],
+            });
+            if (attachment) {
+                return attachment;
+            }
+            throw new NotFoundException(`Message or attachement with ID ${messageId} not found`);
         }
-
         return message;
+    }
+
+    async getReactionsByMessageId(id: string): Promise<EmoteIcon | undefined> {
+        const message = await this.getMessageById(id);
+        return message.emotion ? message.emotion : undefined;
     }
 
     async dropEmoteInAConversation(messageId: string, emotion: EmoteReactionDto, currentId: string): Promise<Message> {
@@ -226,8 +238,16 @@ export class MessagingService {
     ): Promise<PaginationResponseInterface<Message>> {
         const [messages, total] = await this.messageRepository.findAndCount({
             where: [
-                {sender: {id: currentId}, receiver: {id: targetId}},
-                {sender: {id: targetId}, receiver: {id: currentId}},
+                {
+                    sender: {id: currentId},
+                    receiver: {id: targetId},
+                    status: Not(MessageStatus.DELETED || MessageStatus.HIDDEN),
+                },
+                {
+                    sender: {id: targetId},
+                    receiver: {id: currentId},
+                    status: Not(MessageStatus.DELETED || MessageStatus.HIDDEN),
+                },
             ],
             skip: (page - 1) * limit,
             take: limit,
@@ -389,7 +409,7 @@ export class MessagingService {
     // Get attachment by ID
     async getAttachmentById(attachmentId: string): Promise<MessageAttachment> {
         const attachment = await this.messageAttachmentRepository.findOne({
-            where: {id: attachmentId},
+            where: {id: attachmentId, status: Not(MessageStatus.DELETED || MessageStatus.HIDDEN)},
             relations: ['sender', 'receiver'],
         });
 
@@ -409,8 +429,16 @@ export class MessagingService {
     ): Promise<PaginationResponseInterface<MessageAttachment>> {
         const [attachments, total] = await this.messageAttachmentRepository.findAndCount({
             where: [
-                {sender: {id: currentId}, receiver: {id: targetId}},
-                {sender: {id: targetId}, receiver: {id: currentId}},
+                {
+                    sender: {id: currentId},
+                    receiver: {id: targetId},
+                    status: Not(MessageStatus.DELETED || MessageStatus.HIDDEN),
+                },
+                {
+                    sender: {id: targetId},
+                    receiver: {id: currentId},
+                    status: Not(MessageStatus.DELETED || MessageStatus.HIDDEN),
+                },
             ],
             skip: (page - 1) * limit,
             take: limit,
@@ -453,8 +481,16 @@ export class MessagingService {
         // Get messages
         const messages = await this.messageRepository.find({
             where: [
-                {sender: {id: currentId}, receiver: {id: targetId}},
-                {sender: {id: targetId}, receiver: {id: currentId}},
+                {
+                    sender: {id: currentId},
+                    receiver: {id: targetId},
+                    status: Not(MessageStatus.DELETED || MessageStatus.HIDDEN),
+                },
+                {
+                    sender: {id: targetId},
+                    receiver: {id: currentId},
+                    status: Not(MessageStatus.DELETED || MessageStatus.HIDDEN),
+                },
             ],
             relations: ['sender', 'receiver'],
         });
@@ -462,8 +498,16 @@ export class MessagingService {
         // Get attachments
         const attachments = await this.messageAttachmentRepository.find({
             where: [
-                {sender: {id: currentId}, receiver: {id: targetId}},
-                {sender: {id: targetId}, receiver: {id: currentId}},
+                {
+                    sender: {id: currentId},
+                    receiver: {id: targetId},
+                    status: Not(MessageStatus.DELETED || MessageStatus.HIDDEN),
+                },
+                {
+                    sender: {id: targetId},
+                    receiver: {id: currentId},
+                    status: Not(MessageStatus.DELETED || MessageStatus.HIDDEN),
+                },
             ],
             relations: ['sender', 'receiver'],
         });
