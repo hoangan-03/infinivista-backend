@@ -1605,7 +1605,7 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         };
     }
 
-    async getPagePosts(pageId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Post>> {
+    async getPagePosts(pageId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
         const foundPage = await this.getPageById(pageId);
 
         if (!foundPage.newsFeed) {
@@ -1636,6 +1636,11 @@ Return only the topic IDs as a JSON array with no explanations. For example:
                 return {
                     ...post,
                     userOwner: foundPage.owner,
+                    topics: post.topics.map((topic) => ({
+                        name: topic.topicName,
+                        description: topic.topicDescription,
+                    })),
+
                     share_count: shareCount,
                 };
             })
@@ -2092,7 +2097,7 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         };
     }
 
-    async getGroupPosts(groupId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Post>> {
+    async getGroupPosts(groupId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
         const group = await this.getGroupById(groupId);
 
         if (!group.newsFeed) {
@@ -2116,12 +2121,17 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             order: {createdAt: 'DESC'},
         });
 
-        // Add share counts to posts
+        // Add share counts to posts and include userOwner field
         const postsWithShareCounts = await Promise.all(
             posts.map(async (post) => {
                 const shareCount = await this.getShareCount(post.id);
                 return {
                     ...post,
+                    userOwner: post.owner,
+                    topics: post.topics.map((topic) => ({
+                        name: topic.topicName,
+                        description: topic.topicDescription,
+                    })),
                     share_count: shareCount,
                 };
             })
