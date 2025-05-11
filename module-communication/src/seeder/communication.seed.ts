@@ -364,7 +364,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 const message = messageRepo.create({
                     messageText: messageText,
                     sent_at: faker.date.recent({days: 21}),
-                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                    status: faker.helpers.arrayElement([MessageStatus.SENT, MessageStatus.SEEN]),
                     sender,
                     receiver,
                     emotion: faker.helpers.maybe(() => faker.helpers.arrayElement(Object.values(EmoteIcon)), {
@@ -387,7 +387,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                         attachment_name: `admin-doc-${i}.${faker.helpers.arrayElement(['jpg', 'pdf', 'xlsx', 'docx', 'png'])}`,
                         attachmentType,
                         sent_at: message.sent_at,
-                        status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                        status: faker.helpers.arrayElement([MessageStatus.SENT, MessageStatus.SEEN]),
                         sender,
                         receiver,
                     });
@@ -436,7 +436,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 const message = messageRepo.create({
                     messageText: messageText,
                     sent_at: faker.date.recent({days: 14}),
-                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                    status: faker.helpers.arrayElement([MessageStatus.SENT, MessageStatus.SEEN]),
                     sender,
                     receiver,
                     emotion: faker.helpers.maybe(() => faker.helpers.arrayElement(Object.values(EmoteIcon)), {
@@ -460,7 +460,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                         attachment_name: `file${i}_${faker.lorem.word()}.${faker.helpers.arrayElement(['jpg'])}`,
                         attachmentType,
                         sent_at: message.sent_at,
-                        status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                        status: faker.helpers.arrayElement([MessageStatus.SENT, MessageStatus.SEEN]),
                         sender,
                         receiver,
                     });
@@ -506,7 +506,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                     const message = messageRepo.create({
                         messageText: messageText,
                         sent_at: faker.date.recent({days: 10}),
-                        status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                        status: faker.helpers.arrayElement([MessageStatus.SENT, MessageStatus.SEEN]),
                         sender,
                         receiver,
                         emotion: faker.helpers.maybe(() => faker.helpers.arrayElement(Object.values(EmoteIcon)), {
@@ -530,7 +530,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                             attachment_name: `file${i}_${faker.lorem.word()}.${faker.helpers.arrayElement(['jpg', 'pdf', 'doc', 'png'])}`,
                             attachmentType,
                             sent_at: message.sent_at,
-                            status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                            status: faker.helpers.arrayElement([MessageStatus.SENT, MessageStatus.SEEN]),
                             sender,
                             receiver,
                         });
@@ -616,7 +616,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                     textMessage: messageText,
                     sent_at: faker.date.recent({days: 14}),
                     sender,
-                    status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                    status: faker.helpers.arrayElement([MessageStatus.SENT, MessageStatus.SEEN]),
                     groupChat,
                 });
 
@@ -634,7 +634,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                         attachment_name: `group-file-${j}.${faker.helpers.arrayElement(['jpg', 'pdf', 'doc', 'png'])}`,
                         attachmentType,
                         sent_at: message.sent_at,
-                        status: faker.helpers.arrayElement(Object.values(MessageStatus)),
+                        status: faker.helpers.arrayElement([MessageStatus.SENT, MessageStatus.SEEN]),
                         sender,
                         groupChat,
                     });
