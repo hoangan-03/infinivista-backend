@@ -1,13 +1,7 @@
-import {IsEnum, IsNotEmpty, IsUUID} from 'class-validator';
-
-import {CallType} from '../enums/call-type.enum';
+import {IsNotEmpty, IsUUID} from 'class-validator';
 
 export class InitiateCallDto {
     @IsNotEmpty()
     @IsUUID()
     receiverId: string;
-
-    @IsNotEmpty()
-    @IsEnum(CallType)
-    callType: CallType;
 }

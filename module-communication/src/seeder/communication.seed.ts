@@ -6,7 +6,6 @@ import {DataSource} from 'typeorm';
 
 import {CallHistory} from '@/entities/internal/call-history.entity';
 import {CallStatus} from '@/modules/calling/enums/call-status.enum';
-import {CallType} from '@/modules/calling/enums/call-type.enum';
 import {AttachmentType} from '@/modules/messaging/enums/attachment-type.enum';
 import {EmoteIcon} from '@/modules/messaging/enums/emote-icon.enum';
 
@@ -573,7 +572,6 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
         // Create call history records with focus on admins
         logger.log('Creating call history records focused on admin users...');
         const callStatusOptions = Object.values(CallStatus);
-        const callTypeOptions = Object.values(CallType);
 
         // Create calls between the two admin users
         if (adminUserRef && admin2UserRef) {
@@ -607,7 +605,6 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                     end_time: endTime,
                     accepted_at: acceptedAt,
                     status: callStatus,
-                    type: faker.helpers.arrayElement(callTypeOptions),
                     caller,
                     receiver,
                 });
@@ -647,7 +644,6 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 end_time: endTime,
                 accepted_at: acceptedAt,
                 status: callStatus,
-                type: faker.helpers.arrayElement(callTypeOptions),
                 caller,
                 receiver,
             });
@@ -686,7 +682,6 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                     end_time: endTime,
                     accepted_at: acceptedAt,
                     status: callStatus,
-                    type: faker.helpers.arrayElement(callTypeOptions),
                     caller,
                     receiver,
                 });
@@ -722,7 +717,6 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 end_time: endTime,
                 accepted_at: acceptedAt,
                 status: callStatus,
-                type: faker.helpers.arrayElement(callTypeOptions),
                 caller,
                 receiver,
             });

@@ -35,7 +35,6 @@ export class CallingService {
             throw new NotFoundException(`Receiver with ID ${initiateCallDto.receiverId} not found`);
         }
 
-        // Check if users can call each other (e.g., are they friends?)
         try {
             const checkResult = await firstValueFrom(
                 this.userClient.send('CheckFriendshipUserCommand', {
@@ -49,7 +48,6 @@ export class CallingService {
             }
         } catch (error) {
             this.logger.error(`Error checking friendship: ${error}`);
-            // Allow the call to proceed if the check fails
         }
 
         // Create a new call record
@@ -58,7 +56,6 @@ export class CallingService {
             receiver,
             start_time: new Date(),
             status: CallStatus.INITIATED,
-            type: initiateCallDto.callType,
         });
 
         return this.callHistoryRepository.save(newCall);
@@ -72,10 +69,10 @@ export class CallingService {
         }
 
         if (call.status !== CallStatus.INITIATED) {
-            throw new BadRequestException(`Call cannot be accepted as it is ${call.status}`);
+            throw new BadRequestException(`Call cannot be accepted`);
         }
 
-        call.status = CallStatus.ACTIVE;
+        call.status = CallStatus.ACCEPTED;
         call.accepted_at = new Date();
 
         return this.callHistoryRepository.save(call);
@@ -105,7 +102,7 @@ export class CallingService {
             throw new BadRequestException('You are not a participant in this call');
         }
 
-        if (call.status !== CallStatus.ACTIVE) {
+        if (call.status !== CallStatus.ACCEPTED) {
             throw new BadRequestException(`Call cannot be ended as it is ${call.status}`);
         }
 

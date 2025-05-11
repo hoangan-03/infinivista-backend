@@ -1,7 +1,6 @@
 import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 
 import {CallStatus} from '@/modules/calling/enums/call-status.enum';
-import {CallType} from '@/modules/calling/enums/call-type.enum';
 
 import {BaseEntity} from '../base/base-class';
 import {UserReference} from '../external/user-reference.entity';
@@ -18,21 +17,14 @@ export class CallHistory extends BaseEntity {
     end_time?: Date;
 
     @Column({type: 'timestamp', nullable: true})
-    accepted_at: Date;
+    accepted_at?: Date;
 
     @Column({
         type: 'enum',
         enum: CallStatus,
-        default: CallStatus.INITIATED,
+        default: CallStatus.ACCEPTED,
     })
     status: CallStatus;
-
-    @Column({
-        type: 'enum',
-        enum: CallType,
-        default: CallType.AUDIO,
-    })
-    type: CallType;
 
     @ManyToOne(() => UserReference, (user) => user.incomingCallHistories, {onDelete: 'SET NULL'})
     caller: UserReference;

@@ -1,7 +1,7 @@
 export enum CallStatus {
-    INITIATED = 'initiated',
-    ACTIVE = 'active',
-    ENDED = 'ended',
-    MISSED = 'missed',
-    REJECTED = 'rejected',
+    MISSED = 'MISSED',
+    REJECTED = 'REJECTED',
+    ACCEPTED = 'ACCEPTED',
+    INITIATED = 'INITIATED',
+    ENDED = 'ENDED',
 }
