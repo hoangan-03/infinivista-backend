@@ -20,7 +20,7 @@ import {MessageStatus} from '../modules/messaging/enums/message-status.enum';
 import {imageLinks, videoLinks} from './self-seeder';
 
 /**
- * Generates meaningful message content using Gemini AI
+ * Generates meaningful message content using Gemini AI with rate limit handling
  * @param context Context information to guide message generation
  * @returns Generated message text or fallback content if API call fails
  */
@@ -34,57 +34,88 @@ async function generateMeaningfulMessageContent(
         isGroupChat?: boolean;
     }
 ): Promise<string> {
-    try {
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-        const GEMINI_API_URL = process.env.GEMINI_API_URL;
+    // Track retry attempts
+    let attempts = 0;
+    const maxAttempts = 3;
+    const baseDelay = 1000; // 1 second base delay for exponential backoff
 
-        if (!GEMINI_API_KEY) {
-            logger.warn('GEMINI_API_KEY not set in environment variables');
-            return getFallbackMessageContent(context);
+    while (attempts < maxAttempts) {
+        try {
+            const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+            const GEMINI_API_URL = process.env.GEMINI_API_URL;
+
+            if (!GEMINI_API_KEY) {
+                logger.warn('GEMINI_API_KEY not set in environment variables');
+                return getFallbackMessageContent(context);
+            }
+
+            // Build prompt based on provided context
+            let prompt = context?.isGroupChat
+                ? 'Generate a realistic group chat message'
+                : 'Generate a realistic direct message';
+
+            if (context?.relationship) prompt += ` between ${context.relationship}s`;
+
+            if (context?.sender) {
+                const senderName = getSenderName(context.sender);
+                prompt += ` from ${senderName}`;
+            }
+
+            if (context?.recipient && !context.isGroupChat) {
+                const recipientName = getSenderName(context.recipient);
+                prompt += ` to ${recipientName}`;
+            }
+
+            if (context?.previousMessage) {
+                prompt += ` in response to: "${context.previousMessage}"`;
+            }
+
+            prompt += '. Make it sound natural, concise, and conversational. Maximum 20 words.';
+
+            const response = await axios.post(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: prompt,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            // Extract the generated text
+            const generatedText = response.data.candidates[0].content.parts[0].text.trim();
+            return generatedText;
+        } catch (error: any) {
+            attempts++;
+
+            // Check if it's a rate limit error (usually 429 status code)
+            const isRateLimit = error.response?.status === 429;
+
+            if (isRateLimit && attempts < maxAttempts) {
+                // Calculate exponential backoff time with jitter
+                const delayMs = Math.min(baseDelay * Math.pow(2, attempts) + Math.random() * 1000, 10000);
+                logger.warn(
+                    `Rate limit hit for Gemini API. Retrying after ${delayMs}ms (attempt ${attempts}/${maxAttempts})`
+                );
+
+                // Wait before retrying
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+            } else {
+                if (attempts >= maxAttempts) {
+                    logger.error(`Exceeded maximum retry attempts (${maxAttempts}) for Gemini API`);
+                } else {
+                    logger.error(`Error generating message content with Gemini: ${error.message}`);
+                }
+                // Fall back to static content after all retries fail
+                return getFallbackMessageContent(context);
+            }
         }
-
-        // Build prompt based on provided context
-        let prompt = context?.isGroupChat
-            ? 'Generate a realistic group chat message'
-            : 'Generate a realistic direct message';
-
-        if (context?.relationship) prompt += ` between ${context.relationship}s`;
-
-        if (context?.sender) {
-            const senderName = getSenderName(context.sender);
-            prompt += ` from ${senderName}`;
-        }
-
-        if (context?.recipient && !context.isGroupChat) {
-            const recipientName = getSenderName(context.recipient);
-            prompt += ` to ${recipientName}`;
-        }
-
-        if (context?.previousMessage) {
-            prompt += ` in response to: "${context.previousMessage}"`;
-        }
-
-        prompt += '. Make it sound natural, concise, and conversational. Maximum 20 words.';
-
-        const response = await axios.post(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-            contents: [
-                {
-                    parts: [
-                        {
-                            text: prompt,
-                        },
-                    ],
-                },
-            ],
-        });
-
-        // Extract the generated text
-        const generatedText = response.data.candidates[0].content.parts[0].text.trim();
-        return generatedText;
-    } catch (error: any) {
-        logger.error(`Error generating message content with Gemini: ${error.message}`);
-        return getFallbackMessageContent(context);
     }
+
+    // If we get here, we've exceeded our retry attempts
+    return getFallbackMessageContent(context);
 }
 
 /**
@@ -112,6 +143,12 @@ function getFallbackMessageContent(context?: any): string {
             "Did you see that new movie everyone's talking about?",
             'Got plans for the weekend?',
             "Miss you! Let's catch up soon.",
+            "Haven't seen you in forever. How have you been?",
+            "Just thought of you! Hope you're doing well.",
+            "Remember that time we went to that restaurant? Let's go again!",
+            "I've been meaning to ask you about that new job.",
+            'Wanted to share some good news with you!',
+            'Are you free this weekend? Thinking of having people over.',
         ],
         family: [
             'Have you eaten yet?',
@@ -119,6 +156,11 @@ function getFallbackMessageContent(context?: any): string {
             "Don't forget about Sunday dinner!",
             'Can you pick up some groceries on your way?',
             'Love you! Stay safe.',
+            "Mom's asking when you're coming to visit.",
+            'Did you see the photos I sent from the family reunion?',
+            "Let's plan something special for dad's birthday.",
+            'Can you help me with something this weekend?',
+            "Just checking in to make sure you're doing okay.",
         ],
         professional: [
             'Just following up on our meeting yesterday.',
@@ -126,6 +168,13 @@ function getFallbackMessageContent(context?: any): string {
             'Are we still on for 3pm?',
             'Great work on the presentation!',
             'Let me know if you need any clarification.',
+            "I've reviewed the proposal and have some feedback.",
+            'When would be a good time to discuss the project timeline?',
+            'The client really liked your approach on this.',
+            'Can we move our meeting to tomorrow instead?',
+            'I just sent you an email with the quarterly numbers.',
+            'Looking forward to your presentation at the all-hands.',
+            'Do you have capacity to take on another task this sprint?',
         ],
         acquaintance: [
             'Nice to connect with you!',
@@ -133,6 +182,10 @@ function getFallbackMessageContent(context?: any): string {
             'Remember me from the conference?',
             'Thought you might find this interesting.',
             "Let's grab coffee sometime.",
+            'I saw something that reminded me of our conversation.',
+            'It was great meeting you at the event last week.',
+            'Would love to continue our discussion about that project.',
+            'Are you going to the networking event next month?',
         ],
         group: [
             "Who's free this weekend?",
@@ -140,6 +193,13 @@ function getFallbackMessageContent(context?: any): string {
             "I'm sharing this with all of you.",
             'Can someone help me with something?',
             'Great discussion everyone!',
+            'Has anyone heard back about the proposal?',
+            "Let's coordinate on this project together.",
+            "I've uploaded all the files to our shared folder.",
+            'What does everyone think about the new direction?',
+            'Can we find a time that works for everyone next week?',
+            'Looking forward to seeing everyone at the event!',
+            "Just a reminder about tomorrow's deadline.",
         ],
         default: ['Hey there!', 'How are you?', 'Just checking in.', "What's new?", "Hope you're doing well!"],
     };
@@ -166,6 +226,11 @@ interface UserData {
     profileImageUrl: string;
     phoneNumber: string;
 }
+
+/**
+ * Simple delay function to avoid overwhelming the API
+ */
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const seedCommunicationDatabase = async (dataSource: DataSource) => {
     const app = await NestFactory.createApplicationContext(AppModule);
@@ -270,6 +335,11 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             let previousMessage: string | undefined = undefined;
 
             for (let i = 0; i < messageCount; i++) {
+                // Add a small delay every 5 messages to avoid hitting rate limits
+                if (i > 0 && i % 5 === 0) {
+                    await delay(1000); // 1 second delay every 5 messages
+                }
+
                 // Roughly equal number of messages from each admin
                 const isAdmin1Sender = faker.datatype.boolean();
                 const sender = isAdmin1Sender ? adminUserRef : admin2UserRef;
@@ -339,6 +409,9 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             let previousMessage: string | undefined = undefined;
 
             for (let i = 0; i < messageCount; i++) {
+                if (i > 0 && i % 5 === 0) {
+                    await delay(1000); // 1 second delay every 5 messages
+                }
                 // Admin sends 70% of messages, other user sends 30%
                 const isAdminSender = faker.datatype.boolean({probability: 0.7});
                 const sender = isAdminSender ? adminUserRef : otherUser;
@@ -406,6 +479,9 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 let previousMessage: string | undefined = undefined;
 
                 for (let i = 0; i < messageCount; i++) {
+                    if (i > 0 && i % 5 === 0) {
+                        await delay(1000); // 1 second delay every 5 messages
+                    }
                     // Admin2 sends 65% of messages, other user sends 35%
                     const isAdminSender = faker.datatype.boolean({probability: 0.65});
                     const sender = isAdminSender ? admin2UserRef : otherUser;
@@ -518,6 +594,9 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             let previousGroupMessage: string | undefined = undefined;
 
             for (let j = 0; j < messageCount; j++) {
+                if (i > 0 && i % 5 === 0) {
+                    await delay(1000); // 1 second delay every 5 messages
+                }
                 // Random member sends the message
                 const sender = faker.helpers.arrayElement(members);
 
@@ -576,8 +655,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
         // Create calls between the two admin users
         if (adminUserRef && admin2UserRef) {
             logger.log('Creating call history between admin users...');
-            // Create 15-25 calls between the two admin users
-            const callCount = faker.number.int({min: 15, max: 25});
+            const callCount = faker.number.int({min: 6, max: 9});
 
             for (let i = 0; i < callCount; i++) {
                 const isAdmin1Caller = faker.datatype.boolean();
@@ -614,9 +692,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             logger.log(`Created ${callCount} calls between admin users`);
         }
 
-        // Create calls where first admin is involved (REDUCED)
-        // Reduce to 30 calls (previously 50)
-        const admin1CallCount = 30;
+        const admin1CallCount = 10;
         for (let i = 0; i < admin1CallCount; i++) {
             const isAdminCaller = faker.datatype.boolean();
             const otherUser = faker.helpers.arrayElement(otherUserRefs);
@@ -651,10 +727,8 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             await CallHistoryRepo.save(callHistory);
         }
 
-        // Create calls where second admin is involved (REDUCED)
         if (admin2UserRef) {
-            // Reduce to 20 calls (previously 30)
-            const admin2CallCount = 20;
+            const admin2CallCount = 10;
             for (let i = 0; i < admin2CallCount; i++) {
                 const isAdminCaller = faker.datatype.boolean();
                 const otherUser = faker.helpers.arrayElement(otherUserRefs);
@@ -663,7 +737,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 const receiver = isAdminCaller ? otherUser : admin2UserRef;
 
                 // Generate call details
-                const startTime = faker.date.recent({days: 14}); // Within last 2 weeks
+                const startTime = faker.date.recent({days: 14});
                 const callStatus = faker.helpers.arrayElement(callStatusOptions);
                 let endTime: Date | undefined = undefined;
                 let acceptedAt: Date | undefined = undefined;
@@ -690,8 +764,7 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             }
         }
 
-        // Create just 8 calls between non-admin users (previously 15)
-        const regularUserCallCount = 8;
+        const regularUserCallCount = 1;
         for (let i = 0; i < regularUserCallCount; i++) {
             const userIndices = faker.helpers.shuffle([...Array(otherUserRefs.length).keys()]);
             const caller = otherUserRefs[userIndices[0]];
@@ -724,7 +797,6 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             await CallHistoryRepo.save(callHistory);
         }
 
-        // Update the log message to reflect the new call counts
         const totalCallCount =
             admin1CallCount +
             (admin2UserRef ? 20 : 0) +
