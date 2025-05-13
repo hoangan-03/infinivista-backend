@@ -19,11 +19,28 @@ import {MessageAttachment} from '../entities/internal/message-attachment.entity'
 import {MessageStatus} from '../modules/messaging/enums/message-status.enum';
 import {imageLinks, videoLinks} from './self-seeder';
 
-/**
- * Generates meaningful message content using Gemini AI with rate limit handling
- * @param context Context information to guide message generation
- * @returns Generated message text or fallback content if API call fails
- */
+class GeminiRateLimiter {
+    private requests: number[] = [];
+    private readonly maxRequests = 30;
+    private readonly timeWindow = 60000;
+    async waitForSlot(): Promise<void> {
+        const now = Date.now();
+
+        this.requests = this.requests.filter((time) => now - time < this.timeWindow);
+
+        if (this.requests.length >= this.maxRequests) {
+            const oldestRequest = this.requests[0];
+            const waitTime = this.timeWindow - (now - oldestRequest);
+            await new Promise((resolve) => setTimeout(resolve, waitTime));
+            return this.waitForSlot();
+        }
+
+        this.requests.push(now);
+    }
+}
+
+const geminiRateLimiter = new GeminiRateLimiter();
+
 async function generateMeaningfulMessageContent(
     logger: Logger,
     context?: {
@@ -34,10 +51,10 @@ async function generateMeaningfulMessageContent(
         isGroupChat?: boolean;
     }
 ): Promise<string> {
-    // Track retry attempts
     let attempts = 0;
     const maxAttempts = 3;
-    const baseDelay = 1000; // 1 second base delay for exponential backoff
+    const baseDelay = 2000; // 2 seconds base delay for exponential backoff
+    const maxDelay = 30000; // Maximum delay of 30 seconds
 
     while (attempts < maxAttempts) {
         try {
@@ -48,6 +65,9 @@ async function generateMeaningfulMessageContent(
                 logger.warn('GEMINI_API_KEY not set in environment variables');
                 return getFallbackMessageContent(context);
             }
+
+            // Wait for a rate limit slot before making the request
+            await geminiRateLimiter.waitForSlot();
 
             // Build prompt based on provided context
             let prompt = context?.isGroupChat
@@ -95,9 +115,12 @@ async function generateMeaningfulMessageContent(
 
             if (isRateLimit && attempts < maxAttempts) {
                 // Calculate exponential backoff time with jitter
-                const delayMs = Math.min(baseDelay * Math.pow(2, attempts) + Math.random() * 1000, 10000);
+                const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempts), maxDelay);
+                const jitter = Math.random() * 3000; // Add up to 3 seconds of random jitter
+                const delayMs = exponentialDelay + jitter;
+
                 logger.warn(
-                    `Rate limit hit for Gemini API. Retrying after ${delayMs}ms (attempt ${attempts}/${maxAttempts})`
+                    `Rate limit hit for Gemini API. Retrying after ${delayMs.toFixed(2)}ms (attempt ${attempts}/${maxAttempts})`
                 );
 
                 // Wait before retrying
@@ -114,13 +137,9 @@ async function generateMeaningfulMessageContent(
         }
     }
 
-    // If we get here, we've exceeded our retry attempts
     return getFallbackMessageContent(context);
 }
 
-/**
- * Helper function to get sender name from available fields
- */
 function getSenderName(person: {firstName?: string; lastName?: string; username?: string}): string {
     if (person.firstName && person.lastName) {
         return `${person.firstName} ${person.lastName}`;
@@ -132,9 +151,6 @@ function getSenderName(person: {firstName?: string; lastName?: string; username?
     return 'User';
 }
 
-/**
- * Provides fallback message content when Gemini API is unavailable
- */
 function getFallbackMessageContent(context?: any): string {
     const messageTypes = {
         friend: [
@@ -227,9 +243,6 @@ interface UserData {
     phoneNumber: string;
 }
 
-/**
- * Simple delay function to avoid overwhelming the API
- */
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const seedCommunicationDatabase = async (dataSource: DataSource) => {

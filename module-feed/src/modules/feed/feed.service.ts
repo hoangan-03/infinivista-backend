@@ -375,6 +375,7 @@ export class FeedService {
                 const mappedPosts = paginatedPosts.map((post) => ({
                     ...post,
                     userOwner: userOwner,
+                    share_count: post.share_count,
                 }));
 
                 return {
@@ -408,6 +409,7 @@ export class FeedService {
             const mappedPosts = paginatedPosts.map((post) => ({
                 ...post,
                 userOwner: userOwner,
+                share_count: post.share_count,
             }));
 
             return {
@@ -445,6 +447,7 @@ export class FeedService {
             const mappedPosts = postsWithShareCounts.slice(0, limit).map((post) => ({
                 ...post,
                 userOwner: userOwner,
+                share_count: post.share_count,
             }));
 
             return {
@@ -1047,11 +1050,18 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             relations: ['user'],
         });
 
-        // Map reactions to include userOwner
-        return reactions.map((reaction) => ({
-            ...reaction,
-            userOwner: reaction.user,
-        }));
+        // Map reactions to include userOwner with null check
+        return reactions
+            .map((reaction) => {
+                // Safely handle potentially null user references
+                const userOwner = reaction.user || null;
+
+                return {
+                    ...reaction,
+                    userOwner,
+                };
+            })
+            .filter((reaction) => reaction); // Filter out any null reactions
     }
 
     async removeReaction(postId: string, userId: string): Promise<{success: boolean}> {

@@ -18,6 +18,7 @@ import {PaginationResponseInterface} from '@/interfaces/pagination-response.inte
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 import {FileUploadService} from '@/services/file-upload.service';
 
+import {Reaction} from './../../../../api-gateway/src/entities/feed-module/local/reaction.entity';
 import {CreateGroupDto} from './dto/create-group.dto';
 import {CreatePageDto} from './dto/create-page.dto';
 import {CreatePostDto} from './dto/create-post.dto';
@@ -175,8 +176,9 @@ export class FeedController {
     }
 
     @MessagePattern('GetReactionsByPostIdCommand')
-    async getReactionsByPostId(payload: {postId: string}): Promise<UserReactPost[]> {
-        return this.feedService.getReactionsByPostId(payload.postId);
+    async getReactionsByPostId(payload: {postId: string}): Promise<Reaction[]> {
+        const reactions = await this.feedService.getReactionsByPostId(payload.postId);
+        return reactions.filter((reaction) => reaction != null);
     }
 
     @MessagePattern('RemoveReactionCommand')
@@ -535,5 +537,13 @@ export class FeedController {
     @MessagePattern('RejectGroupApplicant')
     async rejectGroupApplicant(payload: {userId: string; applicationId: string}): Promise<{success: boolean}> {
         return this.feedService.rejectGroupApplicant(payload.userId, payload.applicationId);
+    }
+
+    @MessagePattern('GetTrendingTagsCommand')
+    async getTrendingTagsCommand(payload: {
+        page?: number;
+        limit?: number;
+    }): Promise<PaginationResponseInterface<{trending: string; popularity: number}>> {
+        return this.feedService.getTrendingTag(payload.page, payload.limit);
     }
 }
