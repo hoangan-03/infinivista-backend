@@ -18,7 +18,6 @@ import {PaginationResponseInterface} from '@/interfaces/pagination-response.inte
 import {ReactionType} from '@/modules/feed/enum/reaction-type.enum';
 import {FileUploadService} from '@/services/file-upload.service';
 
-import {Reaction} from './../../../../api-gateway/src/entities/feed-module/local/reaction.entity';
 import {CreateGroupDto} from './dto/create-group.dto';
 import {CreatePageDto} from './dto/create-page.dto';
 import {CreatePostDto} from './dto/create-post.dto';
@@ -176,7 +175,7 @@ export class FeedController {
     }
 
     @MessagePattern('GetReactionsByPostIdCommand')
-    async getReactionsByPostId(payload: {postId: string}): Promise<Reaction[]> {
+    async getReactionsByPostId(payload: {postId: string}): Promise<UserReactPost[]> {
         const reactions = await this.feedService.getReactionsByPostId(payload.postId);
         return reactions.filter((reaction) => reaction != null);
     }
