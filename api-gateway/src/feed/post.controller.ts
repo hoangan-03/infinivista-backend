@@ -46,6 +46,101 @@ export class PostController {
         private fileUploadService: FileUploadService
     ) {}
 
+    @Patch('comment/:commentId')
+    @ApiOperation({summary: 'Update a comment'})
+    @ApiParam({name: 'commentId', description: 'ID of the comment'})
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                text: {type: 'string'},
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+            required: ['text'],
+        },
+    })
+    @UseInterceptors(FileInterceptor('file'))
+    @ApiResponse({status: 200, description: 'Comment updated successfully', type: Comment})
+    @ApiResponse({status: 404, description: 'Comment not found'})
+    async updateComment(
+        @CurrentUser() user,
+        @Param('commentId') commentId: string,
+        @Body('text') text: string,
+        @UploadedFile() file?: Express.Multer.File
+    ): Promise<Comment> {
+        let attachmentUrl;
+
+        // Only upload if a file was provided
+        if (file) {
+            attachmentUrl = await this.fileUploadService.uploadFile(
+                file.buffer,
+                file.originalname,
+                file.mimetype,
+                'feed'
+            );
+        }
+
+        return await lastValueFrom(
+            this.feedClient.send('UpdateCommentCommand', {
+                commentId,
+                userId: user.id,
+                text,
+                attachmentUrl,
+            })
+        );
+    }
+
+    @Delete('comment/:commentId')
+    @ApiOperation({summary: 'Delete a comment'})
+    @ApiParam({name: 'commentId', description: 'ID of the comment'})
+    @ApiResponse({status: 200, description: 'Comment deleted successfully'})
+    @ApiResponse({status: 404, description: 'Comment not found'})
+    async deleteComment(@CurrentUser() user, @Param('commentId') commentId: string): Promise<Comment> {
+        return await lastValueFrom(
+            this.feedClient.send('DeleteCommentCommand', {
+                commentId,
+                userId: user.id,
+            })
+        );
+    }
+
+    @Get('shared/by-user/:userId')
+    @ApiOperation({summary: 'Get posts shared by a specific user'})
+    @ApiParam({name: 'userId', description: 'ID of the user'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({status: 200, description: 'List of shared posts'})
+    async getSharedPostsByUser(
+        @Param('userId') userId: string,
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<any>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetSharedPostsByUserCommand', {
+                userId,
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
+    @Get('trending/tags')
+    @ApiOperation({summary: 'Get trending tags across all posts'})
+    @ApiQuery({type: PaginationDto})
+    @ApiResponse({status: 200, description: 'List of trending tags with popularity counts'})
+    async getTrendingTags(
+        @Query() paginationDto: PaginationDto
+    ): Promise<PaginationResponseInterface<{trending: string; popularity: number}>> {
+        return await lastValueFrom(
+            this.feedClient.send('GetTrendingTagsCommand', {
+                page: paginationDto.page,
+                limit: paginationDto.limit,
+            })
+        );
+    }
+
     // Comment endpoints
     @Post(':postId/comment')
     @ApiOperation({summary: 'Add a comment to a post'})
@@ -109,68 +204,6 @@ export class PostController {
                 postId,
                 page: paginationDto.page,
                 limit: paginationDto.limit,
-            })
-        );
-    }
-
-    @Patch('comment/:commentId')
-    @ApiOperation({summary: 'Update a comment'})
-    @ApiParam({name: 'commentId', description: 'ID of the comment'})
-    @ApiConsumes('multipart/form-data')
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                text: {type: 'string'},
-                file: {
-                    type: 'string',
-                    format: 'binary',
-                },
-            },
-            required: ['text'],
-        },
-    })
-    @UseInterceptors(FileInterceptor('file'))
-    @ApiResponse({status: 200, description: 'Comment updated successfully', type: Comment})
-    @ApiResponse({status: 404, description: 'Comment not found'})
-    async updateComment(
-        @CurrentUser() user,
-        @Param('commentId') commentId: string,
-        @Body('text') text: string,
-        @UploadedFile() file?: Express.Multer.File
-    ): Promise<Comment> {
-        let attachmentUrl;
-
-        // Only upload if a file was provided
-        if (file) {
-            attachmentUrl = await this.fileUploadService.uploadFile(
-                file.buffer,
-                file.originalname,
-                file.mimetype,
-                'feed'
-            );
-        }
-
-        return await lastValueFrom(
-            this.feedClient.send('UpdateCommentCommand', {
-                commentId,
-                userId: user.id,
-                text,
-                attachmentUrl,
-            })
-        );
-    }
-
-    @Delete('comment/:commentId')
-    @ApiOperation({summary: 'Delete a comment'})
-    @ApiParam({name: 'commentId', description: 'ID of the comment'})
-    @ApiResponse({status: 200, description: 'Comment deleted successfully'})
-    @ApiResponse({status: 404, description: 'Comment not found'})
-    async deleteComment(@CurrentUser() user, @Param('commentId') commentId: string): Promise<Comment> {
-        return await lastValueFrom(
-            this.feedClient.send('DeleteCommentCommand', {
-                commentId,
-                userId: user.id,
             })
         );
     }
@@ -250,39 +283,6 @@ export class PostController {
             this.feedClient.send('SharePostCommand', {
                 userId: user.id,
                 postId,
-            })
-        );
-    }
-
-    @Get('shared/by-user/:userId')
-    @ApiOperation({summary: 'Get posts shared by a specific user'})
-    @ApiParam({name: 'userId', description: 'ID of the user'})
-    @ApiQuery({type: PaginationDto})
-    @ApiResponse({status: 200, description: 'List of shared posts'})
-    async getSharedPostsByUser(
-        @Param('userId') userId: string,
-        @Query() paginationDto: PaginationDto
-    ): Promise<PaginationResponseInterface<any>> {
-        return await lastValueFrom(
-            this.feedClient.send('GetSharedPostsByUserCommand', {
-                userId,
-                page: paginationDto.page,
-                limit: paginationDto.limit,
-            })
-        );
-    }
-
-    @Get('trending/tags')
-    @ApiOperation({summary: 'Get trending tags across all posts'})
-    @ApiQuery({type: PaginationDto})
-    @ApiResponse({status: 200, description: 'List of trending tags with popularity counts'})
-    async getTrendingTags(
-        @Query() paginationDto: PaginationDto
-    ): Promise<PaginationResponseInterface<{trending: string; popularity: number}>> {
-        return await lastValueFrom(
-            this.feedClient.send('GetTrendingTagsCommand', {
-                page: paginationDto.page,
-                limit: paginationDto.limit,
             })
         );
     }

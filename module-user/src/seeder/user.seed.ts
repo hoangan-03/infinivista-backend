@@ -206,7 +206,7 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
                 const user = userRepo.create({
                     email: `user${i}@example.com`,
                     username: `user${i}`,
-                    password: await hashPassword(faker.internet.password()),
+                    password: await hashPassword('password123'),
                     firstName,
                     lastName,
                     phoneNumber: faker.phone.number({style: 'international'}),

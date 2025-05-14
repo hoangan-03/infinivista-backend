@@ -181,7 +181,6 @@ export class FeedService {
     async getPopularPostNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
         // Ensure the user has a newsfeed before proceeding
         const userFeed = await this.ensureUserHasNewsFeed(userId);
-        const userOwner = await this.userReferenceService.findById(userId);
 
         // Get posts with their reactions and comments
         const [posts, total] = await this.postRepository.findAndCount({
@@ -237,7 +236,7 @@ export class FeedService {
         // Map posts to include only topic name and description
         const mappedPosts = paginatedPosts.map((post) => ({
             ...post,
-            userOwner: userOwner,
+            userOwner: post.newsFeed.owner,
             topics: post.topics.map((topic) => ({
                 name: topic.topicName,
                 description: topic.topicDescription,
@@ -263,7 +262,6 @@ export class FeedService {
     async getFriendsPostNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
         // Ensure the user has a newsfeed before proceeding
         await this.ensureUserHasNewsFeed(userId);
-        const userOwner = await this.userReferenceService.findById(userId);
 
         const friendIds = await this.userReferenceService.getFriends(userId || '');
         const friendPosts = await this.postRepository.find({
@@ -289,7 +287,7 @@ export class FeedService {
                 const shareCount = await this.getShareCount(post.id);
                 return {
                     ...post,
-                    userOwner: userOwner,
+                    userOwner: post.newsFeed.owner,
                     share_count: shareCount,
                     topics: post.topics.map((topic) => ({
                         name: topic.topicName,
@@ -313,7 +311,6 @@ export class FeedService {
     async getRandomNewsFeed(userId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<Post>> {
         // Ensure the user has a newsfeed before proceeding
         await this.ensureUserHasNewsFeed(userId);
-        const userOwner = await this.userReferenceService.findById(userId);
 
         // Get all public posts with their topics
         const publicPosts = await this.postRepository.find({
@@ -374,7 +371,12 @@ export class FeedService {
                 // Add userOwner to each post
                 const mappedPosts = paginatedPosts.map((post) => ({
                     ...post,
+<<<<<<< HEAD
+                    userOwner: post.newsFeed.owner,
+=======
                     userOwner: userOwner,
+                    share_count: post.share_count,
+>>>>>>> c085b4f9c410722a1b3639963380914bfc535b82
                 }));
 
                 return {
@@ -407,7 +409,12 @@ export class FeedService {
             // Add userOwner to each post
             const mappedPosts = paginatedPosts.map((post) => ({
                 ...post,
+<<<<<<< HEAD
+                userOwner: post.newsFeed.owner,
+=======
                 userOwner: userOwner,
+                share_count: post.share_count,
+>>>>>>> c085b4f9c410722a1b3639963380914bfc535b82
             }));
 
             return {
@@ -444,7 +451,12 @@ export class FeedService {
             // Add userOwner to each post
             const mappedPosts = postsWithShareCounts.slice(0, limit).map((post) => ({
                 ...post,
+<<<<<<< HEAD
+                userOwner: post.newsFeed.owner,
+=======
                 userOwner: userOwner,
+                share_count: post.share_count,
+>>>>>>> c085b4f9c410722a1b3639963380914bfc535b82
             }));
 
             return {
@@ -1047,11 +1059,18 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             relations: ['user'],
         });
 
-        // Map reactions to include userOwner
-        return reactions.map((reaction) => ({
-            ...reaction,
-            userOwner: reaction.user,
-        }));
+        // Map reactions to include userOwner with null check
+        return reactions
+            .map((reaction) => {
+                // Safely handle potentially null user references
+                const userOwner = reaction.user || null;
+
+                return {
+                    ...reaction,
+                    userOwner,
+                };
+            })
+            .filter((reaction) => reaction); // Filter out any null reactions
     }
 
     async removeReaction(postId: string, userId: string): Promise<{success: boolean}> {

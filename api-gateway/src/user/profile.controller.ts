@@ -40,6 +40,17 @@ export class ProfileController {
         private fileUploadService: FileUploadService
     ) {}
 
+    @Get('all-users')
+    @ApiOperation({summary: 'Get all users - For testing only'})
+    @ApiResponse({status: 200, description: 'Return all users (For testing only)', type: [User]})
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid or missing token',
+    })
+    async getList(@CurrentUser() currentUser: User): Promise<User[]> {
+        return await lastValueFrom(this.userClient.send<User[]>('GetAllUserCommand', {id: currentUser.id}));
+    }
+
     @Patch()
     @ApiOperation({summary: 'Update user profile information'})
     @ApiBody({type: UpdateUserDto})

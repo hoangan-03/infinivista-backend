@@ -25,8 +25,12 @@ export class UserController {
     ) {}
 
     @MessagePattern('GetAllUserCommand')
-    async getList(): Promise<User[]> {
-        return this.userService.getAll();
+    async getList(payload: {id: string}): Promise<User[]> {
+        if (payload.id) {
+            return this.userService.getAll();
+        } else {
+            return this.userService.getAll();
+        }
     }
 
     @MessagePattern('GetByIdUserCommand')

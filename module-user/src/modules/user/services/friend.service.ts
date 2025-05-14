@@ -129,6 +129,24 @@ export class FriendService {
         // Get IDs of user's friends
         const userFriendIds = userFriendships.map((f) => f.friend_id);
 
+        // Get pending friend requests
+        const pendingRequests = await this.friendRequestRepository.find({
+            where: [
+                {sender_id: userId, status: FriendStatus.PENDING},
+                {recipient_id: userId, status: FriendStatus.PENDING},
+            ],
+        });
+
+        // Extract user IDs from pending requests
+        const pendingRequestUserIds = new Set<string>();
+        pendingRequests.forEach((request) => {
+            if (request.sender_id === userId) {
+                pendingRequestUserIds.add(request.recipient_id);
+            } else {
+                pendingRequestUserIds.add(request.sender_id);
+            }
+        });
+
         // Get all friends of these friends (potential suggestions)
         const friendsOfFriends = await this.friendRepository.find({
             where: {user_id: In(userFriendIds)},
@@ -139,8 +157,12 @@ export class FriendService {
         const commonFriendsCount: Record<string, {user: User; count: number}> = {};
 
         for (const fof of friendsOfFriends) {
-            // Skip if this is the original user or already a direct friend
-            if (fof.friend_id === userId || userFriendIds.includes(fof.friend_id)) {
+            // Skip if this is the original user, already a direct friend, or has a pending friend request
+            if (
+                fof.friend_id === userId ||
+                userFriendIds.includes(fof.friend_id) ||
+                pendingRequestUserIds.has(fof.friend_id)
+            ) {
                 continue;
             }
 

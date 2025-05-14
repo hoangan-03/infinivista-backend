@@ -30,6 +30,28 @@ import {UserReactPost} from '../entities/local/user-react-post.entity';
 import {UserSharePost} from '../entities/local/user-share-post.entity';
 import {imageLinks, videoLinks} from './self-seeder';
 
+class GeminiRateLimiter {
+    private requests: number[] = [];
+    private readonly maxRequests = 30;
+    private readonly timeWindow = 60000;
+    async waitForSlot(): Promise<void> {
+        const now = Date.now();
+
+        this.requests = this.requests.filter((time) => now - time < this.timeWindow);
+
+        if (this.requests.length >= this.maxRequests) {
+            const oldestRequest = this.requests[0];
+            const waitTime = this.timeWindow - (now - oldestRequest);
+            await new Promise((resolve) => setTimeout(resolve, waitTime));
+            return this.waitForSlot();
+        }
+
+        this.requests.push(now);
+    }
+}
+
+const geminiRateLimiter = new GeminiRateLimiter();
+
 /**
  * Extracts potential interests from a user's text content
  * @param text Text to analyze for interests
@@ -234,6 +256,9 @@ async function generateMeaningfulPostContent(
             logger.warn('GEMINI_API_KEY not set in environment variables');
             return getFallbackPostContent(context);
         }
+
+        // Wait for a rate limit slot before making the request
+        await geminiRateLimiter.waitForSlot();
 
         // Select real-world references to potentially include
         const realEvent = faker.helpers.arrayElement(realWorldData.events);
