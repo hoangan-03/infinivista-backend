@@ -371,12 +371,7 @@ export class FeedService {
                 // Add userOwner to each post
                 const mappedPosts = paginatedPosts.map((post) => ({
                     ...post,
-<<<<<<< HEAD
                     userOwner: post.newsFeed.owner,
-=======
-                    userOwner: userOwner,
-                    share_count: post.share_count,
->>>>>>> c085b4f9c410722a1b3639963380914bfc535b82
                 }));
 
                 return {
@@ -409,12 +404,7 @@ export class FeedService {
             // Add userOwner to each post
             const mappedPosts = paginatedPosts.map((post) => ({
                 ...post,
-<<<<<<< HEAD
                 userOwner: post.newsFeed.owner,
-=======
-                userOwner: userOwner,
-                share_count: post.share_count,
->>>>>>> c085b4f9c410722a1b3639963380914bfc535b82
             }));
 
             return {
@@ -451,12 +441,7 @@ export class FeedService {
             // Add userOwner to each post
             const mappedPosts = postsWithShareCounts.slice(0, limit).map((post) => ({
                 ...post,
-<<<<<<< HEAD
                 userOwner: post.newsFeed.owner,
-=======
-                userOwner: userOwner,
-                share_count: post.share_count,
->>>>>>> c085b4f9c410722a1b3639963380914bfc535b82
             }));
 
             return {
