@@ -46,23 +46,7 @@ export class TokenBlacklistService {
         if (!token) return false;
 
         const cleanToken = token.replace('Bearer ', '');
-
-        // Add validation for token format before checking blacklist
-        try {
-            // Verify this is a valid JWT token format
-            const decoded = this.jwtService.verify(cleanToken);
-            if (!decoded) {
-                this.logger.warn('Token verification failed: Token payload empty');
-                throw new Error('Invalid token: Empty payload');
-            }
-
-            // If token is valid format, check if it's blacklisted
-            return this.tokenBlacklist.has(cleanToken);
-        } catch (error: any) {
-            // If token verification fails, consider it invalid
-            this.logger.warn(`Invalid token detected: ${error.message}`);
-            throw new Error('Invalid token format');
-        }
+        return this.tokenBlacklist.has(cleanToken);
     }
 
     private cleanupExpiredTokens(): void {

@@ -6,6 +6,7 @@ import {useContainer, ValidationError} from 'class-validator';
 import * as compression from 'compression';
 import * as cookieParser from 'cookie-parser';
 import * as session from 'express-session';
+import helmet from 'helmet';
 
 import {AppModule} from './app.module';
 
@@ -73,6 +74,41 @@ async function bootstrap() {
             persistAuthorization: true,
         },
     });
+
+    // app.use(
+    //     permissionsPolicy({
+    //         features: {
+    //             fullscreen: ['self'],
+    //             vibrate: [],
+    //             payment: ['self', 'https://example.com'],
+    //             'sync-xhr': [],
+    //         },
+    //     })
+    // );
+    app.use(
+        helmet({
+            contentSecurityPolicy: {
+                directives: {
+                    defaultSrc: ["'self'"],
+                    scriptSrc: ["'self'", "'unsafe-inline'"],
+                    styleSrc: ["'self'", "'unsafe-inline'"],
+                    imgSrc: ["'self'", 'data:'],
+                    fontSrc: ["'self'"],
+                    connectSrc: ["'self'"],
+                },
+            },
+            strictTransportSecurity: {
+                maxAge: 63072000,
+                includeSubDomains: true,
+                preload: true,
+            },
+            referrerPolicy: {
+                policy: 'strict-origin-when-cross-origin',
+            },
+            xContentTypeOptions: true,
+            hidePoweredBy: true,
+        })
+    );
 
     await app.listen(port);
 }
