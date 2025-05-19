@@ -179,8 +179,110 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
             throw error; // Rethrow to stop the process
         }
 
-        // Regular users - Increased to 30 regular users
-        const numberOfRegularUsers = 30;
+        // Create special content creators (5-6 users with recognizable names)
+        logger.log('Creating special content creator users...');
+        const contentCreators: User[] = [];
+        const contentCreatorData = [
+            {
+                username: 'sarah_travels',
+                firstName: 'Sarah',
+                lastName: 'Johnson',
+                email: 'sarah.johnson@example.com',
+                biography:
+                    'Travel photographer and digital nomad. Exploring the world one photo at a time. Currently in Southeast Asia.',
+                gender: Gender.FEMALE,
+            },
+            {
+                username: 'tech_mike',
+                firstName: 'Mike',
+                lastName: 'Chen',
+                email: 'mike.chen@example.com',
+                biography:
+                    'Tech reviewer and software developer. I share insights about the latest gadgets and coding tips.',
+                gender: Gender.MALE,
+            },
+            {
+                username: 'fitness_alex',
+                firstName: 'Alex',
+                lastName: 'Rodriguez',
+                email: 'alex.rodriguez@example.com',
+                biography:
+                    'Personal trainer and nutrition specialist. Helping you achieve your fitness goals with science-backed methods.',
+                gender: Gender.MALE,
+            },
+            {
+                username: 'chef_emily',
+                firstName: 'Emily',
+                lastName: 'Wong',
+                email: 'emily.wong@example.com',
+                biography:
+                    'Professional chef and food blogger. I share recipes that are both delicious and approachable for home cooks.',
+                gender: Gender.FEMALE,
+            },
+            {
+                username: 'artist_james',
+                firstName: 'James',
+                lastName: 'Taylor',
+                email: 'james.taylor@example.com',
+                biography: 'Digital artist and illustrator. Creating worlds through pixels and imagination.',
+                gender: Gender.MALE,
+            },
+            {
+                username: 'news_lisa',
+                firstName: 'Lisa',
+                lastName: 'Garcia',
+                email: 'lisa.garcia@example.com',
+                biography: 'Journalist and commentator. Sharing breaking news and analysis on current events.',
+                gender: Gender.FEMALE,
+            },
+        ];
+
+        try {
+            for (const creatorData of contentCreatorData) {
+                logger.log(`Creating content creator: ${creatorData.username}...`);
+
+                const contentCreator = userRepo.create({
+                    email: creatorData.email,
+                    username: creatorData.username,
+                    password: await hashPassword('password123'),
+                    firstName: creatorData.firstName,
+                    lastName: creatorData.lastName,
+                    phoneNumber: faker.phone.number({style: 'international'}),
+                    dob: faker.date.birthdate({min: 25, max: 45, mode: 'age'}),
+                    gender: creatorData.gender,
+                    profileImageUrl: faker.image.avatar(),
+                    coverImageUrl: faker.helpers.arrayElement(imageLinks),
+                    address: faker.location.streetAddress({useFullAddress: true}),
+                    profilePrivacy: ProfilePrivacy.PUBLIC, // All content creators are public
+                    biography: creatorData.biography,
+                    userEvent: faker.helpers.arrayElements(
+                        [
+                            'Content Creator Award Winner',
+                            'Platform Featured Creator',
+                            'Trending Post Achievement',
+                            'Engagement Milestone Reacher',
+                            'Community Spotlight Feature',
+                            'Viral Content Producer',
+                            'Top Contributor Highlight',
+                            'Creative Excellence Recognition',
+                        ],
+                        faker.number.int({min: 3, max: 5})
+                    ),
+                });
+
+                await userRepo.save(contentCreator);
+                contentCreators.push(contentCreator);
+                users.push(contentCreator); // Add to the general users array too
+                logger.log(`Created content creator: ${contentCreator.username}`);
+            }
+        } catch (error: any) {
+            logger.error(`Error creating content creators: ${error.message}`);
+            logger.error(error.stack);
+            throw error;
+        }
+
+        // Regular users - Reduced to 394 regular users
+        const numberOfRegularUsers = 394;
         for (let i = 1; i <= numberOfRegularUsers; i++) {
             try {
                 const firstName = faker.person.firstName();
@@ -359,15 +461,46 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
         logger.log('Creating friendships...');
         try {
             const adminUser = users[0];
-            // Regular users excluding admin
-            const regularUsers = users.slice(1);
+            const admin2User = users[1];
 
-            // Make admin friends with 40-60% of all users
-            const adminFriendCount = Math.floor(regularUsers.length * faker.number.float({min: 0.4, max: 0.6}));
-            const adminFriends = faker.helpers.arrayElements(regularUsers, adminFriendCount);
+            // First, make all content creators friends with both admins
+            logger.log('Creating friendships between admins and content creators...');
 
-            logger.log(`Creating ${adminFriendCount} friendships for admin user`);
-            for (const friend of adminFriends) {
+            for (const creator of contentCreators) {
+                // Create friendship with first admin
+                const firstAdminFriendship = friendRepo.create({
+                    user_id: adminUser.id,
+                    friend_id: creator.id,
+                });
+                await friendRepo.save(firstAdminFriendship);
+                logger.log(`Created friendship between admin and ${creator.username}`);
+
+                // Create friendship with second admin
+                const secondAdminFriendship = friendRepo.create({
+                    user_id: admin2User.id,
+                    friend_id: creator.id,
+                });
+                await friendRepo.save(secondAdminFriendship);
+                logger.log(`Created friendship between admin2 and ${creator.username}`);
+            }
+
+            // Regular users excluding admins and content creators
+            const regularUsers = users.filter(
+                (user) =>
+                    user.id !== adminUser.id &&
+                    user.id !== admin2User.id &&
+                    !contentCreators.some((creator) => creator.id === user.id)
+            );
+
+            // Make admin users have a few more regular friends (beyond the content creators)
+            const adminRegularFriendCount = faker.number.int({min: 2, max: 6});
+            const admin2RegularFriendCount = faker.number.int({min: 2, max: 6});
+
+            // Select regular friends for first admin
+            const adminRegularFriends = faker.helpers.arrayElements(regularUsers, adminRegularFriendCount);
+
+            logger.log(`Creating ${adminRegularFriendCount} additional regular friendships for first admin user`);
+            for (const friend of adminRegularFriends) {
                 const friendship = friendRepo.create({
                     user_id: adminUser.id,
                     friend_id: friend.id,
@@ -376,17 +509,43 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
                 logger.log(`Created friendship between admin and ${friend.username}`);
             }
 
-            // Create additional friendships between regular users
-            // Each user will have 3-10 friends
-            for (let i = 0; i < regularUsers.length; i++) {
-                const user = regularUsers[i];
+            // Select friends for second admin (excluding those already friends with first admin)
+            const potentialAdmin2RegularFriends = regularUsers.filter(
+                (user) => !adminRegularFriends.some((friend) => friend.id === user.id)
+            );
 
-                // Determine number of friends for this user (3-10)
-                const numFriends = faker.number.int({min: 3, max: 10});
+            const admin2RegularFriends = faker.helpers.arrayElements(
+                potentialAdmin2RegularFriends,
+                Math.min(admin2RegularFriendCount, potentialAdmin2RegularFriends.length)
+            );
 
-                // Get potential friends (users that aren't the current user and exclude those already friends with admin)
+            logger.log(`Creating ${admin2RegularFriends.length} additional regular friendships for second admin user`);
+            for (const friend of admin2RegularFriends) {
+                const friendship = friendRepo.create({
+                    user_id: admin2User.id,
+                    friend_id: friend.id,
+                });
+                await friendRepo.save(friendship);
+                logger.log(`Created friendship between admin2 and ${friend.username}`);
+            }
+
+            // Create significantly fewer friendships between regular users
+            // Each user will have 0-2 friends (very few)
+            logger.log('Creating very limited friendships between regular users...');
+
+            // Process only about 20% of regular users to create even fewer connections
+            const usersToProcess = faker.helpers.arrayElements(regularUsers, Math.floor(regularUsers.length * 0.2));
+
+            for (const user of usersToProcess) {
+                // Determine number of friends for this user (0-2)
+                const numFriends = faker.number.int({min: 0, max: 2});
+
+                if (numFriends === 0) continue; // Skip users who get 0 friends
+
+                // Get potential friends (users that aren't the current user and exclude those already friends with admins)
+                const allAdminFriends = [...contentCreators, ...adminRegularFriends, ...admin2RegularFriends];
                 const potentialFriends = regularUsers.filter(
-                    (u) => u.id !== user.id && !adminFriends.some((af) => af.id === u.id)
+                    (u) => u.id !== user.id && !allAdminFriends.some((af) => af.id === u.id)
                 );
 
                 // Select random friends up to numFriends or max available
@@ -417,16 +576,16 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
             }
 
             // Create friend requests
-            // - More requests to/from admin
-            // - Regular requests between other users
+            // - Fewer requests to/from admin
+            // - Very limited requests between other users
 
-            // First, create 10-15 friend requests specifically for admin
-            const adminRequestCount = faker.number.int({min: 10, max: 15});
-            logger.log(`Creating ${adminRequestCount} friend requests involving admin`);
+            // Create 5-8 friend requests specifically for admin (reduced number)
+            const adminRequestCount = faker.number.int({min: 5, max: 8});
+            logger.log(`Creating ${adminRequestCount} friend requests involving first admin`);
 
             // Get users who aren't already friends with admin
             const nonAdminFriends = regularUsers.filter(
-                (user) => !adminFriends.some((friend) => friend.id === user.id)
+                (user) => !adminRegularFriends.some((friend) => friend.id === user.id)
             );
 
             for (let i = 0; i < adminRequestCount && nonAdminFriends.length > 0; i++) {

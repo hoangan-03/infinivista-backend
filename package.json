@@ -17,6 +17,7 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@types/amqplib": "^0.10.7",
     "@types/dotenv": "^6.1.1",
     "@types/node": "^22.14.0",
