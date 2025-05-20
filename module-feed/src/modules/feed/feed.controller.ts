@@ -105,15 +105,6 @@ export class FeedController {
         return this.feedService.getStoriesByNewsFeedId(payload.newsFeedId, payload.page, payload.limit);
     }
 
-    @MessagePattern('GetOwnedStoriesByIdNewsFeedCommand')
-    async getOwnedStoriesByNewsFeedId(payload: {
-        newsFeedId: string;
-        page?: number;
-        limit?: number;
-    }): Promise<PaginationResponseInterface<Story>> {
-        return this.feedService.getOwnedStoriesByNewsFeedId(payload.newsFeedId, payload.page, payload.limit);
-    }
-
     @MessagePattern('GetAPostByIdCommand')
     async getAPostById(payload: {postId: string}): Promise<PostEntity> {
         return this.feedService.getPostById(payload.postId);

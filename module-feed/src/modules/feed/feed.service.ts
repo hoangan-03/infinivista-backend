@@ -184,6 +184,7 @@ export class FeedService {
 
         // Get posts with their reactions and comments
         const [posts, total] = await this.postRepository.findAndCount({
+            where: {newsFeed: {id: userFeed.id}},
             relations: ['topics', 'postAttachments', 'comments', 'newsFeed.owner'],
             order: {createdAt: 'DESC'},
         });
@@ -733,7 +734,7 @@ Return only the topic IDs as a JSON array with no explanations. For example:
         return this.storyRepository.save(story);
     }
 
-    async getOwnedStoriesByNewsFeedId(
+    async getStoriesByNewsFeedId(
         newsFeedId: string,
         page = 1,
         limit = 10
@@ -745,6 +746,7 @@ Return only the topic IDs as a JSON array with no explanations. For example:
             order: {createdAt: 'DESC'},
         });
         const userFeed = await this.getNewsFeedById(newsFeedId);
+
         const userOwner = await this.userReferenceService.findById(userFeed.owner.id);
         const mappedStories = stories.map((post) => ({
             ...post,
@@ -757,50 +759,6 @@ Return only the topic IDs as a JSON array with no explanations. For example:
                 page,
                 limit,
                 totalPages: Math.ceil(total / limit),
-            },
-        };
-    }
-
-    /**
-     * Get stories from friends with public or friend visibility, excluding own stories
-     * @param newsFeedId - ID of the news feed to get stories for
-     * @param page - Page number for pagination
-     * @param limit - Number of items per page
-     * @returns Paginated stories from friends only
-     */
-    async getStoriesByNewsFeedId(newsFeedId: string, page = 1, limit = 10): Promise<PaginationResponseInterface<any>> {
-        const newsFeed = await this.getNewsFeedById(newsFeedId);
-
-        const friendIds = await this.userReferenceService.getFriends(newsFeed.owner.id);
-        const userOwner = await this.userReferenceService.findById(newsFeed.owner.id);
-        const friendStories = await this.storyRepository.find({
-            where: {newsFeed: {owner: {id: In(friendIds.map((friend) => friend.id))}}},
-            relations: ['newsFeed', 'newsFeed.owner'],
-        });
-
-        // Randomly shuffle the stories
-        for (let i = friendStories.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [friendStories[i], friendStories[j]] = [friendStories[j], friendStories[i]];
-        }
-
-        const startIndex = (page - 1) * limit;
-        const endIndex = Math.min(startIndex + limit, friendStories.length);
-        const paginatedStories = friendStories.slice(startIndex, endIndex);
-
-        // Map users to their stories
-        const storiesWithUsers = paginatedStories.map((story) => ({
-            ...story,
-            userOwner: story.newsFeed.owner,
-        }));
-
-        return {
-            data: storiesWithUsers,
-            metadata: {
-                total: friendStories.length,
-                page,
-                limit,
-                totalPages: Math.ceil(friendStories.length / limit),
             },
         };
     }

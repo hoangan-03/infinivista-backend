@@ -284,19 +284,6 @@ export class NewsFeedController {
         return await lastValueFrom(this.feedClient.send('GetAPostByIdCommand', {postId}));
     }
 
-    @Get('/stories/owned')
-    @ApiOperation({summary: 'Get owned stories in a news feed'})
-    @ApiParam({name: 'id', description: 'ID of the news feed'})
-    @ApiQuery({type: PaginationDto})
-    async getOwnedStoriesByNewsFeedId(
-        @Param('id') newsFeedId: string,
-        @Query() paginationDto: PaginationDto
-    ): Promise<PaginationResponseInterface<Story>> {
-        return await lastValueFrom(
-            this.feedClient.send('GetOwnedStoriesByIdNewsFeedCommand', {newsFeedId, paginationDto})
-        );
-    }
-
     @Get('/stories/:id')
     @ApiOperation({summary: 'Get a story by ID'})
     @ApiResponse({

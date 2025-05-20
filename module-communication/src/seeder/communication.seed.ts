@@ -243,11 +243,6 @@ interface UserData {
     phoneNumber: string;
 }
 
-interface FriendshipData {
-    user_id: string;
-    friend_id: string;
-}
-
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const seedCommunicationDatabase = async (dataSource: DataSource) => {
@@ -301,13 +296,6 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
 
         logger.log(`Retrieved ${users.length} users from user module database`);
 
-        // Get friendship data to determine which users are friends with admins
-        logger.log('Retrieving friendship data from user module...');
-        const friendships: FriendshipData[] = await userModuleConnection.query(`
-            SELECT user_id, friend_id FROM friends
-        `);
-        logger.log(`Retrieved ${friendships.length} friendships from user module database`);
-
         // Create user references with exact IDs and data from user module
         logger.log('Creating user references with actual user data...');
         const userRefs: UserReference[] = [];
@@ -344,39 +332,6 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
         if (!adminUserRef) {
             logger.warn('Admin user not found. Using first user as admin for seeding purposes.');
             adminUserRef = userRefs[0];
-        }
-
-        // Find users who are friends with admins
-        const admin1Friends: UserReference[] = [];
-        const admin2Friends: UserReference[] = [];
-
-        if (adminUserRef) {
-            // Find all users who are friends with the first admin
-            const admin1FriendshipIds = friendships
-                .filter(
-                    (friendship) => friendship.user_id === adminUserRef!.id || friendship.friend_id === adminUserRef!.id
-                )
-                .map((friendship) =>
-                    friendship.user_id === adminUserRef!.id ? friendship.friend_id : friendship.user_id
-                );
-
-            admin1Friends.push(...userRefs.filter((user) => admin1FriendshipIds.includes(user.id)));
-            logger.log(`Found ${admin1Friends.length} users who are friends with first admin.`);
-        }
-
-        if (admin2UserRef) {
-            // Find all users who are friends with the second admin
-            const admin2FriendshipIds = friendships
-                .filter(
-                    (friendship) =>
-                        friendship.user_id === admin2UserRef!.id || friendship.friend_id === admin2UserRef!.id
-                )
-                .map((friendship) =>
-                    friendship.user_id === admin2UserRef!.id ? friendship.friend_id : friendship.user_id
-                );
-
-            admin2Friends.push(...userRefs.filter((user) => admin2FriendshipIds.includes(user.id)));
-            logger.log(`Found ${admin2Friends.length} users who are friends with second admin.`);
         }
 
         // Close the user module connection
@@ -455,10 +410,12 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             logger.log(`Created ${messageCount} messages between admin users`);
         }
 
-        // Create direct messages ONLY between first admin and their friends
-        logger.log('Creating direct messages between first admin and their friends...');
+        // Create direct messages between admins and other users (REDUCED VOLUME)
+        logger.log('Creating direct messages primarily for admin users...');
 
-        for (const friend of admin1Friends) {
+        // Create messages between first admin and each other user
+        for (const otherUser of otherUserRefs) {
+            // Reduce to 10-15 messages between admin and each user (previously 20-30)
             const messageCount = faker.number.int({min: 10, max: 15});
 
             // Store previous message to provide context for the next one
@@ -468,14 +425,14 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 if (i > 0 && i % 5 === 0) {
                     await delay(1000); // 1 second delay every 5 messages
                 }
-                // Admin sends 70% of messages, friend sends 30%
+                // Admin sends 70% of messages, other user sends 30%
                 const isAdminSender = faker.datatype.boolean({probability: 0.7});
-                const sender = isAdminSender ? adminUserRef : friend;
-                const receiver = isAdminSender ? friend : adminUserRef;
+                const sender = isAdminSender ? adminUserRef : otherUser;
+                const receiver = isAdminSender ? otherUser : adminUserRef;
 
                 // Use Gemini AI for meaningful message content
                 const messageText = await generateMeaningfulMessageContent(logger, {
-                    relationship: 'friend',
+                    relationship: 'professional',
                     previousMessage,
                     sender: {
                         firstName: sender.firstName,
@@ -523,13 +480,12 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                     await messageAttachmentRepo.save(attachment);
                 }
             }
-            logger.log(`Created ${messageCount} messages between first admin and friend ${friend.username}`);
         }
 
-        // Create messages between second admin and their friends
+        // Create messages between second admin and each other user
         if (admin2UserRef) {
-            logger.log('Creating direct messages between second admin and their friends...');
-            for (const friend of admin2Friends) {
+            for (const otherUser of otherUserRefs) {
+                // Reduce to 8-12 messages between admin2 and each user (previously 15-25)
                 const messageCount = faker.number.int({min: 8, max: 12});
 
                 // Store previous message to provide context for the next one
@@ -539,14 +495,14 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                     if (i > 0 && i % 5 === 0) {
                         await delay(1000); // 1 second delay every 5 messages
                     }
-                    // Admin2 sends 65% of messages, friend sends 35%
+                    // Admin2 sends 65% of messages, other user sends 35%
                     const isAdminSender = faker.datatype.boolean({probability: 0.65});
-                    const sender = isAdminSender ? admin2UserRef : friend;
-                    const receiver = isAdminSender ? friend : admin2UserRef;
+                    const sender = isAdminSender ? admin2UserRef : otherUser;
+                    const receiver = isAdminSender ? otherUser : admin2UserRef;
 
                     // Use Gemini AI for meaningful message content
                     const messageText = await generateMeaningfulMessageContent(logger, {
-                        relationship: 'friend',
+                        relationship: 'professional',
                         previousMessage,
                         sender: {
                             firstName: sender.firstName,
@@ -594,26 +550,14 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                         await messageAttachmentRepo.save(attachment);
                     }
                 }
-                logger.log(`Created ${messageCount} messages between second admin and friend ${friend.username}`);
             }
         }
 
-        // Combine all users who are friends with any admin
-        const adminsAndFriends = [
-            ...(adminUserRef ? [adminUserRef] : []),
-            ...(admin2UserRef ? [admin2UserRef] : []),
-            ...admin1Friends,
-            ...admin2Friends,
-        ];
+        // Create group chats with admin always included
+        logger.log('Creating group chats with admin as a prominent member...');
 
-        // Remove duplicates (users who are friends with both admins)
-        const uniqueAdminsAndFriends = Array.from(new Map(adminsAndFriends.map((user) => [user.id, user])).values());
-
-        // Create group chats with ONLY admin users and their friends
-        logger.log('Creating group chats with admins and their friends only...');
-
-        // Create 3-5 group chats
-        const groupChatCount = faker.number.int({min: 3, max: 5});
+        // Create 5-8 group chats
+        const groupChatCount = faker.number.int({min: 5, max: 8});
 
         for (let i = 0; i < groupChatCount; i++) {
             // Always include at least one admin user as the creator
@@ -624,20 +568,13 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
                 continue;
             }
 
-            // Add 3-8 members to the group (only from admins and their friends)
-            const memberCount = faker.number.int({min: 3, max: 8});
-            const members = faker.helpers.arrayElements(
-                uniqueAdminsAndFriends,
-                Math.min(memberCount, uniqueAdminsAndFriends.length)
-            );
+            // Add 5-12 members to the group
+            const memberCount = faker.number.int({min: 5, max: 12});
+            const members = faker.helpers.arrayElements(otherUserRefs, memberCount - 2); // Leave space for admins
 
-            // Ensure both admins are always included if they exist
-            if (adminUserRef && !members.includes(adminUserRef)) {
-                members.push(adminUserRef);
-            }
-            if (admin2UserRef && !members.includes(admin2UserRef)) {
-                members.push(admin2UserRef);
-            }
+            // Ensure both admins are always in the group chat if they exist
+            if (adminUserRef) members.push(adminUserRef);
+            if (admin2UserRef) members.push(admin2UserRef);
 
             // Create a meaningful group chat name that reflects real usage patterns
             const groupChatNameTypes = [
@@ -670,14 +607,11 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             let previousGroupMessage: string | undefined = undefined;
 
             for (let j = 0; j < messageCount; j++) {
-                if (j > 0 && j % 5 === 0) {
+                if (i > 0 && i % 5 === 0) {
                     await delay(1000); // 1 second delay every 5 messages
                 }
-                // Admin users are more likely to send messages (70%) in groups
-                const isAdminSender = faker.datatype.boolean({probability: 0.7});
-                const sender = isAdminSender
-                    ? faker.helpers.arrayElement([adminUserRef, admin2UserRef].filter(Boolean) as UserReference[])
-                    : faker.helpers.arrayElement(members.filter((m) => m !== adminUserRef && m !== admin2UserRef));
+                // Random member sends the message
+                const sender = faker.helpers.arrayElement(members);
 
                 // Generate AI message content for group chat
                 const messageText = await generateMeaningfulMessageContent(logger, {
@@ -727,24 +661,60 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             );
         }
 
-        // Create call history records only between admins and their friends
-        logger.log('Creating call history records between admins and their friends only...');
+        // Create call history records with focus on admins
+        logger.log('Creating call history records focused on admin users...');
         const callStatusOptions = Object.values(CallStatus);
 
         // Create calls between the two admin users
         if (adminUserRef && admin2UserRef) {
-            // ...existing code for admin-to-admin calls...
+            logger.log('Creating call history between admin users...');
+            const callCount = faker.number.int({min: 6, max: 9});
+
+            for (let i = 0; i < callCount; i++) {
+                const isAdmin1Caller = faker.datatype.boolean();
+                const caller = isAdmin1Caller ? adminUserRef : admin2UserRef;
+                const receiver = isAdmin1Caller ? admin2UserRef : adminUserRef;
+
+                // Generate call details
+                const startTime = faker.date.recent({days: 30}); // Within last month
+                const callStatus = faker.helpers.arrayElement(callStatusOptions);
+                let endTime: Date | undefined = undefined;
+                let acceptedAt: Date | undefined = undefined;
+
+                // Admins usually have longer successful calls
+                if (callStatus === CallStatus.ENDED) {
+                    acceptedAt = new Date(startTime.getTime() + faker.number.int({min: 1000, max: 3000}));
+                    endTime = new Date(acceptedAt!.getTime() + faker.number.int({min: 300000, max: 3600000})); // 5-60 min call
+                } else if (callStatus === CallStatus.REJECTED) {
+                    endTime = new Date(startTime.getTime() + faker.number.int({min: 3000, max: 10000}));
+                } else if (callStatus === CallStatus.MISSED) {
+                    endTime = new Date(startTime.getTime() + faker.number.int({min: 15000, max: 30000}));
+                }
+
+                const callHistory = CallHistoryRepo.create({
+                    start_time: startTime,
+                    end_time: endTime,
+                    accepted_at: acceptedAt,
+                    status: callStatus,
+                    caller,
+                    receiver,
+                });
+
+                await CallHistoryRepo.save(callHistory);
+            }
+            logger.log(`Created ${callCount} calls between admin users`);
         }
 
-        // Create calls between first admin and their friends
-        for (const friend of admin1Friends) {
-            // 70% chance admin is the caller, 30% chance friend is the caller
-            const isAdminCaller = faker.datatype.boolean({probability: 0.7});
-            const caller = isAdminCaller ? adminUserRef : friend;
-            const receiver = isAdminCaller ? friend : adminUserRef;
+        const admin1CallCount = 10;
+        for (let i = 0; i < admin1CallCount; i++) {
+            const isAdminCaller = faker.datatype.boolean();
+            const otherUser = faker.helpers.arrayElement(otherUserRefs);
+
+            const caller = isAdminCaller ? adminUserRef : otherUser;
+            const receiver = isAdminCaller ? otherUser : adminUserRef;
 
             // Generate call details
-            const startTime = faker.date.recent({days: 21});
+            const startTime = faker.date.recent({days: 21}); // Within last 3 weeks
             const callStatus = faker.helpers.arrayElement(callStatusOptions);
             let endTime: Date | undefined = undefined;
             let acceptedAt: Date | undefined = undefined;
@@ -770,13 +740,14 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             await CallHistoryRepo.save(callHistory);
         }
 
-        // Create calls between second admin and their friends
         if (admin2UserRef) {
-            for (const friend of admin2Friends) {
-                // 65% chance admin2 is the caller, 35% chance friend is the caller
-                const isAdminCaller = faker.datatype.boolean({probability: 0.65});
-                const caller = isAdminCaller ? admin2UserRef : friend;
-                const receiver = isAdminCaller ? friend : admin2UserRef;
+            const admin2CallCount = 10;
+            for (let i = 0; i < admin2CallCount; i++) {
+                const isAdminCaller = faker.datatype.boolean();
+                const otherUser = faker.helpers.arrayElement(otherUserRefs);
+
+                const caller = isAdminCaller ? admin2UserRef : otherUser;
+                const receiver = isAdminCaller ? otherUser : admin2UserRef;
 
                 // Generate call details
                 const startTime = faker.date.recent({days: 14});
@@ -806,17 +777,45 @@ export const seedCommunicationDatabase = async (dataSource: DataSource) => {
             }
         }
 
-        const messageCount = await messageRepo.count();
-        const groupChatMessageCount = await groupChatMessageRepo.count();
-        const callCount = await CallHistoryRepo.count();
+        const regularUserCallCount = 1;
+        for (let i = 0; i < regularUserCallCount; i++) {
+            const userIndices = faker.helpers.shuffle([...Array(otherUserRefs.length).keys()]);
+            const caller = otherUserRefs[userIndices[0]];
+            const receiver = otherUserRefs[userIndices[1]];
 
-        logger.log(`
-Communication module seeding summary:
-- ${messageCount} direct messages
-- ${groupChatMessageCount} group chat messages
-- ${callCount} call history records
-- All communication restricted to admin-admin and admin-friend connections
-`);
+            // Generate call details
+            const startTime = faker.date.recent({days: 14});
+            const callStatus = faker.helpers.arrayElement(callStatusOptions);
+            let endTime: Date | undefined = undefined;
+            let acceptedAt: Date | undefined = undefined;
+
+            if (callStatus === CallStatus.ENDED) {
+                acceptedAt = new Date(startTime.getTime() + faker.number.int({min: 1000, max: 5000}));
+                endTime = new Date(acceptedAt.getTime() + faker.number.int({min: 10000, max: 600000})); // 10s - 10 min call
+            } else if (callStatus === CallStatus.REJECTED) {
+                endTime = new Date(startTime.getTime() + faker.number.int({min: 3000, max: 10000}));
+            } else if (callStatus === CallStatus.MISSED) {
+                endTime = new Date(startTime.getTime() + faker.number.int({min: 15000, max: 30000}));
+            }
+
+            const callHistory = CallHistoryRepo.create({
+                start_time: startTime,
+                end_time: endTime,
+                accepted_at: acceptedAt,
+                status: callStatus,
+                caller,
+                receiver,
+            });
+
+            await CallHistoryRepo.save(callHistory);
+        }
+
+        const totalCallCount =
+            admin1CallCount +
+            (admin2UserRef ? 20 : 0) +
+            regularUserCallCount +
+            (adminUserRef && admin2UserRef ? faker.number.int({min: 15, max: 25}) : 0);
+        logger.log(`Created approximately ${totalCallCount} call history records`);
         logger.log('Communication module seeding completed successfully!');
     } catch (error: any) {
         logger.error(`Error during seeding: ${error.message}`);

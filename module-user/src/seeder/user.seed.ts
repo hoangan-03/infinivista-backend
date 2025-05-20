@@ -463,46 +463,25 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
             const adminUser = users[0];
             const admin2User = users[1];
 
-            // First, make admin and admin2 friends with each other
-            logger.log('Creating friendship between admin and admin2...');
-            const adminFriendship1 = friendRepo.create({
-                user_id: adminUser.id,
-                friend_id: admin2User.id,
-            });
-            const adminFriendship2 = friendRepo.create({
-                user_id: admin2User.id,
-                friend_id: adminUser.id,
-            });
-            await friendRepo.save([adminFriendship1, adminFriendship2]);
-            logger.log('Created friendship between admin and admin2');
-
-            // Make all content creators friends with both admins
+            // First, make all content creators friends with both admins
             logger.log('Creating friendships between admins and content creators...');
 
             for (const creator of contentCreators) {
-                // Create bidirectional friendship with first admin
-                const firstAdminFriendship1 = friendRepo.create({
+                // Create friendship with first admin
+                const firstAdminFriendship = friendRepo.create({
                     user_id: adminUser.id,
                     friend_id: creator.id,
                 });
-                const firstAdminFriendship2 = friendRepo.create({
-                    user_id: creator.id,
-                    friend_id: adminUser.id,
-                });
-                await friendRepo.save([firstAdminFriendship1, firstAdminFriendship2]);
-                logger.log(`Created bidirectional friendship between admin and ${creator.username}`);
+                await friendRepo.save(firstAdminFriendship);
+                logger.log(`Created friendship between admin and ${creator.username}`);
 
-                // Create bidirectional friendship with second admin
-                const secondAdminFriendship1 = friendRepo.create({
+                // Create friendship with second admin
+                const secondAdminFriendship = friendRepo.create({
                     user_id: admin2User.id,
                     friend_id: creator.id,
                 });
-                const secondAdminFriendship2 = friendRepo.create({
-                    user_id: creator.id,
-                    friend_id: admin2User.id,
-                });
-                await friendRepo.save([secondAdminFriendship1, secondAdminFriendship2]);
-                logger.log(`Created bidirectional friendship between admin2 and ${creator.username}`);
+                await friendRepo.save(secondAdminFriendship);
+                logger.log(`Created friendship between admin2 and ${creator.username}`);
             }
 
             // Regular users excluding admins and content creators
@@ -522,16 +501,12 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
 
             logger.log(`Creating ${adminRegularFriendCount} additional regular friendships for first admin user`);
             for (const friend of adminRegularFriends) {
-                const friendship1 = friendRepo.create({
+                const friendship = friendRepo.create({
                     user_id: adminUser.id,
                     friend_id: friend.id,
                 });
-                const friendship2 = friendRepo.create({
-                    user_id: friend.id,
-                    friend_id: adminUser.id,
-                });
-                await friendRepo.save([friendship1, friendship2]);
-                logger.log(`Created bidirectional friendship between admin and ${friend.username}`);
+                await friendRepo.save(friendship);
+                logger.log(`Created friendship between admin and ${friend.username}`);
             }
 
             // Select friends for second admin (excluding those already friends with first admin)
@@ -546,16 +521,12 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
 
             logger.log(`Creating ${admin2RegularFriends.length} additional regular friendships for second admin user`);
             for (const friend of admin2RegularFriends) {
-                const friendship1 = friendRepo.create({
+                const friendship = friendRepo.create({
                     user_id: admin2User.id,
                     friend_id: friend.id,
                 });
-                const friendship2 = friendRepo.create({
-                    user_id: friend.id,
-                    friend_id: admin2User.id,
-                });
-                await friendRepo.save([friendship1, friendship2]);
-                logger.log(`Created bidirectional friendship between admin2 and ${friend.username}`);
+                await friendRepo.save(friendship);
+                logger.log(`Created friendship between admin2 and ${friend.username}`);
             }
 
             // Create significantly fewer friendships between regular users
@@ -594,16 +565,12 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
                     });
 
                     if (!existingFriendship) {
-                        const friendship1 = friendRepo.create({
+                        const friendship = friendRepo.create({
                             user_id: user.id,
                             friend_id: friend.id,
                         });
-                        const friendship2 = friendRepo.create({
-                            user_id: friend.id,
-                            friend_id: user.id,
-                        });
-                        await friendRepo.save([friendship1, friendship2]);
-                        logger.log(`Created bidirectional friendship between ${user.username} and ${friend.username}`);
+                        await friendRepo.save(friendship);
+                        logger.log(`Created friendship between ${user.username} and ${friend.username}`);
                     }
                 }
             }
@@ -701,17 +668,11 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
         // Create follower/following relationships
         logger.log('Creating follower/following relationships...');
         try {
-            // Only create followers for admin accounts and content creators
-            const adminAndCreators = [users[0], users[1], ...contentCreators];
-            logger.log(
-                `Setting up followers only for ${adminAndCreators.length} prioritized accounts (admins and content creators)`
-            );
-
-            // Create followers for each admin and content creator (20-30 followers per user)
-            for (const user of adminAndCreators) {
+            // Create followers for each user (20-30 followers per user)
+            for (const user of users) {
                 // Determine number of followers (20-30)
                 const numFollowers = faker.number.int({min: 20, max: 30});
-                logger.log(`Creating ${numFollowers} followers for ${user.username}...`);
+                logger.log(`Creating ${numFollowers} followers for user ${user.username}...`);
 
                 // Get potential followers (excluding the user themselves)
                 const potentialFollowers = users.filter((u) => u.id !== user.id);
@@ -730,11 +691,11 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
                     });
                     await userFollowRepo.save(userFollow);
                 }
-                logger.log(`Created ${selectedFollowers.length} followers for ${user.username}`);
+                logger.log(`Created ${selectedFollowers.length} followers for user ${user.username}`);
 
                 // Determine number of users to follow (10-12)
                 const numFollowing = faker.number.int({min: 10, max: 12});
-                logger.log(`Creating ${numFollowing} following relationships for ${user.username}...`);
+                logger.log(`Creating ${numFollowing} following relationships for user ${user.username}...`);
 
                 // Get potential users to follow (excluding the user themselves and those already following them)
                 const potentialToFollow = users.filter(
@@ -755,7 +716,7 @@ export const seedUserDatabase = async (dataSource: DataSource) => {
                     });
                     await userFollowRepo.save(userFollow);
                 }
-                logger.log(`Created ${selectedToFollow.length} following relationships for ${user.username}`);
+                logger.log(`Created ${selectedToFollow.length} following relationships for user ${user.username}`);
             }
 
             logger.log('Follower/following relationships created successfully');
