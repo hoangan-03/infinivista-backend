@@ -1,7 +1,7 @@
 import {BadRequestException, Injectable, Logger, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
-import {In} from 'typeorm';
+import {In, Not} from 'typeorm';
 
 import {Friend} from '@/entities/local/friend.entity';
 import {FriendRequest} from '@/entities/local/friend-request.entity';
@@ -20,7 +20,9 @@ export class FriendService {
         @InjectRepository(FriendRequest)
         private readonly friendRequestRepository: Repository<FriendRequest>,
         @InjectRepository(UserFollow)
-        private readonly userFollowRepository: Repository<UserFollow>
+        private readonly userFollowRepository: Repository<UserFollow>,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>
     ) {}
 
     async sendFriendRequest(senderId: string, recipientId: string): Promise<FriendRequest> {
@@ -147,57 +149,33 @@ export class FriendService {
             }
         });
 
-        // Get all friends of these friends (potential suggestions)
-        const friendsOfFriends = await this.friendRepository.find({
-            where: {user_id: In(userFriendIds)},
-            relations: ['friend'],
+        // Get all users except the current user, their friends, and users with pending requests
+        const excludedIds = [...userFriendIds, userId, ...Array.from(pendingRequestUserIds)];
+
+        const [users, total] = await this.userRepository.findAndCount({
+            where: {
+                id: Not(In(excludedIds)),
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+            order: {
+                createdAt: 'DESC',
+            },
         });
 
-        // Count common friends for each potential suggestion
-        const commonFriendsCount: Record<string, {user: User; count: number}> = {};
-
-        for (const fof of friendsOfFriends) {
-            // Skip if this is the original user, already a direct friend, or has a pending friend request
-            if (
-                fof.friend_id === userId ||
-                userFriendIds.includes(fof.friend_id) ||
-                pendingRequestUserIds.has(fof.friend_id)
-            ) {
-                continue;
-            }
-
-            if (!commonFriendsCount[fof.friend_id]) {
-                commonFriendsCount[fof.friend_id] = {
-                    user: fof.friend,
-                    count: 0,
-                };
-            }
-
-            commonFriendsCount[fof.friend_id].count++;
-        }
-
-        const MIN_COMMON_FRIENDS = 6;
-        const suggestionsArray = Object.values(commonFriendsCount)
-            .filter((item) => item.count >= MIN_COMMON_FRIENDS)
-            .sort((a, b) => b.count - a.count);
-
-        const startIdx = (page - 1) * limit;
-        const endIdx = startIdx + limit;
-        const paginatedSuggestions = suggestionsArray.slice(startIdx, endIdx);
-
-        const users = paginatedSuggestions.map((item) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const {password, ...userWithoutPassword} = item.user;
+        // Remove password from user objects
+        const usersWithoutPassword = users.map((user) => {
+            const {password, ...userWithoutPassword} = user;
             return userWithoutPassword as User;
         });
 
         return {
-            data: users,
+            data: usersWithoutPassword,
             metadata: {
-                total: suggestionsArray.length,
+                total,
                 page,
                 limit,
-                totalPages: Math.ceil(suggestionsArray.length / limit),
+                totalPages: Math.ceil(total / limit),
             },
         };
     }
