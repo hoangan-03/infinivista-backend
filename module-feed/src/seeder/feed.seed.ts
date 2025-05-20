@@ -269,8 +269,7 @@ async function generateMeaningfulPostContent(
         const realHealth = faker.helpers.arrayElement(realWorldData.healthTrends);
 
         // Build prompt based on provided context
-        let prompt =
-            'Generate a realistic social media post that makes specific references to real-world entities from 2024-2025 timeframe';
+        let prompt = 'Write a single social media post (1-2 sentences)';
 
         // Include topic if provided
         if (context?.topic) {
@@ -296,23 +295,23 @@ async function generateMeaningfulPostContent(
 
         // Add real-world context with a higher probability for certain categories based on the topic
         if (context?.topic?.toLowerCase().includes('tech') || context?.topic?.toLowerCase().includes('technology')) {
-            prompt += `. Include a specific reference to ${realTech}`;
+            prompt += `. Mention ${realTech}`;
         } else if (
             context?.topic?.toLowerCase().includes('travel') ||
             context?.topic?.toLowerCase().includes('tourism')
         ) {
-            prompt += `. Include a specific reference to ${realLocation} or ${realVenue}`;
+            prompt += `. Mention ${realLocation} or ${realVenue}`;
         } else if (
             context?.topic?.toLowerCase().includes('environment') ||
             context?.topic?.toLowerCase().includes('sustainable') ||
             context?.topic?.toLowerCase().includes('climate')
         ) {
-            prompt += `. Include a specific reference to ${realSustainability}`;
+            prompt += `. Mention ${realSustainability}`;
         } else if (
             context?.topic?.toLowerCase().includes('health') ||
             context?.topic?.toLowerCase().includes('wellness')
         ) {
-            prompt += `. Include a specific reference to ${realHealth}`;
+            prompt += `. Mention ${realHealth}`;
         } else {
             // For other topics, randomly select a real-world element to reference
             const realWorldElements = [
@@ -323,10 +322,10 @@ async function generateMeaningfulPostContent(
                 realSustainability,
                 realHealth,
             ];
-            prompt += `. Include a specific reference to ${faker.helpers.arrayElement(realWorldElements)}`;
+            prompt += `. Mention ${faker.helpers.arrayElement(realWorldElements)}`;
         }
 
-        prompt += '. Make it sound natural, engaging, and 1-3 sentences long.';
+        prompt += '. Write only the post content, no explanations or formatting.';
 
         const response = await axios.post(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
             contents: [
@@ -340,8 +339,30 @@ async function generateMeaningfulPostContent(
             ],
         });
 
-        // Extract the generated text
-        const generatedText = response.data.candidates[0].content.parts[0].text.trim();
+        // Extract the generated text and clean it up
+        let generatedText = response.data.candidates[0].content.parts[0].text.trim();
+
+        // Remove any lines that start with common explanation markers
+        generatedText = generatedText
+            .split('\n')
+            .filter((line) => !line.match(/^(ok|here|explanation|note|\*|>|#)/i))
+            .join('\n')
+            .trim();
+
+        // Remove any markdown formatting
+        generatedText = generatedText.replace(/[*_`]/g, '').trim();
+
+        // Remove any hashtags
+        generatedText = generatedText.replace(/#\w+/g, '').trim();
+
+        // Remove any extra whitespace and newlines
+        generatedText = generatedText.replace(/\s+/g, ' ').trim();
+
+        // If the text is empty after cleaning, use fallback content
+        if (!generatedText) {
+            return getFallbackPostContent(context);
+        }
+
         return generatedText;
     } catch (error: any) {
         logger.error(`Error generating post content with Gemini: ${error.message}`);
@@ -561,6 +582,107 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         await userModuleConnection.destroy();
         logger.log('Closed connection to user module database');
 
+        // Find our designated content creators (search by username patterns)
+        logger.log('Identifying content creators...');
+
+        // Define the special content creator usernames
+        const contentCreatorUsernames = [
+            'sarah_travels',
+            'tech_mike',
+            'fitness_alex',
+            'chef_emily',
+            'artist_james',
+            'news_lisa',
+        ];
+
+        // Find these users in our user references
+        const contentCreators = userRefs.filter((user) => contentCreatorUsernames.includes(user.username || ''));
+
+        if (contentCreators.length === 0) {
+            logger.warn('No content creators found! Make sure to run user seeder with special content creators first');
+        } else {
+            logger.log(
+                `Found ${contentCreators.length} content creators: ${contentCreators.map((c) => c.username).join(', ')}`
+            );
+        }
+
+        // A very small subset of regular users will also get content
+        const regularUserPercentWithContent = 0.01; // 1%
+        const regularUsersExcludingCreatorsAndAdmins = userRefs.filter(
+            (u) => u !== adminUserRef && u !== admin2UserRef && !contentCreators.some((c) => c.id === u.id)
+        );
+
+        const regularUsersWithContent = faker.helpers.arrayElements(
+            regularUsersExcludingCreatorsAndAdmins,
+            Math.ceil(regularUsersExcludingCreatorsAndAdmins.length * regularUserPercentWithContent)
+        );
+
+        logger.log(`Selected ${regularUsersWithContent.length} additional regular users to have content`);
+
+        // All users who will get news feeds and content
+        const usersWithContent = [
+            ...(adminUserRef ? [adminUserRef] : []),
+            ...(admin2UserRef ? [admin2UserRef] : []),
+            ...contentCreators,
+            ...regularUsersWithContent,
+        ];
+
+        // Create news feeds only for users who will have content
+        logger.log(`Creating news feeds only for ${usersWithContent.length} users who will have content...`);
+        const newsFeeds: NewsFeed[] = [];
+        let adminNewsFeed: NewsFeed | undefined;
+        let admin2NewsFeed: NewsFeed | undefined;
+
+        // Create user news feeds only for selected users
+        for (const userRef of usersWithContent) {
+            try {
+                const newsFeed = newsFeedRepo.create({
+                    description:
+                        userRef === adminUserRef
+                            ? 'Official Infinivista Admin Feed'
+                            : userRef === admin2UserRef
+                              ? 'Secondary Infinivista Admin Feed'
+                              : `Personal feed for ${userRef.firstName || userRef.username}`,
+                    visibility:
+                        userRef === adminUserRef || userRef === admin2UserRef
+                            ? visibilityEnum.PUBLIC
+                            : faker.helpers.arrayElement(Object.values(visibilityEnum)),
+                });
+
+                const savedFeed = await newsFeedRepo.save(newsFeed);
+
+                await dataSource
+                    .createQueryBuilder()
+                    .update(NewsFeed)
+                    .set({owner_id: userRef.id})
+                    .where('id = :id', {id: savedFeed.id})
+                    .execute();
+
+                const refreshedFeed = await newsFeedRepo.findOne({
+                    where: {id: savedFeed.id},
+                    relations: ['owner'],
+                });
+
+                if (refreshedFeed) {
+                    newsFeeds.push(refreshedFeed);
+
+                    if (userRef === adminUserRef) {
+                        adminNewsFeed = refreshedFeed;
+                        logger.log(`Created first admin news feed for ${userRef.username}`);
+                    } else if (userRef === admin2UserRef) {
+                        admin2NewsFeed = refreshedFeed;
+                        logger.log(`Created second admin news feed for ${userRef.username}`);
+                    } else if (contentCreators.some((c) => c.id === userRef.id)) {
+                        logger.log(`Created news feed for content creator: ${userRef.username}`);
+                    } else {
+                        logger.log(`Created news feed for regular user: ${userRef.username}`);
+                    }
+                }
+            } catch (error: any) {
+                logger.error(`Error creating news feed for user ${userRef.username}: ${error.message}`);
+            }
+        }
+
         // Create 20 hashtags
         logger.log('Creating hashtags...');
         const hashtagNames = [
@@ -627,15 +749,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         logger.log('Creating pages...');
         const pages: Page[] = [];
         const pageCategories = Object.values(PageCategoryEnum);
-        const pageNames = [
-            'Infinivista Official',
-            'Travel Photography',
-            'Tech Enthusiasts',
-            'Fitness Lovers',
-            'Digital Nomads Group',
-            'Cooking Masters',
-            'Art & Design Hub',
-        ];
+        const pageNames = ['Infinivista Official', 'Travel Photography', 'Tech Enthusiasts', 'Art & Design Hub'];
 
         // Create pages with admins as owners for first two pages and generate random content
         for (let i = 0; i < pageNames.length; i++) {
@@ -684,28 +798,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         // Create groups
         logger.log('Creating groups...');
         const groups: Group[] = [];
-        const groupNames = [
-            'Photography Enthusiasts',
-            'Software Developers',
-            'Fitness Motivation',
-            'Food Lovers',
-            'Book Club',
-            'Travel Addicts',
-            'Music Discussion',
-            'Gaming Community',
-            'Art & Design',
-            'Science & Tech',
-            'Nature Lovers',
-            'Pet Owners Club',
-            'Learning Languages',
-            'Startup Community',
-            'Film Enthusiasts',
-            'Anime & Manga Fans',
-            'Home Cooking',
-            'DIY Projects',
-            'Hiking Adventures',
-            'Cryptocurrency Discussions',
-        ];
+        const groupNames = ['Photography Enthusiasts', 'Software Developers', 'Book Club', 'Travel Addicts'];
 
         // Calculate how many groups should have admins (70%)
         const totalGroups = groupNames.length;
@@ -832,60 +925,6 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
         }
 
         // Create news feeds for each user, page, and group
-        logger.log('Creating news feeds...');
-        const newsFeeds: NewsFeed[] = [];
-        let adminNewsFeed: NewsFeed | undefined;
-        let admin2NewsFeed: NewsFeed | undefined;
-
-        // Create user news feeds
-        for (const userRef of userRefs) {
-            try {
-                const newsFeed = newsFeedRepo.create({
-                    description:
-                        userRef === adminUserRef
-                            ? 'Official Infinivista Admin Feed'
-                            : userRef === admin2UserRef
-                              ? 'Secondary Infinivista Admin Feed'
-                              : `Personal feed for ${userRef.firstName || userRef.username}`,
-                    visibility:
-                        userRef === adminUserRef || userRef === admin2UserRef
-                            ? visibilityEnum.PUBLIC // Admin feeds are always public
-                            : faker.helpers.arrayElement(Object.values(visibilityEnum)),
-                });
-
-                const savedFeed = await newsFeedRepo.save(newsFeed);
-
-                await dataSource
-                    .createQueryBuilder()
-                    .update(NewsFeed)
-                    .set({owner_id: userRef.id})
-                    .where('id = :id', {id: savedFeed.id})
-                    .execute();
-
-                const refreshedFeed = await newsFeedRepo.findOne({
-                    where: {id: savedFeed.id},
-                    relations: ['owner'],
-                });
-
-                if (refreshedFeed) {
-                    newsFeeds.push(refreshedFeed);
-
-                    if (userRef === adminUserRef) {
-                        adminNewsFeed = refreshedFeed;
-                        logger.log(`Created first admin news feed for ${userRef.username}`);
-                    } else if (userRef === admin2UserRef) {
-                        admin2NewsFeed = refreshedFeed;
-                        logger.log(`Created second admin news feed for ${userRef.username}`);
-                    } else {
-                        logger.log(`Created news feed for ${userRef.username}`);
-                    }
-                }
-            } catch (error: any) {
-                logger.error(`Error creating news feed for user ${userRef.username}: ${error.message}`);
-            }
-        }
-
-        // Create news feeds for pages
         logger.log('Creating news feeds for pages...');
         for (const page of pages) {
             try {
@@ -906,7 +945,7 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
 
                 logger.log(`Created news feed for page: ${page.name}`);
 
-                const pagePostCount = faker.number.int({min: 10, max: 20});
+                const pagePostCount = faker.number.int({min: 4, max: 8});
                 for (let i = 0; i < pagePostCount; i++) {
                     // Get the user's interests based on username instead of biography
                     const userInterests = page.name ? extractInterestsFromText(page.name) : ['social media', 'friends'];
@@ -928,8 +967,6 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                         'politics',
                         'health',
                     ]);
-
-                    // Select relevant real-world elements based on the chosen topic
 
                     // Generate AI content with real-world references
                     const postContent = await generateMeaningfulPostContent(logger, {
@@ -1025,10 +1062,9 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     }
                 }
 
-                // How many posts to create depends on whether admins are involved
                 const groupPostCount = hasAdmin
-                    ? faker.number.int({min: 11, max: 15}) // 30-40 posts for admin groups
-                    : faker.number.int({min: 2, max: 3}); // 2-3 posts for non-admin groups
+                    ? faker.number.int({min: 6, max: 8})
+                    : faker.number.int({min: 1, max: 1});
 
                 logger.log(
                     `Creating ${groupPostCount} posts for group: ${group.name} (${hasAdmin ? 'admin' : 'non-admin'} group)`
@@ -1127,46 +1163,6 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             }
         }
 
-        // Create posts, comments, attachments, and reactions for regular users
-        logger.log('Creating posts with attachments and comments...');
-
-        // Find our designated content creators by username
-        const contentCreatorUsernames = [
-            'sarah_travels',
-            'tech_mike',
-            'fitness_alex',
-            'chef_emily',
-            'artist_james',
-            'news_lisa',
-        ];
-        const contentCreators = userRefs.filter((user) => contentCreatorUsernames.includes(user.username || ''));
-
-        if (contentCreators.length < contentCreatorUsernames.length) {
-            logger.warn(
-                `Only found ${contentCreators.length} of ${contentCreatorUsernames.length} expected content creators`
-            );
-        } else {
-            logger.log(`Found all ${contentCreators.length} content creators`);
-        }
-
-        // Ensure all content creators are viral users (100%)
-        const viralUsers = [...contentCreators];
-
-        // Add a small percentage of other regular users as viral (for variety)
-        const regularUsersExcludingCreators = userRefs.filter(
-            (u) => u !== adminUserRef && u !== admin2UserRef && !contentCreatorUsernames.includes(u.username || '')
-        );
-        const additionalViralUserCount = Math.floor(regularUsersExcludingCreators.length * 0.03); // Just 3% of regular users
-        const additionalViralUsers = faker.helpers.arrayElements(
-            regularUsersExcludingCreators,
-            additionalViralUserCount
-        );
-
-        viralUsers.push(...additionalViralUsers);
-        logger.log(
-            `Selected ${contentCreators.length} content creators and ${additionalViralUsers.length} additional users to have viral/popular posts`
-        );
-
         // Process content creators first to ensure they have content
         for (const contentCreator of contentCreators) {
             const creatorFeed = newsFeeds.find((feed) => feed.owner?.id === contentCreator.id);
@@ -1176,12 +1172,11 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
             }
 
             // Content creators get more posts (8-15 posts each)
-            const postCount = faker.number.int({min: 8, max: 15});
+            const postCount = faker.number.int({min: 4, max: 6});
 
             logger.log(`Creating ${postCount} posts for content creator: ${contentCreator.username}`);
 
             for (let i = 0; i < postCount; i++) {
-                // For content creators, 60-80% of posts should be viral
                 const isViralPost = faker.datatype.boolean({probability: 0.7});
 
                 // Determine the topic based on the user's specialty
@@ -1225,31 +1220,535 @@ export const seedFeedDatabase = async (dataSource: DataSource) => {
                     },
                 });
 
-                // ...existing post creation code with isViralPost determining reactions, etc...
+                const post = postRepo.create({
+                    content: postContent,
+                    newsFeed: creatorFeed,
+                    topics:
+                        topics.length > 0
+                            ? faker.helpers.arrayElements(
+                                  topics,
+                                  isViralPost ? faker.number.int({min: 3, max: 6}) : faker.number.int({min: 1, max: 3})
+                              )
+                            : [],
+                    owner: creatorFeed.owner,
+                });
+                await postRepo.save(post);
 
-                // ...existing story, reel, livestream creation code...
+                const attachmentCount = isViralPost
+                    ? faker.number.int({min: 4, max: 5})
+                    : faker.number.int({min: 0, max: 3});
+
+                for (let j = 0; j < attachmentCount; j++) {
+                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                    const attachment = postAttachmentRepo.create({
+                        attachment_url:
+                            attachmentType === AttachmentType.VIDEO
+                                ? faker.helpers.arrayElement(videoLinks)
+                                : faker.helpers.arrayElement(imageLinks),
+                        attachmentType,
+                        post,
+                    });
+                    await postAttachmentRepo.save(attachment);
+                }
+
+                // Viral posts get more comments
+                const commentCount = isViralPost
+                    ? faker.number.int({min: 85, max: 200})
+                    : faker.number.int({min: 0, max: 5});
+
+                for (let k = 0; k < commentCount; k++) {
+                    const randomUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: isViralPost ? 0.4 : 0.2})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
+                        user: randomUser,
+                        post,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                const reactionCount = isViralPost
+                    ? faker.number.int({min: 280, max: 380})
+                    : faker.number.int({min: 14, max: 50});
+
+                const reactionTypes = Object.values(ReactionType);
+
+                const reactingUsers = faker.helpers.arrayElements(userRefs, Math.min(reactionCount, userRefs.length));
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactPostRepo.create({
+                        user_id: user.id,
+                        post_id: post.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactPostRepo.save(reaction);
+                }
+
+                if (isViralPost || faker.datatype.boolean({probability: 0.3})) {
+                    const sharersCount = isViralPost
+                        ? faker.number.int({min: 10, max: 30})
+                        : faker.number.int({min: 1, max: 3});
+
+                    const potentialSharers = userRefs.filter((u) => u.id !== contentCreator.id);
+                    const sharers = faker.helpers.arrayElements(
+                        potentialSharers,
+                        Math.min(sharersCount, potentialSharers.length)
+                    );
+
+                    for (const sharer of sharers) {
+                        // Get the sharer's feed
+                        const sharerFeed = await newsFeedRepo.findOne({
+                            where: {owner: {id: sharer.id}},
+                            relations: ['owner'],
+                        });
+
+                        if (!sharerFeed) continue;
+
+                        try {
+                            // Create a duplicate post in the sharer's feed
+                            const sharedPost = postRepo.create({
+                                // Use the same content as the original post
+                                ...post,
+                                newsFeed: sharerFeed,
+                            });
+                            await postRepo.save(sharedPost);
+
+                            // Track the share in UserSharePost table
+                            const shareRecord = userSharePostRepo.create({
+                                user_id: sharer.id,
+                                post_id: post.id,
+                            });
+                            await userSharePostRepo.save(shareRecord);
+                        } catch (error: any) {
+                            logger.error(`Error creating shared post: ${error.message}`);
+                        }
+                    }
+                }
+            }
+
+            // Create stories for content creators (3-6 stories each)
+            const storyCount = faker.number.int({min: 3, max: 6});
+            logger.log(`Creating ${storyCount} stories for content creator: ${contentCreator.username}`);
+
+            for (let i = 0; i < storyCount; i++) {
+                const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                const imageUrl = faker.helpers.arrayElement(imageLinks);
+                const story = storyRepo.create({
+                    story_url:
+                        attachmentType === AttachmentType.VIDEO ? faker.helpers.arrayElement(videoLinks) : imageUrl,
+                    thumbnail_url: imageUrl,
+                    duration: faker.number.int({min: 5, max: 30}),
+                    attachmentType,
+                    newsFeed: creatorFeed,
+                });
+                await storyRepo.save(story);
+
+                // Stories get a lot of reactions and comments (they're from content creators)
+                const storyCommentCount = faker.number.int({min: 5, max: 15});
+                for (let c = 0; c < storyCommentCount; c++) {
+                    const randomUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: 0.2})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
+                        user: randomUser,
+                        story: story,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                const storyReactionCount = faker.number.int({min: 20, max: 80});
+                const reactionTypes = Object.values(ReactionType);
+
+                const reactingUsers = faker.helpers.arrayElements(
+                    userRefs,
+                    Math.min(storyReactionCount, userRefs.length)
+                );
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactStoryRepo.create({
+                        user_id: user.id,
+                        story_id: story.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactStoryRepo.save(reaction);
+                }
             }
         }
 
-        // Process remaining news feeds (skip content creators since we already did them)
-        for (const newsFeed of newsFeeds.filter(
-            (feed) =>
-                feed !== adminNewsFeed &&
-                feed !== admin2NewsFeed &&
-                !contentCreators.some((c) => c.id === feed.owner?.id)
-        )) {
-            // Determine if this is a viral user (small percentage of regular users)
-            const isViralUser = viralUsers.some((u) => u.id === newsFeed.owner?.id);
+        // Process regular users with content
+        for (const regularUser of regularUsersWithContent) {
+            const userFeed = newsFeeds.find((feed) => feed.owner?.id === regularUser.id);
+            if (!userFeed) {
+                logger.warn(`Could not find news feed for regular user with content: ${regularUser.username}`);
+                continue;
+            }
 
-            // Most regular users get 0-1 posts, viral regular users get 1-3 posts
-            const postCount = isViralUser ? faker.number.int({min: 1, max: 3}) : faker.number.int({min: 0, max: 1});
+            // Create 1-3 posts for regular users who have content
+            const postCount = faker.number.int({min: 1, max: 3});
 
-            if (postCount === 0) continue; // Skip users with no posts
+            logger.log(`Creating ${postCount} posts for regular user: ${regularUser.username}`);
 
-            // ...existing code for regular user post creation...
+            for (let i = 0; i < postCount; i++) {
+                const randomTopic = faker.helpers.arrayElement([
+                    'technology',
+                    'travel',
+                    'food',
+                    'fitness',
+                    'art',
+                    'music',
+                    'books',
+                    'movies',
+                    'fashion',
+                    'sports',
+                    'environment',
+                    'education',
+                    'politics',
+                    'health',
+                ]);
+
+                const postContent = await generateMeaningfulPostContent(logger, {
+                    topic: randomTopic,
+                    user: {
+                        firstName: regularUser.firstName,
+                        lastName: regularUser.lastName,
+                        interests: extractInterestsFromText(regularUser.username || ''),
+                    },
+                });
+
+                const post = postRepo.create({
+                    content: postContent,
+                    newsFeed: userFeed,
+                    topics:
+                        topics.length > 0
+                            ? faker.helpers.arrayElements(topics, faker.number.int({min: 1, max: 3}))
+                            : [],
+                    owner: userFeed.owner,
+                });
+                await postRepo.save(post);
+
+                const attachmentCount = faker.number.int({min: 0, max: 2});
+                for (let j = 0; j < attachmentCount; j++) {
+                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                    const attachment = postAttachmentRepo.create({
+                        attachment_url:
+                            attachmentType === AttachmentType.VIDEO
+                                ? faker.helpers.arrayElement(videoLinks)
+                                : faker.helpers.arrayElement(imageLinks),
+                        attachmentType,
+                        post,
+                    });
+                    await postAttachmentRepo.save(attachment);
+                }
+
+                const reactionCount = faker.number.int({min: 1, max: 5});
+                const reactionTypes = Object.values(ReactionType);
+
+                const reactingUsers = faker.helpers.arrayElements(userRefs, Math.min(reactionCount, userRefs.length));
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactPostRepo.create({
+                        user_id: user.id,
+                        post_id: post.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactPostRepo.save(reaction);
+                }
+            }
         }
 
-        // ...rest of the existing code...
+        // Create posts for admin users
+        if (adminUserRef && adminNewsFeed) {
+            logger.log('Creating posts for first admin user...');
+
+            const adminPostCount = faker.number.int({min: 10, max: 15});
+            logger.log(`Creating ${adminPostCount} posts for admin user`);
+
+            for (let i = 0; i < adminPostCount; i++) {
+                // Admin posts on topics like platform updates, community guidelines, etc.
+                const adminTopics = [
+                    'platform update',
+                    'community guidelines',
+                    'feature announcement',
+                    'user experience',
+                    'digital wellness',
+                    'online safety',
+                    'platform innovation',
+                    'community engagement',
+                ];
+
+                const randomTopic = faker.helpers.arrayElement(adminTopics);
+
+                const postContent = await generateMeaningfulPostContent(logger, {
+                    topic: randomTopic,
+                    mood: faker.helpers.arrayElement(['professional', 'informative', 'supportive']),
+                    user: {
+                        firstName: adminUserRef.firstName,
+                        lastName: adminUserRef.lastName,
+                        interests: ['community management', 'platform development', 'user engagement'],
+                    },
+                });
+
+                const post = postRepo.create({
+                    content: postContent,
+                    newsFeed: adminNewsFeed,
+                    topics:
+                        topics.length > 0
+                            ? faker.helpers.arrayElements(topics, faker.number.int({min: 1, max: 3}))
+                            : [],
+                    owner: adminNewsFeed.owner,
+                });
+
+                await postRepo.save(post);
+
+                // Admin posts typically have attachments
+                const attachmentCount = faker.number.int({min: 0, max: 3});
+                for (let j = 0; j < attachmentCount; j++) {
+                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                    const attachment = postAttachmentRepo.create({
+                        attachment_url:
+                            attachmentType === AttachmentType.VIDEO
+                                ? faker.helpers.arrayElement(videoLinks)
+                                : faker.helpers.arrayElement(imageLinks),
+                        attachmentType,
+                        post,
+                    });
+                    await postAttachmentRepo.save(attachment);
+                }
+
+                // Create comments for the admin's post (10-20 comments)
+                const commentCount = faker.number.int({min: 10, max: 20});
+                for (let k = 0; k < commentCount; k++) {
+                    const commentUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: 0.2})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
+                        user: commentUser,
+                        post,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                // Create reactions for the admin's post (50-100 reactions)
+                const reactionCount = faker.number.int({min: 50, max: 100});
+                const reactionTypes = Object.values(ReactionType);
+
+                const reactingUsers = faker.helpers.arrayElements(userRefs, Math.min(reactionCount, userRefs.length));
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactPostRepo.create({
+                        user_id: user.id,
+                        post_id: post.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactPostRepo.save(reaction);
+                }
+            }
+        }
+
+        // Create posts for second admin user
+        if (admin2UserRef && admin2NewsFeed) {
+            logger.log('Creating posts for second admin user...');
+
+            const admin2PostCount = faker.number.int({min: 8, max: 12});
+            logger.log(`Creating ${admin2PostCount} posts for second admin user`);
+
+            for (let i = 0; i < admin2PostCount; i++) {
+                // Admin2 posts on topics like community events, user highlights, etc.
+                const admin2Topics = [
+                    'community highlight',
+                    'user success stories',
+                    'best practices',
+                    'platform tips',
+                    'upcoming events',
+                    'feature showcase',
+                    'user appreciation',
+                    'content guidelines',
+                ];
+
+                const randomTopic = faker.helpers.arrayElement(admin2Topics);
+
+                const postContent = await generateMeaningfulPostContent(logger, {
+                    topic: randomTopic,
+                    mood: faker.helpers.arrayElement(['friendly', 'encouraging', 'celebratory']),
+                    user: {
+                        firstName: admin2UserRef.firstName,
+                        lastName: admin2UserRef.lastName,
+                        interests: ['community building', 'user success', 'content moderation'],
+                    },
+                });
+
+                const post = postRepo.create({
+                    content: postContent,
+                    newsFeed: admin2NewsFeed,
+                    topics:
+                        topics.length > 0
+                            ? faker.helpers.arrayElements(topics, faker.number.int({min: 1, max: 3}))
+                            : [],
+                    owner: admin2NewsFeed.owner,
+                });
+
+                await postRepo.save(post);
+
+                // Admin2 posts might have attachments
+                const attachmentCount = faker.number.int({min: 0, max: 2});
+                for (let j = 0; j < attachmentCount; j++) {
+                    const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                    const attachment = postAttachmentRepo.create({
+                        attachment_url:
+                            attachmentType === AttachmentType.VIDEO
+                                ? faker.helpers.arrayElement(videoLinks)
+                                : faker.helpers.arrayElement(imageLinks),
+                        attachmentType,
+                        post,
+                    });
+                    await postAttachmentRepo.save(attachment);
+                }
+
+                // Create comments for the admin2's post (8-15 comments)
+                const commentCount = faker.number.int({min: 8, max: 15});
+                for (let k = 0; k < commentCount; k++) {
+                    const commentUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: 0.2})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
+                        user: commentUser,
+                        post,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                // Create reactions for the admin2's post (40-80 reactions)
+                const reactionCount = faker.number.int({min: 40, max: 80});
+                const reactionTypes = Object.values(ReactionType);
+
+                const reactingUsers = faker.helpers.arrayElements(userRefs, Math.min(reactionCount, userRefs.length));
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactPostRepo.create({
+                        user_id: user.id,
+                        post_id: post.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactPostRepo.save(reaction);
+                }
+            }
+        }
+
+        // Create stories for first admin user
+        if (adminUserRef && adminNewsFeed) {
+            logger.log('Creating stories for first admin user...');
+
+            const storyCount = faker.number.int({min: 3, max: 5});
+            logger.log(`Creating ${storyCount} stories for first admin user`);
+
+            for (let i = 0; i < storyCount; i++) {
+                const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                const imageUrl = faker.helpers.arrayElement(imageLinks);
+                const story = storyRepo.create({
+                    story_url:
+                        attachmentType === AttachmentType.VIDEO ? faker.helpers.arrayElement(videoLinks) : imageUrl,
+                    thumbnail_url: imageUrl,
+                    duration: faker.number.int({min: 5, max: 30}),
+                    attachmentType,
+                    newsFeed: adminNewsFeed,
+                });
+                await storyRepo.save(story);
+
+                // Admin stories get more reactions and comments
+                const storyCommentCount = faker.number.int({min: 10, max: 25});
+                for (let c = 0; c < storyCommentCount; c++) {
+                    const randomUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: 0.25})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
+                        user: randomUser,
+                        story: story,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                const storyReactionCount = faker.number.int({min: 50, max: 100});
+                const reactionTypes = Object.values(ReactionType);
+
+                const reactingUsers = faker.helpers.arrayElements(
+                    userRefs,
+                    Math.min(storyReactionCount, userRefs.length)
+                );
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactStoryRepo.create({
+                        user_id: user.id,
+                        story_id: story.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactStoryRepo.save(reaction);
+                }
+            }
+        }
+
+        // Create stories for second admin user
+        if (admin2UserRef && admin2NewsFeed) {
+            logger.log('Creating stories for second admin user...');
+
+            const storyCount = faker.number.int({min: 2, max: 4});
+            logger.log(`Creating ${storyCount} stories for second admin user`);
+
+            for (let i = 0; i < storyCount; i++) {
+                const attachmentType = faker.helpers.arrayElement(Object.values(AttachmentType));
+                const imageUrl = faker.helpers.arrayElement(imageLinks);
+                const story = storyRepo.create({
+                    story_url:
+                        attachmentType === AttachmentType.VIDEO ? faker.helpers.arrayElement(videoLinks) : imageUrl,
+                    thumbnail_url: imageUrl,
+                    duration: faker.number.int({min: 5, max: 30}),
+                    attachmentType,
+                    newsFeed: admin2NewsFeed,
+                });
+                await storyRepo.save(story);
+
+                // Admin stories get good engagement
+                const storyCommentCount = faker.number.int({min: 8, max: 20});
+                for (let c = 0; c < storyCommentCount; c++) {
+                    const randomUser = faker.helpers.arrayElement(userRefs);
+                    const comment = commentRepo.create({
+                        text: faker.lorem.sentence(),
+                        attachment_url: faker.datatype.boolean({probability: 0.2})
+                            ? faker.helpers.arrayElement(imageLinks)
+                            : undefined,
+                        user: randomUser,
+                        story: story,
+                    });
+                    await commentRepo.save(comment);
+                }
+
+                const storyReactionCount = faker.number.int({min: 40, max: 90});
+                const reactionTypes = Object.values(ReactionType);
+
+                const reactingUsers = faker.helpers.arrayElements(
+                    userRefs,
+                    Math.min(storyReactionCount, userRefs.length)
+                );
+
+                for (const user of reactingUsers) {
+                    const reaction = userReactStoryRepo.create({
+                        user_id: user.id,
+                        story_id: story.id,
+                        reactionType: faker.helpers.arrayElement(reactionTypes),
+                    });
+                    await userReactStoryRepo.save(reaction);
+                }
+            }
+        }
 
         const postCount = await postRepo.count();
         const commentCount = await commentRepo.count();
