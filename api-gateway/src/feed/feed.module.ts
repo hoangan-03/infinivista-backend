@@ -8,6 +8,7 @@ import {GroupController} from './group.controller';
 import {NewsFeedController} from './newsfeed.controller';
 import {PageController} from './page.controller';
 import {PostController} from './post.controller';
+import {RagController} from './rag.controller';
 import {StoryController} from './story.controller';
 
 @Module({
@@ -50,6 +51,6 @@ import {StoryController} from './story.controller';
             },
         ]),
     ],
-    controllers: [StoryController, NewsFeedController, PostController, PageController, GroupController],
+    controllers: [StoryController, NewsFeedController, PostController, PageController, GroupController, RagController],
 })
 export class FeedModule {}

@@ -9,6 +9,7 @@ import {AppService} from '@/app.service';
 import {AllExceptionsFilter} from '@/exception-filters/all-exception.filter';
 
 import {FeedModule} from './modules/feed/feed.module';
+import {RagModule} from './rag/rag.module';
 
 @Module({
     imports: [
@@ -28,6 +29,7 @@ import {FeedModule} from './modules/feed/feed.module';
             inject: [ConfigService],
         }),
         FeedModule,
+        RagModule,
     ],
     controllers: [AppController],
     providers: [
