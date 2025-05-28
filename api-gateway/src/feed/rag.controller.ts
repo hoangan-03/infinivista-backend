@@ -70,7 +70,7 @@ export class RagController {
         },
     })
     @ApiResponse({
-        status: 200,
+        status: 201,
         description: 'Query processed successfully and AI response generated',
         type: RagResponseDto,
         examples: {

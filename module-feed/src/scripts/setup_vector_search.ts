@@ -9,6 +9,7 @@ export class VectorSearchSetup {
     private auth: GoogleAuth;
     private projectId: string;
     private location: string;
+    private endpointUrl: string;
 
     constructor() {
         this.auth = new GoogleAuth({
@@ -16,6 +17,7 @@ export class VectorSearchSetup {
         });
         this.projectId = process.env.GCP_PROJECT_ID!;
         this.location = process.env.GCP_REGION!;
+        this.endpointUrl = `https://${this.location}-aiplatform.googleapis.com/v1`;
     }
 
     async setupVectorSearch(): Promise<void> {
@@ -35,7 +37,7 @@ export class VectorSearchSetup {
 
             console.log('\n📝 Environment Variables (add to your .env file):');
             console.log('='.repeat(60));
-            console.log(`VECTOR_SEARCH_ENDPOINT_NAME=${endpointName}`);
+            console.log(`VECTOR_SEARCH_ENDPOINT=${endpointName}`);
             console.log(`VERTEX_AI_VECTOR_SEARCH_INDEX_ENDPOINT_ID=${endpointId}`);
             console.log(`VERTEX_AI_VECTOR_SEARCH_DEPLOYED_INDEX_ID=infinivista_knowledge_deployed`);
             console.log('='.repeat(60));
@@ -186,7 +188,7 @@ export class VectorSearchSetup {
                 console.log('='.repeat(60));
 
                 const endpointId = endpointName.split('/').pop();
-                console.log(`VECTOR_SEARCH_ENDPOINT_NAME=${endpointName}`);
+                console.log(`VECTOR_SEARCH_ENDPOINT=${endpointName}`);
                 console.log(`VERTEX_AI_VECTOR_SEARCH_INDEX_ENDPOINT_ID=${endpointId}`);
                 console.log(`VERTEX_AI_VECTOR_SEARCH_DEPLOYED_INDEX_ID=infinivista_knowledge_deployed`);
 

@@ -11,6 +11,7 @@ export class VectorDataImporter {
     private storage: Storage;
     private projectId: string;
     private location: string;
+    private url: string;
 
     constructor() {
         this.auth = new GoogleAuth({
@@ -23,6 +24,7 @@ export class VectorDataImporter {
 
         this.projectId = process.env.GCP_PROJECT_ID!;
         this.location = process.env.GCP_REGION!;
+        this.url = process.env.VECTOR_INDEX_URL!;
     }
 
     async importVectorData(): Promise<void> {
@@ -50,21 +52,62 @@ export class VectorDataImporter {
 
     private async createGCSBucket(bucketName: string): Promise<void> {
         try {
-            const [bucketExists] = await this.storage.bucket(bucketName).exists();
-            if (bucketExists) {
+            // Use a more robust existence check
+            try {
+                await this.storage.bucket(bucketName).getMetadata();
                 console.log(`✅ Bucket ${bucketName} already exists`);
                 return;
+            } catch (error: any) {
+                // If error is 404, bucket doesn't exist, so we can create it
+                if (error.code !== 404) {
+                    throw error; // Re-throw if it's not a "not found" error
+                }
             }
 
-            await this.storage.createBucket(bucketName, {
-                location: this.location.toUpperCase(),
-                storageClass: 'STANDARD',
-            });
-            console.log(`✅ Created bucket: ${bucketName}`);
+            // Bucket doesn't exist, create it
+            try {
+                await this.storage.createBucket(bucketName, {
+                    location: 'US-CENTRAL1',
+                    storageClass: 'STANDARD',
+                });
+                console.log(`✅ Created bucket: ${bucketName}`);
+            } catch (createError: any) {
+                // If bucket already exists (race condition), that's OK
+                if (createError.message?.includes('already own it') || createError.code === 409) {
+                    console.log(`✅ Bucket ${bucketName} already exists (created by another process)`);
+                    return;
+                }
+                throw createError;
+            }
+
+            // Wait for bucket to be fully available
+            console.log('⏳ Waiting for bucket to be ready...');
+            await this.waitForBucketReady(bucketName);
         } catch (error) {
             console.error(`❌ Error with bucket ${bucketName}:`, error);
             throw error;
         }
+    }
+
+    private async waitForBucketReady(bucketName: string, maxRetries: number = 10): Promise<void> {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const [exists] = await this.storage.bucket(bucketName).exists();
+                if (exists) {
+                    // Additional check: try to list objects to ensure bucket is fully ready
+                    await this.storage.bucket(bucketName).getFiles({maxResults: 1});
+                    console.log(`✅ Bucket ${bucketName} is ready`);
+                    return;
+                }
+            } catch (error) {
+                console.log(`⏳ Bucket not ready yet, retry ${i + 1}/${maxRetries}...`);
+            }
+
+            // Wait 2 seconds before next retry
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+
+        throw new Error(`Bucket ${bucketName} is not ready after ${maxRetries} retries`);
     }
 
     private async uploadFileToGCS(bucketName: string, localFilePath: string, gcsFilePath: string): Promise<void> {
@@ -112,9 +155,7 @@ export class VectorDataImporter {
         const authClient = await this.auth.getClient();
         const accessToken = await authClient.getAccessToken();
 
-        const indexId = '1724289319050412032';
-        // Use the same endpoint pattern as in setup_vector_search.ts for operations
-        const endpoint = `https://${this.location}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.location}/indexes/${indexId}`;
+        const endpoint = this.url;
 
         // Use directory path instead of file path
         const directoryPath = 'vector-data/';
@@ -150,6 +191,32 @@ export class VectorDataImporter {
     async checkDataFileExists(): Promise<boolean> {
         const dataFilePath = path.join(process.cwd(), 'data', 'infinivista-vector-data.json');
         return fs.existsSync(dataFilePath);
+    }
+
+    private async cleanupExistingData(bucketName: string, prefix: string): Promise<void> {
+        console.log(`🧹 Cleaning up directory: gs://${bucketName}/${prefix}`);
+        try {
+            // First check if bucket exists
+            const [bucketExists] = await this.storage.bucket(bucketName).exists();
+            if (!bucketExists) {
+                console.log('Note: Bucket does not exist yet, skipping cleanup');
+                return;
+            }
+
+            const [files] = await this.storage.bucket(bucketName).getFiles({
+                prefix: prefix,
+            });
+
+            if (files.length > 0) {
+                console.log(`Found ${files.length} files to delete`);
+                await Promise.all(files.map((file) => file.delete()));
+                console.log('✅ Cleanup completed');
+            } else {
+                console.log('No existing files to clean up');
+            }
+        } catch (error: any) {
+            console.log(`Note: Could not clean directory (this is OK if it doesn't exist yet): ${error.message}`);
+        }
     }
 }
 

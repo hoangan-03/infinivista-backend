@@ -9,6 +9,7 @@ export class ImportStatusChecker {
     private auth: GoogleAuth;
     private projectId: string;
     private location: string;
+    private url: string;
 
     constructor() {
         this.auth = new GoogleAuth({
@@ -16,19 +17,17 @@ export class ImportStatusChecker {
         });
         this.projectId = process.env.GCP_PROJECT_ID!;
         this.location = process.env.GCP_REGION!;
+        this.url = process.env.VECTOR_INDEX_URL!;
     }
 
     async checkStatus(): Promise<void> {
         console.log('🔍 Checking Vector Search import status...');
 
         try {
-            // Check index status
             await this.checkIndexStatus();
 
-            // Check recent operations - with better error handling
             await this.checkRecentOperationsDetailed();
 
-            // Check specific operation if provided
             const args = process.argv.slice(2);
             const operationId = args.find((arg) => arg.startsWith('op:'))?.replace('op:', '');
             if (operationId) {
@@ -42,9 +41,7 @@ export class ImportStatusChecker {
     private async checkIndexStatus(): Promise<void> {
         const authClient = await this.auth.getClient();
         const accessToken = await authClient.getAccessToken();
-
-        const indexId = '1724289319050412032';
-        const endpoint = `https://${this.location}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.location}/indexes/${indexId}`;
+        const endpoint = this.url;
 
         const response = await fetch(endpoint, {
             headers: {
@@ -87,9 +84,8 @@ export class ImportStatusChecker {
         console.log('\n🔄 CHECKING OPERATIONS:');
         console.log('='.repeat(50));
 
-        // Try different filters to find operations
         const filters = [
-            '', // All operations
+            '',
             'metadata.@type="type.googleapis.com/google.cloud.aiplatform.v1.UpdateIndexOperationMetadata"',
             'metadata.@type="type.googleapis.com/google.cloud.aiplatform.v1.CreateIndexOperationMetadata"',
         ];
@@ -111,9 +107,9 @@ export class ImportStatusChecker {
                     if (operations.operations?.length > 0) {
                         console.log(`Found ${operations.operations.length} operations`);
 
-                        // Show the most recent 5 operations
+                        // Show the most recent 10 operations
                         const recentOps = operations.operations
-                            .slice(0, 5)
+                            .slice(0, 10)
                             .sort(
                                 (a: any, b: any) =>
                                     new Date(b.metadata?.createTime || b.metadata?.updateTime || 0).getTime() -
@@ -123,7 +119,7 @@ export class ImportStatusChecker {
                         for (const op of recentOps) {
                             this.displayOperationDetails(op);
                         }
-                        break; // Found operations, no need to try other filters
+                        break;
                     } else {
                         console.log('No operations found with this filter');
                     }
@@ -148,7 +144,6 @@ export class ImportStatusChecker {
         if (!op.done) {
             console.log('   🔄 This operation is still running...');
 
-            // Show progress if available
             if (op.metadata?.progressMessage) {
                 console.log(`   📋 Progress: ${op.metadata.progressMessage}`);
             }
@@ -231,7 +226,7 @@ export class ImportStatusChecker {
     async waitForCompletion(maxWaitMinutes: number = 60): Promise<void> {
         console.log(`⏰ Monitoring import progress for up to ${maxWaitMinutes} minutes...`);
 
-        const checkInterval = 3 * 60 * 1000; // Check every 3 minutes for long operations
+        const checkInterval = 3 * 60 * 1000;
         const maxChecks = maxWaitMinutes / 3;
 
         for (let i = 0; i < maxChecks; i++) {
@@ -241,10 +236,10 @@ export class ImportStatusChecker {
                 await this.checkIndexStatus();
                 await this.checkRecentOperationsDetailed();
 
-                // Check if we have the expected number of vectors
                 const authClient = await this.auth.getClient();
                 const accessToken = await authClient.getAccessToken();
-                const indexId = '1724289319050412032';
+                const indexId = process.env.VERTEX_AI_VECTOR_SEARCH_INDEX_ID!;
+
                 const endpoint = `https://${this.location}-aiplatform.googleapis.com/v1/projects/${this.projectId}/locations/${this.location}/indexes/${indexId}`;
 
                 const response = await fetch(endpoint, {
@@ -278,7 +273,6 @@ export class ImportStatusChecker {
     async debugVectorData(): Promise<void> {
         console.log('🔍 Debugging vector data and embeddings...');
 
-        // Check what we prepared
         const dataPath = require('path').join(process.cwd(), 'data', 'infinivista-vector-data.json');
         if (require('fs').existsSync(dataPath)) {
             console.log('\n📄 Checking prepared data file...');
@@ -305,7 +299,6 @@ export class ImportStatusChecker {
             });
         }
 
-        // Test embedding generation for the exact query
         console.log('\n🧪 Testing embedding generation for query...');
         const testQuery = 'How to Create Posts in Infinivista';
         const hash = this.simpleHash(testQuery);
@@ -345,7 +338,6 @@ export class ImportStatusChecker {
     }
 }
 
-// CLI interface
 if (require.main === module) {
     const checker = new ImportStatusChecker();
 
@@ -364,7 +356,7 @@ if (require.main === module) {
                 process.exit(1);
             });
     } else if (command === 'watch') {
-        const waitMinutes = parseInt(args[1]) || 60; // Default to 60 minutes for long operations
+        const waitMinutes = parseInt(args[1]) || 60;
         checker
             .waitForCompletion(waitMinutes)
             .then(() => {
