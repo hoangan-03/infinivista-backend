@@ -1,8 +1,8 @@
 import {Module} from '@nestjs/common';
 import {ConfigModule} from '@nestjs/config';
 
-import {RagService} from '../services/rag.service';
 import {RagController} from './rag.controller';
+import {RagService} from './rag.service';
 @Module({
     imports: [ConfigModule],
     controllers: [RagController],

@@ -1,7 +1,7 @@
 import {Controller, Logger} from '@nestjs/common';
 import {MessagePattern, Payload} from '@nestjs/microservices';
 
-import {RagService} from '../services/rag.service';
+import {RagService} from './rag.service';
 
 @Controller()
 export class RagController {

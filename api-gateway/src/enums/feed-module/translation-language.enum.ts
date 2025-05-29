@@ -1,0 +1,16 @@
+export enum TranslationLanguage {
+    ENGLISH = 'ENGLISH',
+    FRENCH = 'FRENCH',
+    SPANISH = 'SPANISH',
+    GERMAN = 'GERMAN',
+    ITALIAN = 'ITALIAN',
+    PORTUGUESE = 'PORTUGUESE',
+    RUSSIAN = 'RUSSIAN',
+    ARABIC = 'ARABIC',
+    CHINESE = 'CHINESE',
+    JAPANESE = 'JAPANESE',
+    KOREAN = 'KOREAN',
+    VIETNAMESE = 'VIETNAMESE',
+    HINDI = 'HINDI',
+    THAI = 'THAI',
+}
