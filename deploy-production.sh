@@ -78,10 +78,8 @@ echo "🏥 Checking service health..."
 docker-compose ps
 
 # Run database migrations (if needed)
-echo "📊 Running database migrations..."
-docker-compose exec -T user npm run migration:run || true
-docker-compose exec -T feed npm run migration:run || true
-docker-compose exec -T communication npm run migration:run || true
+echo "🌱 Running database migrations and seeding..."
+npm run seed || true
 
 # Show logs
 echo "📋 Showing recent logs..."

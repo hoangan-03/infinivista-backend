@@ -3,7 +3,7 @@
 services: # Database Service
   db:
     image: postgres:15-alpine
-    container_name: infinivista_db_prod
+    container_name: infinivista_db
     restart: unless-stopped
     env_file:
       - .env
@@ -36,7 +36,7 @@ services: # Database Service
         max-file: "3" # Message Queue Service
   rabbitmq:
     image: rabbitmq:3.11-management-alpine
-    container_name: infinivista_rabbitmq_prod
+    container_name: infinivista_rabbitmq
     restart: unless-stopped
     env_file:
       - .env
@@ -61,7 +61,7 @@ services: # Database Service
     build:
       context: ./module-communication
       dockerfile: Dockerfile
-    container_name: infinivista_communication_prod
+    container_name: infinivista_communication
     restart: unless-stopped
     env_file:
       - ./module-communication/.env.prod
@@ -100,7 +100,7 @@ services: # Database Service
     build:
       context: ./module-user
       dockerfile: Dockerfile
-    container_name: infinivista_user_prod
+    container_name: infinivista_user
     restart: unless-stopped
     env_file:
       - ./module-user/.env.prod
@@ -139,7 +139,7 @@ services: # Database Service
     build:
       context: ./module-feed
       dockerfile: Dockerfile
-    container_name: infinivista_feed_prod
+    container_name: infinivista_feed
     restart: unless-stopped
     env_file:
       - ./module-feed/.env.prod
@@ -178,7 +178,7 @@ services: # Database Service
     build:
       context: ./api-gateway
       dockerfile: Dockerfile
-    container_name: infinivista_gateway_prod
+    container_name: infinivista_gateway
     restart: unless-stopped
     ports:
       - "${GATEWAY_PORT:-3000}:3000"
@@ -226,7 +226,7 @@ networks:
   infinivista_backend:
     driver: bridge
     driver_opts:
-      com.docker.network.bridge.name: infinivista_prod
+      com.docker.network.bridge.name: infinivista
 
 volumes:
   postgres_data:
