@@ -1,6 +1,6 @@
 # Infinivista Backend
 
-A microservices-based backend system built with Node.js, TypeScript, and PostgreSQL, featuring a modular architecture with event-driven communication.
+A microservices-based backend system built with Nest.js, TypeScript, and PostgreSQL, featuring a modular architecture with event-driven communication.
 
 ## 🏗 Architecture
 
@@ -115,7 +115,7 @@ infinivista-backend/
 ## 📚 API Documentation
 
 API documentation is available through Swagger UI when running the application:
-- API Gateway: http://localhost:3001/api-docs
+- API Gateway: http://localhost:3001/swagger-docs
 
 ## 🔐 Environment Variables
 
@@ -131,7 +131,6 @@ POSTGRES_DB=postgres
 PORT=3001
 NODE_ENV=development
 
-# Add other required environment variables
 ```
 
 ## 🤝 Contributing
